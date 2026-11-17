@@ -1,0 +1,19 @@
+# Ambiente virtual
+.venv/
+venv/
+
+# Segredos e configuracoes locais
+.env
+.env.*
+
+# Manter o modelo de configuracao
+!.env.example
+
+# Cache Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+
+# Arquivos locais
+*.log
+.DS_Store
