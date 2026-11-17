@@ -31,3 +31,10 @@ def test_exemplo_linha_invalida(client, url):
 
     assert response.status_code == 400
     assert "erro" in response.get_json()
+
+
+def test_health(client):
+    response = client.get("/health")
+
+    assert response.status_code == 200
+    assert response.get_json() == {"status": "ok"}

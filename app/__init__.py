@@ -37,6 +37,11 @@ def create_app(config_extra=None):
         }
     )
 
+    # Rota de saude da aplicacao
+    @app.get("/health")
+    def health_root():
+        return {"status": "ok"}, 200
+
     # Rota simples para testar o servidor
     @app.get("/api/health")
     def health():
