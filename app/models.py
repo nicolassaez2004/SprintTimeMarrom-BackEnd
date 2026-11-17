@@ -16,6 +16,22 @@ class OnibusSelecionado(db.Model):
     codigo_linha = db.Column(db.Integer, nullable=False, index=True)
 
 
+class ExecucaoColeta(db.Model):
+    """Resumo de um ciclo de consulta e gravação de posições."""
+
+    __tablename__ = "execucoes_coleta"
+
+    id = db.Column(db.BigInteger, primary_key=True, autoincrement=True)
+    iniciada_em = db.Column(
+        db.DateTime(timezone=True), nullable=False,
+        default=lambda: datetime.now(timezone.utc),
+    )
+    finalizada_em = db.Column(db.DateTime(timezone=True), nullable=True)
+    status = db.Column(db.String(16), nullable=False, default="executando")
+    quantidade_registros = db.Column(db.Integer, nullable=False, default=0)
+    erro = db.Column(db.Text, nullable=True)
+
+
 class RegistroGPS(db.Model):
     """Uma posição observada de um ônibus selecionado em um instante."""
 
@@ -27,6 +43,11 @@ class RegistroGPS(db.Model):
     )
 
     id = db.Column(db.BigInteger, primary_key=True, autoincrement=True)
+    execucao_id = db.Column(
+        db.BigInteger,
+        db.ForeignKey("execucoes_coleta.id", ondelete="CASCADE"),
+        nullable=False,
+    )
     prefixo_onibus = db.Column(
         db.String(32),
         db.ForeignKey("onibus_selecionados.prefixo", ondelete="RESTRICT"),
@@ -44,9 +65,14 @@ class RegistroGPS(db.Model):
     )
 
     onibus = db.relationship("OnibusSelecionado", backref="registros_gps")
+    execucao = db.relationship("ExecucaoColeta", backref="registros_gps")
 
     def __repr__(self):
         return (
             f"<RegistroGPS prefixo={self.prefixo_onibus!r} "
             f"registrado_em={self.registrado_em!r}>"
         )
+
+# Nomes usados no diagrama de classes/contrato de gravação da US12.
+Veiculo = OnibusSelecionado
+RegistroBrutoGPS = RegistroGPS

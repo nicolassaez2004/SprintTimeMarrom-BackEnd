@@ -41,11 +41,27 @@ retorna coordenadas nos campos `py` (latitude) e `px` (longitude). Cada ciclo
 usa um mesmo instante UTC em `registrado_em` para as posições obtidas naquele
 ciclo.
 
-O primeiro ciclo inicia imediatamente; os seguintes começam a cada 30 segundos.
-Se uma consulta demorar mais que esse intervalo, o coletor não sobrepõe ciclos:
-aguarda 30 segundos após o ciclo atrasado antes de iniciar o próximo. Linhas
+O primeiro ciclo inicia imediatamente; os seguintes respeitam o intervalo
+configurado. Se uma consulta ultrapassar o prazo, o coletor não sobrepõe ciclos
+nem faz catch-up: aguarda um intervalo completo após o ciclo atrasado. Linhas
 com erro são registradas no log e as demais continuam sendo processadas. Para
 encerrar o processo, envie Ctrl+C.
+
+Configure `GPS_COLLECTION_INTERVAL_SECONDS` no `.env`; o padrão é 30 segundos e
+os únicos valores aceitos vão de 15 a 60, inclusive:
+
+```dotenv
+GPS_COLLECTION_INTERVAL_SECONDS=30
+```
+
+O servidor Flask não importa nem inicia o agendador. Portanto, o reloader e os
+workers WSGI não duplicam o coletor, e reiniciar a API não cria outro processo
+coletor. Um PostgreSQL advisory lock também impede dois processos coletores
+simultâneos no mesmo banco. Cada ciclo remove sua sessão SQL ao terminar.
+
+Cada ciclo é registrado em `execucoes_coleta`, com início, fim, status,
+quantidade de posições e eventual erro. As tabelas novas precisam ser aplicadas
+ao banco por migração antes de iniciar o processo.
 
 Para imprimir a localização atual de um veículo pelo prefixo, sem gravar no
 banco, execute na raiz do projeto:
@@ -69,3 +85,14 @@ O repositório não continha uma tabela/modelo de seleção de ônibus, então
 o código da linha antes de iniciar a coleta. As tabelas devem ser
 criadas/aplicadas ao banco por uma migração de esquema (ou, em ambiente local
 descartável, pela criação do metadata do SQLAlchemy).
+
+## Testes
+
+Execute os testes com:
+
+```bash
+python -m unittest discover -s tests -v
+```
+
+O relógio controlado verifica cadências de 15, 30 e 60 segundos sem chamadas à
+API real; outro teste confirma que criar a aplicação Flask não inicia o coletor.
