@@ -46,6 +46,9 @@ O esquema é versionado com Flask-Migrate (Alembic), em `migrations/versions/`:
 - `0002`: alinhamento ao diagrama de classes. Não é destrutiva: só cria,
   renomeia, amplia tipos e copia valores.
 - `0003`: metadados de `ArquivoArmazenado` e `VersaoGTFS`, com unicidade por hash.
+- `0004`: `ObservacaoTratada` separada do bruto, com FK obrigatória/única para
+  `registros_gps` e FK opcional para a versão GTFS. Evidências e limites em
+  [US12-T01B](docs/US12-T01B.md).
 
 **Banco novo:** `flask --app app db upgrade`.
 

@@ -213,3 +213,46 @@ class VersaoGTFS(db.Model):
         unique=True,
     )
     arquivo = db.relationship("ArquivoArmazenado")
+
+
+class ObservacaoTratada(db.Model):
+    """Resultado de tratamento separado da posição bruta imutável (US12).
+
+    Um bruto pode ainda não ter tratamento e pode gerar no máximo uma
+    observação. Linha e viagem serão ligadas quando existirem nas suas
+    histórias; a correspondência GTFS pode permanecer desconhecida (NULL).
+    """
+
+    __tablename__ = "observacoes_tratadas"
+    __table_args__ = (
+        UniqueConstraint("bruto_id", name="uq_observacoes_tratadas_bruto"),
+        CheckConstraint("LENGTH(TRIM(versao_correspondencia)) > 0",
+                        name="ck_observacoes_tratadas_versao"),
+        # Herda charset/collation da base, assim como versoes_gtfs (0003),
+        # para manter as FKs textuais compatíveis nos ambientes existentes.
+        {"mysql_engine": "InnoDB"},
+    )
+
+    id = db.Column(db.String(36), primary_key=True, default=lambda: str(uuid4()))
+    bruto_id = db.Column(
+        IdGrande,
+        db.ForeignKey("registros_gps.id", name="fk_observacoes_tratadas_bruto",
+                      ondelete="RESTRICT"),
+        nullable=False,
+    )
+    valida = db.Column(db.Boolean, nullable=False)
+    motivo_invalidez = db.Column(db.Text, nullable=True)
+    versao_correspondencia = db.Column(db.String(128), nullable=False)
+    versao_gtfs_id = db.Column(
+        db.String(36),
+        db.ForeignKey("versoes_gtfs.id", name="fk_observacoes_tratadas_gtfs",
+                      ondelete="RESTRICT"),
+        nullable=True,
+        index=True,
+    )
+
+    bruto = db.relationship(
+        "RegistroBrutoGPS",
+        backref=db.backref("observacao_tratada", uselist=False, passive_deletes="all"),
+    )
+    versao_gtfs = db.relationship("VersaoGTFS")
