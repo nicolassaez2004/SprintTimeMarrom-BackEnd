@@ -9,6 +9,7 @@ from pathlib import Path
 
 import pytest
 from flask_migrate import upgrade
+from alembic.script import ScriptDirectory
 from sqlalchemy import inspect, text
 from sqlalchemy.engine import make_url
 from sqlalchemy.exc import DBAPIError
@@ -27,6 +28,7 @@ def test_cadeia_mysql_e_integridade(historico_previo):
     assert url.database.startswith('us12_verificacao_'), 'Recusa base de uso do time'
     app = create_app({'TESTING': True, 'SQLALCHEMY_DATABASE_URI': url, 'MYSQL_SSL_CA': None})
     migrations = str(Path(__file__).resolve().parents[1] / 'migrations')
+    revisao_atual = ScriptDirectory(migrations).get_current_head()
     with app.app_context():
         try:
             assert not inspect(db.engine).get_table_names(), 'Exige base vazia'
@@ -50,7 +52,7 @@ def test_cadeia_mysql_e_integridade(historico_previo):
                     "FROM information_schema.TABLES WHERE TABLE_SCHEMA=DATABASE() "
                     "AND TABLE_NAME='observacoes_tratadas'")).one()
                 assert engine == 'InnoDB' and collation.startswith('utf8mb4_')
-                assert conn.execute(text('SELECT version_num FROM alembic_version')).scalar_one() == '0004'
+                assert conn.execute(text('SELECT version_num FROM alembic_version')).scalar_one() == revisao_atual
             if historico_previo:
                 with db.engine.begin() as conn:
                     conn.execute(text("INSERT INTO observacoes_tratadas "

@@ -38,6 +38,7 @@ class Config:
         "BaixarGTFS?memberName=sptrans"
     )
     GTFS_STORAGE_DIR = os.getenv("GTFS_STORAGE_DIR") or None
+    GTFS_TASK_LOG_FILE = os.getenv("GTFS_TASK_LOG_FILE") or None
 
     # O processo coletor usa 30 s por padrão e aceita intervalo de 15 a 60 s.
     # Valor vazio no .env (como em .env.example) também usa o padrão.
