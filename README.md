@@ -189,6 +189,26 @@ repetido retorna a versão existente. `feed_info.txt`, quando presente, informa 
 vigência; sem ele, o início usa a data da captura e o fim fica `NULL`. Falha de
 download/validação não cria versão nem altera versões anteriores.
 
+O `FileStore` em `app/storage.py` publica/verifica o ZIP antes de reutilizar uma
+versão pelo hash. Se o original estiver ausente, um novo download do mesmo
+conteúdo o recupera sem duplicar metadados nem alterar a data da primeira captura.
+Se o arquivo existente tiver conteúdo divergente, a operação falha sem
+sobrescrevê-lo. O hash é dos bytes do ZIP, não dos CSVs descompactados.
+
+Configure `GTFS_STORAGE_DIR` para mudar o diretório físico. Compartilhar somente
+o MySQL da Aiven **não compartilha os ZIPs**: os processos que consomem o arquivo
+devem acessar o mesmo volume/armazenamento do coletor. Para desenvolvimento em
+computadores distintos, cada captura garante a cópia no seu próprio diretório,
+mas versões antigas que nunca foram baixadas naquela máquina continuam apenas
+no armazenamento de origem. A chave `gtfs/<hash>.zip` é relativa ao FileStore.
+
+Um rollback SQL preserva o objeto final imutável, pois outra captura pode estar
+prestes a confirmá-lo. A repetição reaproveita esse objeto; somente `.part`
+privados são removidos imediatamente. Assim, falhas podem deixar ZIPs sem
+metadados: considerar esses arquivos no uso de disco e no backup. Não remover
+esses objetos enquanto houver capturas em andamento; eventual limpeza de
+órfãos precisa de coordenação e não faz parte desta tarefa.
+
 **Consulta real (manual e autorizada).** Coloque o token em `SPTRANS_TOKEN` no
 `.env`, nunca na linha de comando nem no código, e rode:
 
