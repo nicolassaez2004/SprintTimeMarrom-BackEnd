@@ -24,6 +24,12 @@ em outro processo:
 python -m app.services.gps_collector
 ```
 
+Configure `GPS_COLLECTION_INTERVAL_SECONDS` no `.env` para ajustar o intervalo
+(15 a 60 segundos; padrão: 30). O coletor roda em processo separado da API e
+usa um lock PostgreSQL para impedir execuções simultâneas no mesmo banco. Cada
+ciclo é registrado em `execucoes_coleta`. Aplique as migrações do banco antes
+de iniciar o coletor.
+
 Para consultar posições atuais sem gravá-las, use `--localizar` com um prefixo
 ou `--linha` com o letreiro da linha:
 
