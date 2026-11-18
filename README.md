@@ -26,6 +26,7 @@ Git). Nenhuma senha ou token é escrito no código. Use `.env.example` como mode
 | `DATABASE_URL` | sim | — | `mysql+pymysql://usuario:senha@host:3306/banco` |
 | `SPTRANS_TOKEN` | para coletar | — | Token da API Olho Vivo |
 | `SPTRANS_API_URL` | não | `https://api.olhovivo.sptrans.com.br/v2.1` | URL base da API |
+| `GTFS_SOURCE_URL` | não | endpoint de download GTFS da SPTrans | URL do ZIP GTFS; pode ser substituída |
 | `GPS_COLLECTION_INTERVAL_SECONDS` | não | `30` | Intervalo do coletor, inteiro de 15 a 60 |
 | `FLASK_DEBUG` | não | `false` | Ativa o modo debug do servidor |
 
@@ -39,6 +40,7 @@ O esquema é versionado com Flask-Migrate (Alembic), em `migrations/versions/`:
 - `0001`: esquema base, idêntico ao da `main` no merge 813b9dc.
 - `0002`: alinhamento ao diagrama de classes. Não é destrutiva: só cria,
   renomeia, amplia tipos e copia valores.
+- `0003`: metadados de `ArquivoArmazenado` e `VersaoGTFS`, com unicidade por hash.
 
 **Banco novo:** `flask --app app db upgrade`.
 
@@ -68,6 +70,8 @@ Segue o diagrama de componentes e serviços:
   coletor periódico, separado do Flask
 - `app/coleta/qualidade.py`: validação dos campos GPS, deduplicação pela chave
   completa e mensuração de cobertura para um período explicitamente observado
+- `app/gtfs/`: validação, captura e versionamento imutável do ZIP GTFS por SHA-256
+- `app/integrations/gtfs.py`: cliente HTTP para o feed configurado
 - `app/models.py`: modelos SQLAlchemy
 
 ## Modelo de dados
@@ -161,6 +165,24 @@ veículos, e não um erro. As falhas derivam de `SPTransError`:
 | `SPTransRespostaInvalidaError` | a resposta não é JSON ou está sem `hr`/lista |
 
 As mensagens nunca incluem o token, cookies ou a URL de autenticação.
+
+## Captura do GTFS
+
+O código já usa o endpoint de download GTFS da SPTrans por padrão. Se a fonte
+mudar, substitua `GTFS_SOURCE_URL` no `.env`. Aplique as migrações e execute uma
+captura com:
+
+```bash
+python -m app.gtfs
+```
+
+O sistema baixa para arquivo temporário, confere a integridade do ZIP e os
+arquivos básicos GTFS, calcula SHA-256 e só então grava o original em
+`instance/gtfs/<hash>.zip`. O arquivo nunca é sobrescrito. Metadados de
+`ArquivoArmazenado` e `VersaoGTFS` são confirmados na mesma transação; hash
+repetido retorna a versão existente. `feed_info.txt`, quando presente, informa a
+vigência; sem ele, o início usa a data da captura e o fim fica `NULL`. Falha de
+download/validação não cria versão nem altera versões anteriores.
 
 **Consulta real (manual e autorizada).** Coloque o token em `SPTRANS_TOKEN` no
 `.env`, nunca na linha de comando nem no código, e rode:

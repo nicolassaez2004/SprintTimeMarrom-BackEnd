@@ -30,6 +30,12 @@ class Config:
 
     SPTRANS_TOKEN = os.getenv("SPTRANS_TOKEN")
 
+    # Endpoint de download GTFS da SPTrans. Pode ser substituído por ambiente.
+    GTFS_SOURCE_URL = os.getenv("GTFS_SOURCE_URL") or (
+        "https://www.sptrans.com.br/umbraco/Surface/PerfilDesenvolvedor/"
+        "BaixarGTFS?memberName=sptrans"
+    )
+
     # O processo coletor usa 30 s por padrão e aceita intervalo de 15 a 60 s.
     # Valor vazio no .env (como em .env.example) também usa o padrão.
     GPS_COLLECTION_INTERVAL_SECONDS = validar_intervalo_coleta(
