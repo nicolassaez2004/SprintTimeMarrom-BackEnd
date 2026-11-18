@@ -130,10 +130,42 @@ python -m app.coleta.bus_collector --localizar 5810
 python -m app.coleta.bus_collector --linha 5810
 ```
 
+## Cliente SPTrans
+
+`SPTransClient` (`app/integrations/sptrans.py`) autentica com
+`POST /Login/Autenticar` e reutiliza a sessão (cookie) nas consultas. Se a
+sessão expirar (HTTP 401), autentica de novo uma única vez. Métodos:
+`buscar_todas_posicoes()` (`GET /Posicao`, toda a frota), `buscar_posicoes(cl)`
+e `buscar_linhas(termo)`.
+
+As respostas são devolvidas como a API enviou, com `hr` e `ta` intactos. O
+cliente só confere o formato. `{"hr": ..., "l": []}` é uma consulta válida sem
+veículos, e não um erro. As falhas derivam de `SPTransError`:
+
+| Exceção | Quando |
+| --- | --- |
+| `SPTransAutenticacaoError` | o token foi recusado (`/Login/Autenticar` ≠ `true`) |
+| `SPTransHTTPError` | status HTTP ≥ 400 (`status_code` disponível) |
+| `SPTransConexaoError` | timeout ou falha de rede |
+| `SPTransRespostaInvalidaError` | a resposta não é JSON ou está sem `hr`/lista |
+
+As mensagens nunca incluem o token, cookies ou a URL de autenticação.
+
+**Consulta real (manual e autorizada).** Coloque o token em `SPTRANS_TOKEN` no
+`.env`, nunca na linha de comando nem no código, e rode:
+
+```bash
+SPTRANS_TESTE_REAL=1 python -m pytest tests/test_sptrans_client.py -k real -s
+```
+
+O comando mostra só `hr` e o total de linhas e de veículos. Sem
+`SPTRANS_TESTE_REAL=1`, esse teste é ignorado.
+
 ## Testes
 
 ```bash
 python -m pytest -v
 ```
 
-Os testes usam SQLite em memória e não precisam de MySQL nem de `.env`.
+Os testes usam SQLite em memória e não precisam de MySQL nem de `.env`. Nenhum
+teste automatizado chama a SPTrans de verdade.
