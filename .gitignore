@@ -17,3 +17,4 @@ __pycache__/
 # Arquivos locais
 *.log
 .DS_Store
+/instance/

@@ -9,6 +9,7 @@ Alterações de esquema são feitas por migrações em `migrations/versions/`.
 """
 
 from datetime import datetime, timezone
+from uuid import uuid4
 
 from sqlalchemy import CheckConstraint, DateTime, Double, Index, UniqueConstraint
 from sqlalchemy.dialects import mysql
@@ -178,3 +179,37 @@ class RegistroBrutoGPS(db.Model):
             f"<RegistroBrutoGPS prefixo={self.prefixo_origem!r} "
             f"coletado_em={self.coletado_em!r}>"
         )
+
+
+class ArquivoArmazenado(db.Model):
+    """Metadados de um arquivo imutável guardado pelo FileStore local."""
+
+    __tablename__ = "arquivos_armazenados"
+
+    id = db.Column(db.String(36), primary_key=True, default=lambda: str(uuid4()))
+    chave = db.Column(db.String(255), nullable=False, unique=True)
+    nome_original = db.Column(db.String(255), nullable=False)
+    mime_type = db.Column(db.String(128), nullable=False)
+    tamanho_bytes = db.Column(db.BigInteger, nullable=False)
+    sha256 = db.Column(db.String(64), nullable=False, index=True)
+    criado_em = db.Column(UTCDateTime, nullable=False, default=agora_utc)
+
+
+class VersaoGTFS(db.Model):
+    """Captura versionada do feed; hash identifica o conteúdo do ZIP original."""
+
+    __tablename__ = "versoes_gtfs"
+    __table_args__ = (db.UniqueConstraint("hash", name="uq_versoes_gtfs_hash"),)
+
+    id = db.Column(db.String(36), primary_key=True, default=lambda: str(uuid4()))
+    capturada_em = db.Column(UTCDateTime, nullable=False, default=agora_utc)
+    hash = db.Column(db.String(64), nullable=False)
+    vigencia_inicio = db.Column(db.Date, nullable=False)
+    vigencia_fim = db.Column(db.Date, nullable=True)
+    arquivo_id = db.Column(
+        db.String(36),
+        db.ForeignKey("arquivos_armazenados.id", ondelete="RESTRICT"),
+        nullable=False,
+        unique=True,
+    )
+    arquivo = db.relationship("ArquivoArmazenado")
