@@ -153,12 +153,19 @@ def test_ddl_mysql_usa_double_datetime6_e_nulls(app):
     assert "ck_execucoes_coleta_estado" in ddl["execucoes_coleta"]
 
 
+def _frota(*veiculos, cl=123, sl=1):
+    return {"hr": "12:00", "l": [{"c": "8000-10", "cl": cl, "sl": sl, "vs": list(veiculos)}]}
+
+
+def _cliente(resposta):
+    return SimpleNamespace(buscar_todas_posicoes=Mock(return_value=resposta))
+
+
 def test_mesma_posicao_em_ciclos_seguidos_e_gravada_uma_vez(app):
-    resposta = {"vs": [
+    resposta = _frota(
         {"p": "5810", "py": -23.5, "px": -46.6, "ta": "2026-11-17T15:00:00Z"},
-    ]}
-    cliente = SimpleNamespace(buscar_posicoes=Mock(return_value=resposta))
-    with patch.object(bus_collector, "SPTransClient", return_value=cliente):
+    )
+    with patch.object(bus_collector, "SPTransClient", return_value=_cliente(resposta)):
         coletor = bus_collector.BusCollector()
         assert coletor.coletar_ciclo() == 1
         # A API devolve a mesma posição (mesmo `ta`) no ciclo seguinte.
@@ -171,9 +178,8 @@ def test_mesma_posicao_em_ciclos_seguidos_e_gravada_uma_vez(app):
 
 
 def test_sem_horario_em_ciclos_diferentes_todos_sao_preservados(app):
-    resposta = {"vs": [{"p": "5810", "py": -23.5, "px": -46.6}]}
-    cliente = SimpleNamespace(buscar_posicoes=Mock(return_value=resposta))
-    with patch.object(bus_collector, "SPTransClient", return_value=cliente):
+    resposta = _frota({"p": "5810", "py": -23.5, "px": -46.6})
+    with patch.object(bus_collector, "SPTransClient", return_value=_cliente(resposta)):
         coletor = bus_collector.BusCollector()
         assert coletor.coletar_ciclo() == 1
         assert coletor.coletar_ciclo() == 1
@@ -183,10 +189,31 @@ def test_sem_horario_em_ciclos_diferentes_todos_sao_preservados(app):
     assert registros[0].execucao_id != registros[1].execucao_id
 
 
+def test_frota_inteira_e_gravada_e_veiculos_novos_sao_cadastrados(app):
+    resposta = {"hr": "12:00", "l": [
+        {"c": "8000-10", "cl": 123, "sl": 1, "vs": [
+            {"p": "5810", "py": -23.5, "px": -46.6, "ta": "2026-11-17T15:00:00Z"},
+        ]},
+        {"c": "8000-10", "cl": 32891, "sl": 2, "vs": [
+            {"p": 9001, "py": -23.4, "px": -46.5, "ta": "2026-11-17T15:00:03Z"},
+        ]},
+    ]}
+    with patch.object(bus_collector, "SPTransClient", return_value=_cliente(resposta)):
+        assert bus_collector.BusCollector().coletar_ciclo() == 2
+
+    # 5810 já existia (selecionado); 9001 não estava selecionado nem cadastrado.
+    assert sorted(v.prefixo for v in Veiculo.query.all()) == ["5810", "9001"]
+    registros = RegistroBrutoGPS.query.order_by(RegistroBrutoGPS.id).all()
+    assert [(r.prefixo_origem, r.linha_origem, r.sentido_origem) for r in registros] == [
+        ("5810", "123", "1"), ("9001", "32891", "2"),
+    ]
+    assert registros[1].veiculo.prefixo == "9001"
+    assert registros[1].payload["p"] == 9001
+
+
 def test_desmarcar_onibus_preserva_historico_bruto(app):
-    resposta = {"vs": [{"p": "5810", "py": -23.5, "px": -46.6, "ta": "2026-11-17T15:00:00Z"}]}
-    cliente = SimpleNamespace(buscar_posicoes=Mock(return_value=resposta))
-    with patch.object(bus_collector, "SPTransClient", return_value=cliente):
+    resposta = _frota({"p": "5810", "py": -23.5, "px": -46.6, "ta": "2026-11-17T15:00:00Z"})
+    with patch.object(bus_collector, "SPTransClient", return_value=_cliente(resposta)):
         bus_collector.BusCollector().coletar_ciclo()
 
     db.session.delete(db.session.get(OnibusSelecionado, "5810"))
