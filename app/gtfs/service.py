@@ -258,10 +258,10 @@ def importar_linhas_paradas(versao_id, *, diretorio=None):
     diferentes geram registros distintos, cada um ligado à sua versão.
     """
     versao, arquivo = _abrir_versao(versao_id, diretorio)
-    if Linha.query.filter_by(versao_gtfs_id=versao.id).first():
-        return {"linhas": Linha.query.filter_by(versao_gtfs_id=versao.id).count(),
-                "paradas": Parada.query.filter_by(versao_gtfs_id=versao.id).count()}
     with arquivo:
+        if Linha.query.filter_by(versao_gtfs_id=versao.id).first():
+            return {"linhas": Linha.query.filter_by(versao_gtfs_id=versao.id).count(),
+                    "paradas": Parada.query.filter_by(versao_gtfs_id=versao.id).count()}
         rotas = _unicos(_ler_csv(arquivo, "routes.txt"), "routes.txt", "route_id")
         paradas = _unicos(_ler_csv(arquivo, "stops.txt"), "stops.txt", "stop_id")
 
