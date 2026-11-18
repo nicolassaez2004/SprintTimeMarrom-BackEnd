@@ -1,5 +1,6 @@
 from flask import Flask
 from flask_cors import CORS
+from flask_migrate import Migrate
 from flask_sqlalchemy import SQLAlchemy
 
 from app.config import Config
@@ -7,6 +8,7 @@ from app.config import Config
 
 # Instancia compartilhada da extensao do banco
 db = SQLAlchemy()
+migrate = Migrate()
 
 
 def create_app(config_extra=None):
@@ -23,6 +25,8 @@ def create_app(config_extra=None):
 
     # Inicializa o banco
     db.init_app(app)
+    # Migrações em migrations/ (`flask --app app db upgrade`).
+    migrate.init_app(app, db)
 
     # Registra os modelos no metadata do SQLAlchemy para criação/migração.
     from app import models  # noqa: F401

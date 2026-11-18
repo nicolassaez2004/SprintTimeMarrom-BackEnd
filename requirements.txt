@@ -1,7 +1,9 @@
 Flask
 Flask-SQLAlchemy
+Flask-Migrate
 Flask-Cors
 PyMySQL
+cryptography
 python-dotenv
 requests
 pytest

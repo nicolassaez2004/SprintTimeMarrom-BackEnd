@@ -31,6 +31,7 @@ class Config:
     SPTRANS_TOKEN = os.getenv("SPTRANS_TOKEN")
 
     # O processo coletor usa 30 s por padrão e aceita intervalo de 15 a 60 s.
+    # Valor vazio no .env (como em .env.example) também usa o padrão.
     GPS_COLLECTION_INTERVAL_SECONDS = validar_intervalo_coleta(
-        os.getenv("GPS_COLLECTION_INTERVAL_SECONDS", "30")
+        os.getenv("GPS_COLLECTION_INTERVAL_SECONDS") or "30"
     )
