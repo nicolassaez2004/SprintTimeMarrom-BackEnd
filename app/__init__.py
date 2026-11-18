@@ -9,12 +9,17 @@ from app.config import Config
 db = SQLAlchemy()
 
 
-def create_app():
+def create_app(config_extra=None):
     # Cria a aplicacao Flask
     app = Flask(__name__)
 
-    # Carrega as configuracoes
+    # Carrega as configuracoes (config_extra permite sobrescrever nos testes)
     app.config.from_object(Config)
+    if config_extra:
+        app.config.update(config_extra)
+
+    if not app.config.get("SQLALCHEMY_DATABASE_URI"):
+        raise RuntimeError("DATABASE_URL nao configurado no .env")
 
     # Inicializa o banco
     db.init_app(app)
@@ -32,6 +37,11 @@ def create_app():
         }
     )
 
+    # Rota de saude da aplicacao
+    @app.get("/health")
+    def health_root():
+        return {"status": "ok"}, 200
+
     # Rota simples para testar o servidor
     @app.get("/api/health")
     def health():
@@ -39,5 +49,9 @@ def create_app():
             "status": "ok",
             "message": "Backend Flask funcionando"
         }, 200
+
+    # Registra as rotas da API
+    from app.api.routes import api_bp
+    app.register_blueprint(api_bp)
 
     return app

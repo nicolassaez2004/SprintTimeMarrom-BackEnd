@@ -1,6 +1,7 @@
 Flask
 Flask-SQLAlchemy
 Flask-Cors
-psycopg[binary]
+PyMySQL
 python-dotenv
 requests
+pytest
