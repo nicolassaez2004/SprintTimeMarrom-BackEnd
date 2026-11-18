@@ -8,6 +8,7 @@ from sqlalchemy.schema import CreateTable
 
 from app import create_app, db
 from app.coleta import bus_collector
+from app.coleta.qualidade import medir_cobertura, validar_registro_gps
 from app.models import ExecucaoColeta, OnibusSelecionado, RegistroBrutoGPS, Veiculo
 
 INICIO = datetime(2026, 11, 17, 15, 0, tzinfo=timezone.utc)
@@ -81,6 +82,41 @@ def test_equipe_conta_ciclos_esperados_e_gravados(app):
         ExecucaoColeta.iniciada_em < INICIO + janela,
     ).count()
     assert (esperados, gravados) == (4, 3)
+
+
+def test_meta_de_cobertura_99_so_e_calculada_para_periodo_observado(app):
+    fim = INICIO + timedelta(seconds=3000)
+    for indice in range(99):
+        _execucao("OK", indice / 2, novos_persistidos=0)
+    db.session.commit()
+
+    relatorio = medir_cobertura(INICIO, fim, 30)
+    assert (relatorio.ciclos_esperados, relatorio.ciclos_observados) == (100, 99)
+    assert relatorio.percentual == 99
+    assert relatorio.meta_atingida
+    assert relatorio.inicio == INICIO
+    assert relatorio.fim == fim
+
+    with pytest.raises(ValueError, match="período observado"):
+        medir_cobertura(None, fim, 30)
+    with pytest.raises(ValueError, match="fuso"):
+        medir_cobertura(INICIO.replace(tzinfo=None), fim, 30)
+
+
+def test_validacao_campos_gps_preserva_nulos_e_rejeita_valores_invalidos(app):
+    registro = RegistroBrutoGPS(
+        prefixo_origem="5810", latitude=None, longitude=-46.6,
+        horario_gps=None, coletado_em=INICIO, payload={"p": "5810"},
+    )
+    assert validar_registro_gps(registro) is registro
+    assert registro.latitude is None
+    registro.latitude = 91
+    with pytest.raises(ValueError, match="latitude"):
+        validar_registro_gps(registro)
+    registro.latitude = None
+    registro.longitude = -181
+    with pytest.raises(ValueError, match="longitude"):
+        validar_registro_gps(registro)
 
 
 def test_horarios_sao_gravados_e_lidos_em_utc(app):

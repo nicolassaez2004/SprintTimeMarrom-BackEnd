@@ -2,7 +2,6 @@
 
 import logging
 import argparse
-import json
 import time
 from datetime import datetime, timedelta, timezone
 
@@ -12,6 +11,7 @@ from app import create_app, db
 from app.config import validar_intervalo_coleta
 from app.integrations.sptrans import SPTransClient
 from app.models import ExecucaoColeta, OnibusSelecionado, RegistroBrutoGPS
+from app.coleta.qualidade import validar_registro_gps, validar_unicidade_chave
 
 
 logger = logging.getLogger(__name__)
@@ -143,7 +143,7 @@ class BusCollector:
                 # O objeto original vai no payload; as colunas tipadas são uma
                 # leitura dele, com NULL para ausentes ou inválidos.
                 registros.append(
-                    RegistroBrutoGPS(
+                    validar_registro_gps(RegistroBrutoGPS(
                         execucao_id=execucao_id,
                         # Selecionados sempre referenciam um Veiculo existente.
                         veiculo_prefixo=prefixo,
@@ -154,53 +154,15 @@ class BusCollector:
                         horario_gps=_ler_horario_api(veiculo.get("ta")),
                         coletado_em=iniciado_em,
                         payload=veiculo,
-                    )
+                    ))
                 )
 
         return registros, erros, linhas_ok
 
     @staticmethod
     def _descartar_duplicados(registros):
-        """Remove só duplicações identificáveis com segurança.
-
-        - Com `horario_gps`: a mesma posição (prefixo + horario_gps) já gravada em
-          qualquer ciclo, ou repetida neste, não é gravada de novo.
-        - Sem `horario_gps`: só é descartado o objeto idêntico (mesmo payload)
-          repetido dentro deste ciclo. Coordenadas iguais em ciclos diferentes
-          não provam duplicação, então registros sem horário de ciclos
-          diferentes são todos preservados.
-        """
-        com_horario = [r for r in registros if r.horario_gps is not None]
-        existentes = set()
-        if com_horario:
-            existentes = set(
-                tuple(linha)
-                for linha in db.session.query(
-                    RegistroBrutoGPS.prefixo_origem, RegistroBrutoGPS.horario_gps
-                ).filter(
-                    RegistroBrutoGPS.prefixo_origem.in_({r.prefixo_origem for r in com_horario}),
-                    RegistroBrutoGPS.horario_gps.in_({r.horario_gps for r in com_horario}),
-                ).all()
-            )
-
-        payloads_sem_horario = set()
-        novos = []
-        for registro in registros:
-            if registro.horario_gps is not None:
-                chave = (registro.prefixo_origem, registro.horario_gps)
-                if chave in existentes:
-                    continue
-                existentes.add(chave)
-            else:
-                chave = (
-                    registro.prefixo_origem,
-                    json.dumps(registro.payload, sort_keys=True, default=str),
-                )
-                if chave in payloads_sem_horario:
-                    continue
-                payloads_sem_horario.add(chave)
-            novos.append(registro)
-        return novos
+        """Descarta duplicatas apenas quando a chave GPS está completa."""
+        return validar_unicidade_chave(registros, sessao=db.session)
 
 
 def executar_coletor(

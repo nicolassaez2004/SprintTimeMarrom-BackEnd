@@ -66,6 +66,8 @@ Segue o diagrama de componentes e serviços:
   (autenticação, timeout, leitura)
 - `app/coleta/bus_collector.py`: `BusCollector` (um ciclo de coleta) e o processo
   coletor periódico, separado do Flask
+- `app/coleta/qualidade.py`: validação dos campos GPS, deduplicação pela chave
+  completa e mensuração de cobertura para um período explicitamente observado
 - `app/models.py`: modelos SQLAlchemy
 
 ## Modelo de dados
@@ -85,17 +87,26 @@ Segue o diagrama de componentes e serviços:
 
 **Duplicação.** Cada registro aponta ao ciclo que o gravou primeiro.
 
-- Com horário GPS (`ta`): a mesma posição (prefixo + `horario_gps`) não é
-  gravada de novo, nem em ciclos seguintes. O banco também garante isso
-  (`uq_registros_gps_prefixo_horario`).
-- Sem horário GPS: todos os registros são preservados. Só não se grava duas
-  vezes o mesmo objeto repetido dentro de um ciclo. Coordenadas iguais em
-  ciclos diferentes não contam como duplicação.
+- A chave completa de posição é `(prefixo_origem, horario_gps)`. Repetições
+  dessa chave no lote ou no banco não são gravadas novamente; a constraint
+  `uq_registros_gps_prefixo_horario` também protege gravações concorrentes.
+- Se qualquer parte da chave estiver ausente, o registro é preservado, inclusive
+  quando outro registro também tem campos nulos. `NULL` não é convertido em
+  valor sentinela nem usado para inferir que dois registros são iguais.
+- Coordenadas e horário inválidos/ausentes ficam `NULL`; o payload original é
+  mantido. Coordenadas presentes fora da faixa e horários sem fuso são inválidos.
 
 Para contar ciclos em uma janela de tempo:
 
 - ciclos esperados = duração da janela ÷ `GPS_COLLECTION_INTERVAL_SECONDS`
 - ciclos gravados = linhas de `execucoes_coleta` com `iniciada_em` na janela
+
+`app.coleta.qualidade.medir_cobertura(inicio, fim, intervalo_segundos)` retorna
+ciclos esperados, observados e percentual para a janela `[início, fim)`. Início e
+fim com fuso são obrigatórios; portanto, não há aceite de meta sem período
+observado. A meta mensal padrão é 99% e `relatorio.meta_atingida` informa se foi
+alcançada. O período e o intervalo usados acompanham a medição para torná-la
+auditável.
 
 **Política de horário:** todos os instantes são gravados em UTC, em
 `DATETIME(6)` no MySQL. Os modelos convertem horários com fuso para UTC, recusam
