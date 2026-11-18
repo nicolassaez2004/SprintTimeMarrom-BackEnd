@@ -18,6 +18,11 @@ responde `{"status": "ok"}`. O Flask não cria `/docs` automaticamente.
 
 ## Configuração
 
+Para preparar bases separadas de desenvolvimento/teste e conexões no Workbench,
+seguir [US12-T01A](docs/US12-T01A.md). O script de conferência usa a conexão real
+da aplicação, não apenas `/health`: `python -m scripts.verificar_bases_mysql`.
+Para o banco compartilhado do grupo, consultar [conexão Aiven com TLS](docs/AIVEN.md).
+
 Toda configuração vem de variáveis de ambiente (arquivo `.env`, que fica fora do
 Git). Nenhuma senha ou token é escrito no código. Use `.env.example` como modelo.
 
