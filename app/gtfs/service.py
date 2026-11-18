@@ -1,11 +1,10 @@
 """Captura, valida e versiona o ZIP original do GTFS por SHA-256."""
 
 import csv
-import hashlib
 import os
 import tempfile
 import zipfile
-from datetime import date, datetime, timezone
+from datetime import datetime, timezone
 from pathlib import Path
 from uuid import uuid4
 
@@ -15,6 +14,7 @@ from sqlalchemy.exc import IntegrityError
 from app import db
 from app.integrations.gtfs import GTFSClient
 from app.models import ArquivoArmazenado, VersaoGTFS
+from app.storage import FileStore, hash_arquivo
 
 
 class GTFSValidationError(ValueError):
@@ -56,16 +56,6 @@ def _ler_data_gtfs(valor):
     return datetime.strptime(valor, "%Y%m%d").date()
 
 
-def _hash_arquivo(caminho):
-    digest = hashlib.sha256()
-    tamanho = 0
-    with open(caminho, "rb") as arquivo:
-        for bloco in iter(lambda: arquivo.read(1024 * 1024), b""):
-            digest.update(bloco)
-            tamanho += len(bloco)
-    return digest.hexdigest(), tamanho
-
-
 def capturar_gtfs(*, url=None, diretorio=None, cliente=None, agora=None):
     """Baixa e guarda uma captura imutável; hash repetido retorna a versão atual.
 
@@ -73,18 +63,17 @@ def capturar_gtfs(*, url=None, diretorio=None, cliente=None, agora=None):
     e os metadados do arquivo são confirmados em uma única transação SQL.
     """
     url = url or current_app.config.get("GTFS_SOURCE_URL")
-    diretorio = Path(diretorio or (Path(current_app.instance_path) / "gtfs"))
+    diretorio = Path(diretorio or current_app.config.get("GTFS_STORAGE_DIR")
+                     or (Path(current_app.instance_path) / "gtfs"))
     cliente = cliente or GTFSClient()
     agora = agora or datetime.now(timezone.utc)
     if agora.tzinfo is None:
         raise ValueError("data de captura deve conter fuso horário")
-    diretorio.mkdir(parents=True, exist_ok=True)
+    armazenamento = FileStore(diretorio)
 
     fd, temporario = tempfile.mkstemp(prefix="gtfs-", suffix=".part", dir=diretorio)
     os.close(fd)
     caminho_temp = Path(temporario)
-    caminho_final = None
-    arquivo_criado = False
     try:
         with caminho_temp.open("wb") as destino:
             cliente.baixar_para(url, destino)
@@ -92,21 +81,13 @@ def capturar_gtfs(*, url=None, diretorio=None, cliente=None, agora=None):
             os.fsync(destino.fileno())
 
         inicio_feed, fim_feed = _validar_zip(caminho_temp)
-        digest, tamanho = _hash_arquivo(caminho_temp)
+        digest, tamanho = hash_arquivo(caminho_temp)
+        # Publicar/verificar antes de reutilizar metadados, inclusive quando
+        # outra máquina registrou o hash ou o ZIP local precisa ser recuperado.
+        chave = armazenamento.publicar_gtfs(caminho_temp, digest, tamanho)
         existente = VersaoGTFS.query.filter_by(hash=digest).first()
         if existente:
             return existente
-
-        chave = f"gtfs/{digest}.zip"
-        caminho_final = diretorio / f"{digest}.zip"
-        try:
-            # link cria o destino atomicamente e nunca sobrescreve conteúdo existente.
-            os.link(caminho_temp, caminho_final)
-            arquivo_criado = True
-        except FileExistsError:
-            hash_guardado, tamanho_guardado = _hash_arquivo(caminho_final)
-            if hash_guardado != digest or tamanho_guardado != tamanho:
-                raise RuntimeError("arquivo de conteúdo GTFS divergente no armazenamento")
 
         arquivo = ArquivoArmazenado(
             id=str(uuid4()), chave=chave, nome_original="feed.zip",
@@ -131,12 +112,8 @@ def capturar_gtfs(*, url=None, diretorio=None, cliente=None, agora=None):
         return versao
     except Exception:
         db.session.rollback()
-        # Remove arquivo órfão se a confirmação no banco falhou. Não toca em
-        # conteúdo preexistente nem em uma versão já registrada.
-        if arquivo_criado and caminho_final and not VersaoGTFS.query.filter_by(
-            hash=caminho_final.stem
-        ).first():
-            caminho_final.unlink(missing_ok=True)
+        # O objeto final pode estar em uso por outra transação. Preservá-lo
+        # permite retomada; somente o temporário privado é removido abaixo.
         raise
     finally:
         caminho_temp.unlink(missing_ok=True)
