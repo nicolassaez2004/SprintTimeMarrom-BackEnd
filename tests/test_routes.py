@@ -38,3 +38,7 @@ def test_health(client):
 
     assert response.status_code == 200
     assert response.get_json() == {"status": "ok"}
+
+
+def test_flask_nao_cria_docs_automaticamente(client):
+    assert client.get("/docs").status_code == 404

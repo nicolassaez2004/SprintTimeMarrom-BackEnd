@@ -1,78 +1,180 @@
+"""Modelos de persistência da coleta GPS (US01).
+
+Política de horário: todo instante é gravado em UTC. O MySQL `DATETIME` não
+guarda fuso, então `UTCDateTime` converte valores com fuso para UTC antes de
+gravar, rejeita valores sem fuso (ambíguos) e devolve sempre `datetime` com
+`tzinfo=UTC` na leitura.
+
+Alterações de esquema são feitas por migrações em `migrations/versions/`.
+"""
+
 from datetime import datetime, timezone
 
-from sqlalchemy import CheckConstraint, Index
+from sqlalchemy import CheckConstraint, DateTime, Double, Index, UniqueConstraint
+from sqlalchemy.dialects import mysql
+from sqlalchemy.types import TypeDecorator
 
 from app import db
 
 
+# BIGINT no MySQL; INTEGER no SQLite (usado nos testes) para ter autoincremento.
+IdGrande = db.BigInteger().with_variant(db.Integer(), "sqlite")
+
+
+def agora_utc():
+    return datetime.now(timezone.utc)
+
+
+class UTCDateTime(TypeDecorator):
+    """DATETIME(6) em UTC no MySQL; sempre timezone-aware no Python."""
+
+    impl = DateTime
+    cache_ok = True
+
+    def load_dialect_impl(self, dialect):
+        if dialect.name == "mysql":
+            return dialect.type_descriptor(mysql.DATETIME(fsp=6))
+        return dialect.type_descriptor(DateTime())
+
+    def process_bind_param(self, value, dialect):
+        if value is None:
+            return None
+        if value.tzinfo is None:
+            raise ValueError("Horários devem ter fuso definido (use UTC)")
+        return value.astimezone(timezone.utc).replace(tzinfo=None)
+
+    def process_result_value(self, value, dialect):
+        if value is None:
+            return None
+        return value.replace(tzinfo=timezone.utc)
+
+
+class Veiculo(db.Model):
+    """Ônibus da frota, identificado pelo prefixo (campo `p` da API Olho Vivo)."""
+
+    __tablename__ = "veiculos"
+
+    prefixo = db.Column(db.String(32), primary_key=True)
+
+
 class OnibusSelecionado(db.Model):
-    """Ônibus SPTrans incluído na seleção persistida pela aplicação."""
+    """Configuração: indica que um veículo deve ser monitorado pela coleta.
+
+    Remover a seleção não afeta o histórico bruto, que aponta para `Veiculo`.
+    """
 
     __tablename__ = "onibus_selecionados"
 
-    # A API identifica o veículo pelo prefixo (campo `p`).
-    prefixo = db.Column(db.String(32), primary_key=True)
+    prefixo = db.Column(
+        db.String(32),
+        db.ForeignKey(
+            "veiculos.prefixo",
+            ondelete="RESTRICT",
+            name="fk_onibus_selecionados_veiculo",
+        ),
+        primary_key=True,
+    )
     # A consulta de posições da SPTrans é feita por código de linha.
     codigo_linha = db.Column(db.Integer, nullable=False, index=True)
 
+    veiculo = db.relationship("Veiculo")
+
+
+ESTADOS_EXECUCAO = ("EM_ANDAMENTO", "OK", "PARCIAL", "FALHA")
+
 
 class ExecucaoColeta(db.Model):
-    """Resumo de um ciclo de consulta e gravação de posições."""
+    """Um ciclo de coleta do BusCollector: horários, resultado e contagens.
+
+    Ciclos gravados em uma janela = linhas desta tabela na janela; ciclos
+    esperados = duração da janela / intervalo configurado. Não é `LacunaColeta`
+    (o intervalo sem cobertura).
+    """
 
     __tablename__ = "execucoes_coleta"
-
-    id = db.Column(db.BigInteger, primary_key=True, autoincrement=True)
-    iniciada_em = db.Column(
-        db.DateTime(timezone=True), nullable=False,
-        default=lambda: datetime.now(timezone.utc),
+    __table_args__ = (
+        CheckConstraint(
+            "estado IN ('EM_ANDAMENTO', 'OK', 'PARCIAL', 'FALHA')",
+            name="ck_execucoes_coleta_estado",
+        ),
+        Index("ix_execucoes_coleta_iniciada_em", "iniciada_em"),
     )
-    finalizada_em = db.Column(db.DateTime(timezone=True), nullable=True)
-    status = db.Column(db.String(16), nullable=False, default="executando")
-    quantidade_registros = db.Column(db.Integer, nullable=False, default=0)
+
+    id = db.Column(IdGrande, primary_key=True, autoincrement=True)
+    fonte = db.Column(
+        db.String(32), nullable=False, default="OLHO_VIVO", server_default="OLHO_VIVO"
+    )
+    # Instante em que o agendador planejou o ciclo; NULL em ciclos anteriores
+    # à migração 0002 (valor desconhecido).
+    prevista_em = db.Column(UTCDateTime, nullable=True)
+    iniciada_em = db.Column(UTCDateTime, nullable=False, default=agora_utc)
+    finalizada_em = db.Column(UTCDateTime, nullable=True)
+    estado = db.Column(db.String(16), nullable=False, default="EM_ANDAMENTO")
+    tentativas = db.Column(db.Integer, nullable=False, default=1, server_default="1")
+    # Posições dos ônibus selecionados recebidas no ciclo; NULL em ciclos
+    # anteriores à migração 0002 (valor desconhecido).
+    recebidos = db.Column(db.Integer, nullable=True)
+    novos_persistidos = db.Column(db.Integer, nullable=False, default=0)
     erro = db.Column(db.Text, nullable=True)
 
 
-class RegistroGPS(db.Model):
-    """Uma posição observada de um ônibus selecionado em um instante."""
+class RegistroBrutoGPS(db.Model):
+    """Posição bruta recebida da API Olho Vivo.
+
+    `payload` guarda o objeto do veículo exatamente como a API devolveu. As
+    colunas tipadas são uma leitura dele: valores ausentes ou inválidos ficam
+    NULL nelas, mas o original continua no payload. A validação e a
+    classificação de qualidade cabem a `ObservacaoTratada`.
+
+    O registro aponta ao ciclo que o persistiu primeiro: a mesma posição
+    (prefixo + `horario_gps`) não é gravada de novo quando reaparece.
+    """
 
     __tablename__ = "registros_gps"
     __table_args__ = (
         CheckConstraint("latitude BETWEEN -90 AND 90", name="ck_registros_gps_latitude"),
         CheckConstraint("longitude BETWEEN -180 AND 180", name="ck_registros_gps_longitude"),
-        Index("ix_registros_gps_onibus_instante", "prefixo_onibus", "registrado_em"),
+        Index("ix_registros_gps_onibus_instante", "prefixo_origem", "coletado_em"),
+        UniqueConstraint(
+            "prefixo_origem", "horario_gps", name="uq_registros_gps_prefixo_horario"
+        ),
     )
 
-    id = db.Column(db.BigInteger, primary_key=True, autoincrement=True)
+    id = db.Column(IdGrande, primary_key=True, autoincrement=True)
     execucao_id = db.Column(
-        db.BigInteger,
+        IdGrande,
         db.ForeignKey("execucoes_coleta.id", ondelete="CASCADE"),
         nullable=False,
     )
-    prefixo_onibus = db.Column(
+    veiculo_prefixo = db.Column(
         db.String(32),
-        db.ForeignKey("onibus_selecionados.prefixo", ondelete="RESTRICT"),
-        nullable=False,
+        db.ForeignKey(
+            "veiculos.prefixo", ondelete="RESTRICT", name="fk_registros_gps_veiculo"
+        ),
+        nullable=True,
     )
-    # `cl` retornado pela SPTrans é o código da linha, não o identificador do ônibus.
-    codigo_linha = db.Column(db.Integer, nullable=True)
-    latitude = db.Column(db.Float, nullable=False)
-    longitude = db.Column(db.Float, nullable=False)
-    # Instante da captura, armazenado em UTC; cada linha representa uma amostra.
-    registrado_em = db.Column(
-        db.DateTime(timezone=True),
-        nullable=False,
-        default=lambda: datetime.now(timezone.utc),
-    )
+    # Valores como recebidos da fonte (diagrama: prefixoOrigem, linhaOrigem...).
+    prefixo_origem = db.Column(db.String(32), nullable=True)
+    linha_origem = db.Column(db.String(16), nullable=True)
+    sentido_origem = db.Column(db.String(8), nullable=True)
+    # DOUBLE: FLOAT do MySQL tem precisão simples, insuficiente para coordenadas.
+    latitude = db.Column(Double, nullable=True)
+    longitude = db.Column(Double, nullable=True)
+    # Instante informado pela API para a posição (campo `ta`), em UTC.
+    horario_gps = db.Column(UTCDateTime, nullable=True)
+    # Instante da captura pelo coletor (início do ciclo), em UTC.
+    coletado_em = db.Column(UTCDateTime, nullable=False, default=agora_utc)
+    payload = db.Column(db.JSON, nullable=True)
 
-    onibus = db.relationship("OnibusSelecionado", backref="registros_gps")
+    veiculo = db.relationship("Veiculo", backref="registros_gps")
     execucao = db.relationship("ExecucaoColeta", backref="registros_gps")
+
+    @property
+    def completo(self):
+        return None not in (self.latitude, self.longitude, self.horario_gps)
 
     def __repr__(self):
         return (
-            f"<RegistroGPS prefixo={self.prefixo_onibus!r} "
-            f"registrado_em={self.registrado_em!r}>"
+            f"<RegistroBrutoGPS prefixo={self.prefixo_origem!r} "
+            f"coletado_em={self.coletado_em!r}>"
         )
-
-# Nomes usados no diagrama de classes/contrato de gravação da US12.
-Veiculo = OnibusSelecionado
-RegistroBrutoGPS = RegistroGPS
