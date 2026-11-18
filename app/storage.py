@@ -37,3 +37,10 @@ class FileStore:
             if hash_arquivo(destino) != (digest, tamanho):
                 raise RuntimeError("arquivo de conteúdo GTFS divergente no armazenamento")
         return f"gtfs/{digest}.zip"
+
+    def caminho_gtfs(self, chave, digest):
+        """Caminho do ZIP publicado sob `chave`, conferido pelo hash."""
+        caminho = self.diretorio / Path(chave).name
+        if not caminho.is_file() or hash_arquivo(caminho)[0] != digest:
+            raise FileNotFoundError("ZIP GTFS ausente ou divergente do hash")
+        return caminho

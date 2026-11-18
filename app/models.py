@@ -11,9 +11,9 @@ Alterações de esquema são feitas por migrações em `migrations/versions/`.
 from datetime import datetime, timezone
 from uuid import uuid4
 
-from sqlalchemy import CheckConstraint, DateTime, Double, Index, UniqueConstraint
+from sqlalchemy import CheckConstraint, DateTime, Double, Index, UniqueConstraint, func
 from sqlalchemy.dialects import mysql
-from sqlalchemy.types import TypeDecorator
+from sqlalchemy.types import Text, TypeDecorator, UserDefinedType
 
 from app import db
 
@@ -213,3 +213,152 @@ class VersaoGTFS(db.Model):
         unique=True,
     )
     arquivo = db.relationship("ArquivoArmazenado")
+
+
+class _LinestringMySQL(UserDefinedType):
+    cache_ok = True
+
+    def __init__(self, externo=None):
+        # Tipo do resultado de ST_AsText: o LineString, que converte o WKT.
+        self.externo = externo
+
+    def get_col_spec(self, **kw):
+        return "LINESTRING"
+
+    def bind_expression(self, valor):
+        return func.ST_GeomFromText(valor)
+
+    def column_expression(self, coluna):
+        return func.ST_AsText(coluna, type_=self.externo)
+
+
+class LineString(TypeDecorator):
+    """Tipo espacial LINESTRING no MySQL (x = longitude, y = latitude).
+
+    No Python é uma lista de pares [longitude, latitude]; trafega como WKT.
+    Fora do MySQL (testes em SQLite) o WKT é guardado como texto.
+    """
+
+    impl = Text
+    cache_ok = True
+
+    def load_dialect_impl(self, dialect):
+        if dialect.name == "mysql":
+            return dialect.type_descriptor(_LinestringMySQL(self))
+        return dialect.type_descriptor(Text())
+
+    def process_bind_param(self, valor, dialect):
+        if valor is None:
+            return None
+        if len(valor) < 2:
+            raise ValueError("LineString precisa de ao menos dois pontos")
+        return "LINESTRING(" + ", ".join(f"{x!r} {y!r}" for x, y in valor) + ")"
+
+    def process_result_value(self, valor, dialect):
+        if valor is None:
+            return None
+        pontos = valor[valor.index("(") + 1:valor.rindex(")")].split(",")
+        return [[float(n) for n in ponto.split()] for ponto in pontos]
+
+
+# Identificadores GTFS diferenciam maiúsculas e espaços; a collation padrão do
+# MySQL não, então o código usa comparação binária.
+CodigoGTFS = db.String(64).with_variant(
+    mysql.VARCHAR(64, collation="utf8mb4_0900_bin"), "mysql"
+)
+
+
+def _fk_versao(tabela):
+    return db.ForeignKey(
+        "versoes_gtfs.id", ondelete="RESTRICT", name=f"fk_{tabela}_versao_gtfs"
+    )
+
+
+class Linha(db.Model):
+    """Linha (`routes.txt`) de uma versão GTFS; `codigo` é o `route_id`.
+
+    O mesmo código pode reaparecer em outra versão, por isso a chave é
+    (versão, código).
+    """
+
+    __tablename__ = "linhas"
+
+    versao_gtfs_id = db.Column(db.String(36), _fk_versao("linhas"), primary_key=True)
+    codigo = db.Column(CodigoGTFS, primary_key=True)
+    nome = db.Column(db.String(255), nullable=False)
+
+    versao_gtfs = db.relationship("VersaoGTFS")
+
+
+class Parada(db.Model):
+    """Parada (`stops.txt`) de uma versão GTFS; `codigo` é o `stop_id`."""
+
+    __tablename__ = "paradas"
+    __table_args__ = (
+        CheckConstraint("latitude BETWEEN -90 AND 90", name="ck_paradas_latitude"),
+        CheckConstraint("longitude BETWEEN -180 AND 180", name="ck_paradas_longitude"),
+    )
+
+    versao_gtfs_id = db.Column(db.String(36), _fk_versao("paradas"), primary_key=True)
+    codigo = db.Column(CodigoGTFS, primary_key=True)
+    nome = db.Column(db.String(255), nullable=False)
+    # Decimal, como no diagrama: guarda os dígitos publicados (até 8 casas, ~1 mm).
+    latitude = db.Column(db.Numeric(11, 8), nullable=False)
+    longitude = db.Column(db.Numeric(11, 8), nullable=False)
+
+    versao_gtfs = db.relationship("VersaoGTFS")
+
+
+class Trecho(db.Model):
+    """Par de paradas consecutivas de uma linha, num sentido e trajeto GTFS.
+
+    `trajeto` (acréscimo ao diagrama) é o `trip_id` que representa uma
+    sequência de paradas: a mesma linha e sentido podem ter sequências
+    diferentes, e cada uma tem sua própria `ordem` a partir de 1. As chaves
+    compostas obrigam linha e paradas a existirem na mesma versão GTFS.
+    """
+
+    __tablename__ = "trechos"
+    __table_args__ = (
+        db.ForeignKeyConstraint(
+            ["versao_gtfs_id", "linha_codigo"], ["linhas.versao_gtfs_id", "linhas.codigo"],
+            name="fk_trechos_linha", ondelete="RESTRICT",
+        ),
+        db.ForeignKeyConstraint(
+            ["versao_gtfs_id", "parada_origem_codigo"],
+            ["paradas.versao_gtfs_id", "paradas.codigo"],
+            name="fk_trechos_parada_origem", ondelete="RESTRICT",
+        ),
+        db.ForeignKeyConstraint(
+            ["versao_gtfs_id", "parada_destino_codigo"],
+            ["paradas.versao_gtfs_id", "paradas.codigo"],
+            name="fk_trechos_parada_destino", ondelete="RESTRICT",
+        ),
+        UniqueConstraint(
+            "versao_gtfs_id", "linha_codigo", "trajeto", "ordem",
+            name="uq_trechos_trajeto_ordem",
+        ),
+        CheckConstraint("ordem >= 1", name="ck_trechos_ordem"),
+    )
+
+    id = db.Column(db.String(36), primary_key=True, default=lambda: str(uuid4()))
+    # A versão é garantida pela chave composta com `linhas`.
+    versao_gtfs_id = db.Column(db.String(36), nullable=False)
+    linha_codigo = db.Column(CodigoGTFS, nullable=False)
+    # `direction_id` do GTFS (0 ida, 1 volta), como publicado.
+    sentido = db.Column(db.String(8), nullable=False)
+    trajeto = db.Column(CodigoGTFS, nullable=False)
+    ordem = db.Column(db.Integer, nullable=False)
+    parada_origem_codigo = db.Column(CodigoGTFS, nullable=False)
+    parada_destino_codigo = db.Column(CodigoGTFS, nullable=False)
+    geometria = db.Column(LineString, nullable=False)
+
+    linha = db.relationship("Linha", overlaps="origem,destino")
+    origem = db.relationship(
+        "Parada", foreign_keys=[versao_gtfs_id, parada_origem_codigo],
+        overlaps="linha,destino",
+    )
+    destino = db.relationship(
+        "Parada", foreign_keys=[versao_gtfs_id, parada_destino_codigo],
+        overlaps="linha,origem",
+    )
