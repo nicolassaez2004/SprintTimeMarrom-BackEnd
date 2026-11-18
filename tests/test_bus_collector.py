@@ -242,7 +242,7 @@ class TestGpsCollector(unittest.TestCase):
         novos = self.session.add_all.call_args.args[0]
         self.assertEqual([r.prefixo_origem for r in novos], ["5811"])
 
-    def test_sem_horario_so_descarta_objeto_identico_no_mesmo_ciclo(self):
+    def test_sem_chave_completa_preserva_todos_os_registros_com_nulos(self):
         selecionados = [SimpleNamespace(prefixo="5810", codigo_linha=123)]
         resposta = {"vs": [
             {"p": "5810", "py": -23.5, "px": -46.6},
@@ -259,7 +259,7 @@ class TestGpsCollector(unittest.TestCase):
         ):
             total = bus_collector.BusCollector().coletar_ciclo()
 
-        self.assertEqual(total, 2)
+        self.assertEqual(total, 3)
         # Sem horário não há consulta a ciclos anteriores.
         self.session.query.assert_not_called()
 
