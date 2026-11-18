@@ -7,7 +7,7 @@ import tempfile
 import zipfile
 from collections import defaultdict
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
 from decimal import Decimal, InvalidOperation
 from pathlib import Path
 from uuid import uuid4
@@ -23,6 +23,46 @@ from app.storage import FileStore, hash_arquivo
 
 class GTFSValidationError(ValueError):
     """O download terminou, mas não contém um feed GTFS íntegro."""
+
+
+class VersaoGTFSInexistente(LookupError):
+    """Nenhuma versão GTFS cobre a data de operação pedida."""
+
+
+class VersaoGTFSAmbigua(LookupError):
+    """Mais de uma versão GTFS cobre a data; a escolha não é feita em silêncio."""
+
+    def __init__(self, data_operacao, versoes):
+        self.data_operacao = data_operacao
+        self.versoes = versoes
+        ids = ", ".join(v.id for v in versoes)
+        super().__init__(f"{len(versoes)} versões GTFS vigentes em {data_operacao}: {ids}")
+
+
+def versao_vigente(data_operacao):
+    """Versão GTFS cuja vigência [início, fim] contém a data de operação.
+
+    Usa apenas `vigencia_inicio`/`vigencia_fim` gravados na captura (US02-T01);
+    `vigencia_fim` NULL significa vigência aberta. Somente leitura: não altera
+    versões nem observações já ligadas a uma versão.
+    """
+    if isinstance(data_operacao, datetime) or not isinstance(data_operacao, date):
+        # Converter instante GPS em data operacional depende de fuso e de
+        # viagens após 24h: o chamador deve informar a data já definida.
+        raise TypeError("data_operacao deve ser uma date, não um instante")
+    versoes = (
+        VersaoGTFS.query
+        .filter(VersaoGTFS.vigencia_inicio <= data_operacao)
+        .filter(db.or_(VersaoGTFS.vigencia_fim.is_(None),
+                       VersaoGTFS.vigencia_fim >= data_operacao))
+        .order_by(VersaoGTFS.vigencia_inicio, VersaoGTFS.capturada_em, VersaoGTFS.id)
+        .all()
+    )
+    if not versoes:
+        raise VersaoGTFSInexistente(f"nenhuma versão GTFS vigente em {data_operacao}")
+    if len(versoes) > 1:
+        raise VersaoGTFSAmbigua(data_operacao, versoes)
+    return versoes[0]
 
 
 @dataclass(frozen=True)
