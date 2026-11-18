@@ -213,3 +213,35 @@ class VersaoGTFS(db.Model):
         unique=True,
     )
     arquivo = db.relationship("ArquivoArmazenado")
+
+
+class VerificacaoGTFS(db.Model):
+    """Agenda, resultado e prazo de cada tentativa, inclusive após reiniciar."""
+
+    __tablename__ = "verificacoes_gtfs"
+    __table_args__ = (
+        CheckConstraint("estado IN ('EM_ANDAMENTO', 'OK', 'PARCIAL', 'FALHA')",
+                        name="ck_verificacoes_gtfs_estado"),
+        Index("ix_verificacoes_gtfs_iniciada_em", "iniciada_em"),
+        Index("ix_verificacoes_gtfs_hash_identificado", "hash_identificado"),
+    )
+
+    id = db.Column(IdGrande, primary_key=True, autoincrement=True)
+    prevista_em = db.Column(UTCDateTime, nullable=False)
+    iniciada_em = db.Column(UTCDateTime, nullable=False)
+    finalizada_em = db.Column(UTCDateTime, nullable=True)
+    estado = db.Column(db.String(16), nullable=False, default="EM_ANDAMENTO")
+    resultado = db.Column(db.String(16), nullable=True)
+    hash_identificado = db.Column(db.String(64), nullable=True)
+    identificada_em = db.Column(UTCDateTime, nullable=True)
+    persistida_em = db.Column(UTCDateTime, nullable=True)
+    versao_id = db.Column(db.String(36), db.ForeignKey(
+        "versoes_gtfs.id", name="fk_verificacoes_gtfs_versao", ondelete="RESTRICT",
+    ), nullable=True)
+    erro = db.Column(db.String(128), nullable=True)
+
+    @property
+    def tempo_ate_base_segundos(self):
+        if self.identificada_em is None or self.persistida_em is None:
+            return None
+        return (self.persistida_em - self.identificada_em).total_seconds()

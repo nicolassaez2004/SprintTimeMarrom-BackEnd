@@ -209,6 +209,59 @@ metadados: considerar esses arquivos no uso de disco e no backup. Não remover
 esses objetos enquanto houver capturas em andamento; eventual limpeza de
 órfãos precisa de coordenação e não faz parte desta tarefa.
 
+## Verificação diária do GTFS US02-T04
+
+O agendamento roda em um processo separado da API e do coletor GPS. Após o
+responsável pelo banco revisar e aplicar a migração **0004**, execute na raiz
+do back-end, usando o ambiente virtual do projeto:
+
+```bash
+python -m app.tarefas
+```
+
+No Windows, o equivalente é `.\.venv\Scripts\python.exe -m app.tarefas`.
+O processo precisa permanecer ativo; `Ctrl+C` o encerra. Não há instalação
+automática de serviço ou tarefa do Windows. Iniciar o Flask não inicia essa
+verificação. Para uma tentativa manual com o mesmo controle de exclusividade:
+
+```bash
+python -m app.tarefas --uma-vez
+```
+
+- Sem histórico, a primeira verificação é imediata. Após sucesso, a próxima
+  segue a cadência de 24 horas em UTC, sem somar o tempo de processamento.
+  Reiniciar consulta a agenda persistida, sem repetir uma verificação ainda
+  dentro do prazo. Horários perdidos não geram uma rajada de capturas.
+- Falhas geram nova tentativa após 15 minutos. Uma tentativa interrompida é
+  marcada como falha e retomada. Um lock MySQL distinto por banco impede
+  dois processos de tarefas simultâneos sem bloquear o coletor GPS.
+- `verificacoes_gtfs` guarda agenda, início/fim, resultado, hash identificado,
+  primeira identificação, confirmação de persistência, versão e tipo de erro.
+  O estado é `OK`, `PARCIAL`, `FALHA` ou `EM_ANDAMENTO`; o resultado distingue
+  `NOVA`, `REPETIDA` e `FALHA`. O histórico das versões anteriores é preservado.
+- A identificação acontece depois de baixar e validar o ZIP e calcular seu
+  hash. Ela é gravada antes da publicação/inserção. Falhar e tentar novamente
+  o mesmo hash não reinicia o prazo. A confirmação é medida depois do commit
+  da nova versão. Repetições não recebem uma nova data de entrada na base.
+- Atrasos de agendamento a partir de 60 segundos geram aviso; entrada de uma
+  nova versão após mais de 24 horas gera alerta e estado `PARCIAL`, mesmo que
+  a versão tenha sido preservada. Falhas de captura ficam no histórico.
+- Os eventos também são gravados como JSONL em
+  `instance/logs/gtfs-tarefas.jsonl`, com rotação de 10 MB e cinco cópias.
+  `GTFS_TASK_LOG_FILE` permite mudar esse caminho. Se o banco estiver
+  indisponível, o log registra o tipo de falha e o processo tenta novamente;
+  ele não cria tabelas nem executa migrações para contornar o erro.
+
+**Limite da medição:** o instante de publicação na SPTrans não é conhecido.
+O prazo medido começa na primeira identificação local persistida do hash
+válido. Os testes simulam dias e falhas; não representam uma observação real
+de 24 horas nem garantem disponibilidade quando o processo estiver desligado.
+
+**Aceite pendente:** a tarefa adota verificação diária conforme sua descrição.
+O PO ainda precisa confirmar a divergência diária/semanal do documento, e
+outra pessoa deve revisar a alteração antes de movê-la para Pronto. Veja a
+[evidência da US02-T04](docs/US02-T04.md).
+
 **Consulta real (manual e autorizada).** Coloque o token em `SPTRANS_TOKEN` no
 `.env`, nunca na linha de comando nem no código, e rode:
 
