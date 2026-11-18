@@ -24,14 +24,18 @@ class SPTransClient:
     def autenticar(self):
         """Autentica na API Olho Vivo."""
 
-        response = self.session.post(
-            f"{self.base_url}/Login/Autenticar",
-            params={"token": self.token},
-            timeout=15
-        )
-
-        response.raise_for_status()
-        print(response.json())
+        try:
+            response = self.session.post(
+                f"{self.base_url}/Login/Autenticar",
+                params={"token": self.token},
+                timeout=15
+            )
+            response.raise_for_status()
+        except requests.RequestException as error:
+            # A URL da autenticação contém o token; não propague detalhes dela.
+            raise RuntimeError(
+                f"Falha de comunicação com a SPTrans ({type(error).__name__})"
+            ) from None
 
         if response.json() is not True:
             raise RuntimeError(
@@ -62,4 +66,14 @@ class SPTransClient:
 
         response.raise_for_status()
 
+        return response.json()
+
+    def buscar_todas_posicoes(self):
+        """Busca a última posição publicada para todos os veículos."""
+        response = self.session.get(
+            f"{self.base_url}/Posicao",
+            timeout=15
+        )
+
+        response.raise_for_status()
         return response.json()

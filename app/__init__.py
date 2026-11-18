@@ -24,6 +24,9 @@ def create_app(config_extra=None):
     # Inicializa o banco
     db.init_app(app)
 
+    # Registra os modelos no metadata do SQLAlchemy para criação/migração.
+    from app import models  # noqa: F401
+
     # Permite requisicoes do frontend local
     CORS(
         app,
