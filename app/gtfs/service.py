@@ -1,11 +1,14 @@
 """Captura, valida e versiona o ZIP original do GTFS por SHA-256."""
 
 import csv
+import math
 import os
 import tempfile
 import zipfile
+from collections import defaultdict
 from dataclasses import dataclass
 from datetime import datetime, timezone
+from decimal import Decimal, InvalidOperation
 from pathlib import Path
 from uuid import uuid4
 
@@ -14,7 +17,7 @@ from sqlalchemy.exc import IntegrityError
 
 from app import db
 from app.integrations.gtfs import GTFSClient
-from app.models import ArquivoArmazenado, VersaoGTFS
+from app.models import ArquivoArmazenado, Linha, Parada, Trecho, VersaoGTFS
 from app.storage import FileStore, hash_arquivo
 
 
@@ -71,6 +74,11 @@ def _ler_data_gtfs(valor):
     return datetime.strptime(valor, "%Y%m%d").date()
 
 
+def _diretorio_gtfs(diretorio=None):
+    return Path(diretorio or current_app.config.get("GTFS_STORAGE_DIR")
+                or (Path(current_app.instance_path) / "gtfs"))
+
+
 def capturar_gtfs(*, url=None, diretorio=None, cliente=None, agora=None):
     """Baixa e guarda uma captura imutável; hash repetido retorna a versão atual.
 
@@ -92,8 +100,7 @@ def capturar_gtfs_com_resultado(*, url=None, diretorio=None, cliente=None,
     """
     relogio = relogio or (lambda: datetime.now(timezone.utc))
     url = url or current_app.config.get("GTFS_SOURCE_URL")
-    diretorio = Path(diretorio or current_app.config.get("GTFS_STORAGE_DIR")
-                     or (Path(current_app.instance_path) / "gtfs"))
+    diretorio = _diretorio_gtfs(diretorio)
     cliente = cliente or GTFSClient()
     agora = agora or relogio()
     if agora.tzinfo is None:
@@ -153,3 +160,219 @@ def capturar_gtfs_com_resultado(*, url=None, diretorio=None, cliente=None,
         raise
     finally:
         caminho_temp.unlink(missing_ok=True)
+
+
+def _abrir_versao(versao_id, diretorio):
+    """Abre o ZIP original da versão, conferindo que é o conteúdo do hash."""
+    versao = db.session.get(VersaoGTFS, versao_id) if versao_id else None
+    if versao is None:
+        raise LookupError(f"versão GTFS inexistente: {versao_id!r}")
+    try:
+        caminho = FileStore(_diretorio_gtfs(diretorio)).caminho_gtfs(
+            versao.arquivo.chave, versao.hash)
+    except FileNotFoundError as erro:
+        raise GTFSValidationError(str(erro)) from erro
+    return versao, zipfile.ZipFile(caminho)
+
+
+def _ler_csv(arquivo, nome, obrigatorio=True):
+    """Lê um .txt do feed como dicionários; arquivo opcional ausente -> []."""
+    candidatos = [i for i in arquivo.namelist() if Path(i).name.lower() == nome]
+    if not candidatos:
+        if obrigatorio:
+            raise GTFSValidationError(f"{nome} ausente no feed")
+        return
+    with arquivo.open(candidatos[0]) as stream:
+        texto = (linha.decode("utf-8-sig") for linha in stream)
+        for numero, linha in enumerate(csv.DictReader(texto), start=2):
+            yield numero, {k.strip(): (v or "").strip() for k, v in linha.items() if k}
+
+
+def _unicos(registros, nome, chave):
+    vistos = {}
+    for numero, linha in registros:
+        codigo = linha.get(chave)
+        if not codigo:
+            raise GTFSValidationError(f"{nome} linha {numero}: {chave} vazio")
+        if codigo in vistos:
+            raise GTFSValidationError(f"{nome}: {chave} {codigo!r} repetido")
+        vistos[codigo] = (numero, linha)
+    return vistos
+
+
+def _coordenada(valor, limite, nome, numero, arquivo="stops.txt"):
+    """Decimal exato do texto GTFS, arredondado a 8 casas (coluna DECIMAL(11,8))."""
+    try:
+        coordenada = Decimal(valor).quantize(Decimal("1e-8"))
+    except (InvalidOperation, ValueError):
+        coordenada = None
+    if coordenada is None or not -limite <= coordenada <= limite:
+        raise GTFSValidationError(f"{arquivo} linha {numero}: {nome} inválida")
+    return coordenada
+
+
+def importar_linhas_paradas(versao_id, *, diretorio=None):
+    """Importa `routes.txt` e `stops.txt` do ZIP da versão, numa transação.
+
+    Reimportar a mesma versão não duplica registros. Códigos iguais em versões
+    diferentes geram registros distintos, cada um ligado à sua versão.
+    """
+    versao, arquivo = _abrir_versao(versao_id, diretorio)
+    if Linha.query.filter_by(versao_gtfs_id=versao.id).first():
+        return {"linhas": Linha.query.filter_by(versao_gtfs_id=versao.id).count(),
+                "paradas": Parada.query.filter_by(versao_gtfs_id=versao.id).count()}
+    with arquivo:
+        rotas = _unicos(_ler_csv(arquivo, "routes.txt"), "routes.txt", "route_id")
+        paradas = _unicos(_ler_csv(arquivo, "stops.txt"), "stops.txt", "stop_id")
+
+    linhas = []
+    for codigo, (numero, rota) in rotas.items():
+        nome = rota.get("route_long_name") or rota.get("route_short_name")
+        if not nome:
+            raise GTFSValidationError(f"routes.txt linha {numero}: linha sem nome")
+        linhas.append(Linha(versao_gtfs_id=versao.id, codigo=codigo, nome=nome))
+    registros = [
+        Parada(
+            versao_gtfs_id=versao.id, codigo=codigo, nome=parada.get("stop_name", ""),
+            latitude=_coordenada(parada.get("stop_lat", ""), 90, "stop_lat", numero),
+            longitude=_coordenada(parada.get("stop_lon", ""), 180, "stop_lon", numero),
+        )
+        for codigo, (numero, parada) in paradas.items()
+    ]
+    try:
+        db.session.add_all(linhas + registros)
+        db.session.commit()
+    except IntegrityError:
+        # Outra importação simultânea da mesma versão pode ter vencido.
+        db.session.rollback()
+        if not Linha.query.filter_by(versao_gtfs_id=versao.id).first():
+            raise
+    except Exception:
+        db.session.rollback()
+        raise
+    return {"linhas": Linha.query.filter_by(versao_gtfs_id=versao.id).count(),
+            "paradas": Parada.query.filter_by(versao_gtfs_id=versao.id).count()}
+
+
+def _inteiro(valor, nome, arquivo, numero):
+    try:
+        return int(valor)
+    except ValueError:
+        raise GTFSValidationError(f"{arquivo} linha {numero}: {nome} inválido") from None
+
+
+def _indices_no_tracado(coordenadas, tracado):
+    """Ponto do traçado para cada parada, sem retroceder no traçado.
+
+    Minimiza a soma das distâncias (programação dinâmica), o que evita que
+    uma linha circular associe a primeira parada ao fim do traçado.
+    """
+    custo_anterior = [0.0] * len(tracado)
+    escolhas = []
+    for lon, lat in coordenadas:
+        melhor, melhor_k, custo, origem = math.inf, 0, [], []
+        for k, (x, y) in enumerate(tracado):
+            if custo_anterior[k] < melhor:
+                melhor, melhor_k = custo_anterior[k], k
+            custo.append(melhor + (x - lon) ** 2 + (y - lat) ** 2)
+            origem.append(melhor_k)
+        escolhas.append(origem)
+        custo_anterior = custo
+    k = min(range(len(tracado)), key=custo_anterior.__getitem__)
+    indices = []
+    for origem in reversed(escolhas):
+        indices.append(k)
+        k = origem[k]
+    return indices[::-1]
+
+
+def importar_trechos(versao_id, *, diretorio=None):
+    """Importa os trechos entre paradas consecutivas de cada trajeto GTFS.
+
+    Viagens (`trips.txt`) com a mesma linha, sentido e sequência de paradas
+    (`stop_times.txt`) formam um trajeto, identificado pelo menor `trip_id`.
+    Sequências diferentes nunca se misturam. A geometria vem de `shapes.txt`
+    quando houver; senão, é a reta entre as duas paradas. Depende de
+    `importar_linhas_paradas` para a mesma versão.
+    """
+    versao, arquivo = _abrir_versao(versao_id, diretorio)
+    existentes = Trecho.query.filter_by(versao_gtfs_id=versao.id)
+    with arquivo:
+        if existentes.first():
+            return {"trechos": existentes.count()}
+        linhas = {codigo for (codigo,) in
+                  db.session.query(Linha.codigo).filter_by(versao_gtfs_id=versao.id)}
+        if not linhas:
+            raise GTFSValidationError("importe linhas e paradas desta versão antes dos trechos")
+        paradas = {codigo: (float(lon), float(lat)) for codigo, lon, lat in db.session.query(
+            Parada.codigo, Parada.longitude, Parada.latitude).filter_by(versao_gtfs_id=versao.id)}
+
+        viagens = {}
+        for numero, viagem in _unicos(_ler_csv(arquivo, "trips.txt"), "trips.txt",
+                                      "trip_id").values():
+            if viagem.get("route_id") not in linhas:
+                raise GTFSValidationError(f"trips.txt linha {numero}: linha inexistente")
+            if not viagem.get("direction_id"):
+                raise GTFSValidationError(f"trips.txt linha {numero}: direction_id vazio")
+            viagens[viagem["trip_id"]] = (
+                viagem["route_id"], viagem["direction_id"], viagem.get("shape_id") or None,
+            )
+
+        sequencias = defaultdict(dict)
+        for numero, horario in _ler_csv(arquivo, "stop_times.txt"):
+            trip_id, stop_id = horario.get("trip_id"), horario.get("stop_id")
+            if trip_id not in viagens:
+                raise GTFSValidationError(f"stop_times.txt linha {numero}: viagem inexistente")
+            if stop_id not in paradas:
+                raise GTFSValidationError(f"stop_times.txt linha {numero}: parada inexistente")
+            ordem = _inteiro(horario.get("stop_sequence", ""), "stop_sequence",
+                             "stop_times.txt", numero)
+            if ordem in sequencias[trip_id]:
+                raise GTFSValidationError(f"stop_times.txt linha {numero}: stop_sequence repetido")
+            sequencias[trip_id][ordem] = stop_id
+
+        trajetos = {}
+        for trip_id in sorted(sequencias):
+            linha, sentido, shape = viagens[trip_id]
+            sequencia = tuple(sequencias[trip_id][k] for k in sorted(sequencias[trip_id]))
+            trajetos.setdefault((linha, sentido, sequencia), (trip_id, shape))
+
+        necessarios = {shape for _, shape in trajetos.values() if shape}
+        pontos = defaultdict(list)
+        for numero, ponto in _ler_csv(arquivo, "shapes.txt", obrigatorio=False):
+            if ponto.get("shape_id") in necessarios:
+                pontos[ponto["shape_id"]].append((
+                    _inteiro(ponto.get("shape_pt_sequence", ""), "shape_pt_sequence",
+                             "shapes.txt", numero),
+                    float(_coordenada(ponto.get("shape_pt_lon", ""), 180, "shape_pt_lon",
+                                      numero, "shapes.txt")),
+                    float(_coordenada(ponto.get("shape_pt_lat", ""), 90, "shape_pt_lat",
+                                      numero, "shapes.txt")),
+                ))
+
+    trechos = []
+    for (linha, sentido, sequencia), (trip_id, shape) in trajetos.items():
+        coordenadas = [paradas[codigo] for codigo in sequencia]
+        tracado = [(lon, lat) for _, lon, lat in sorted(pontos.get(shape, []))]
+        indices = _indices_no_tracado(coordenadas, tracado) if len(tracado) > 1 else None
+        for i in range(len(sequencia) - 1):
+            segmento = tracado[indices[i]:indices[i + 1] + 1] if indices else []
+            if len(segmento) < 2:
+                segmento = coordenadas[i:i + 2]
+            trechos.append(Trecho(
+                versao_gtfs_id=versao.id, linha_codigo=linha, sentido=sentido,
+                trajeto=trip_id, ordem=i + 1,
+                parada_origem_codigo=sequencia[i], parada_destino_codigo=sequencia[i + 1],
+                geometria=[list(ponto) for ponto in segmento],
+            ))
+    try:
+        db.session.add_all(trechos)
+        db.session.commit()
+    except IntegrityError:
+        db.session.rollback()
+        if not existentes.first():
+            raise
+    except Exception:
+        db.session.rollback()
+        raise
+    return {"trechos": existentes.count()}

@@ -49,6 +49,11 @@ O esquema é versionado com Flask-Migrate (Alembic), em `migrations/versions/`:
 - `0004`: `ObservacaoTratada` separada do bruto, com FK obrigatória/única para
   `registros_gps` e FK opcional para a versão GTFS. Evidências e limites em
   [US12-T01B](docs/US12-T01B.md).
+- `0005`: `verificacoes_gtfs`, agenda e resultado da verificação diária do GTFS
+  ([US02-T04](docs/US02-T04.md)).
+- `0006`: `linhas` e `paradas`, com chave (versão GTFS, código).
+- `0007`: `trechos`, com chaves estrangeiras compostas para linha e paradas da
+  mesma versão GTFS.
 
 **Banco novo:** `flask --app app db upgrade`.
 
@@ -178,11 +183,27 @@ As mensagens nunca incluem o token, cookies ou a URL de autenticação.
 
 O código já usa o endpoint de download GTFS da SPTrans por padrão. Se a fonte
 mudar, substitua `GTFS_SOURCE_URL` no `.env`. Aplique as migrações e execute uma
-captura com:
+captura e a importação da rede com:
 
 ```bash
 python -m app.gtfs
 ```
+
+Depois da captura, o comando importa do ZIP guardado `routes.txt` e `stops.txt`
+(`Linha`, `Parada`) e depois os `Trecho`s, a partir de `trips.txt`,
+`stop_times.txt` e `shapes.txt` (este último é opcional). Cada registro guarda a
+versão GTFS de origem, então o mesmo `route_id`/`stop_id` em outra versão é
+outro registro. A importação de uma versão acontece numa única transação e,
+se repetida, não duplica registros.
+
+Um trecho liga duas paradas consecutivas. Viagens com a mesma linha, sentido
+(`direction_id`) e sequência de paradas formam um **trajeto**, identificado
+pelo menor `trip_id` delas (`trechos.trajeto`). Assim, variantes da mesma linha
+não se misturam, e cada uma tem `ordem` a partir de 1. `sentido` é o
+`direction_id` (obrigatório). A geometria é uma coluna espacial `LINESTRING`
+(x = longitude, y = latitude) recortada do `shape`; sem `shape`, é a reta entre
+as paradas. Coordenadas de paradas são `DECIMAL(11,8)`. O ZIP é lido pelo
+`FileStore`, conferido contra o hash da versão.
 
 O sistema baixa para arquivo temporário, confere a integridade do ZIP e os
 arquivos básicos GTFS, calcula SHA-256 e só então grava o original em
