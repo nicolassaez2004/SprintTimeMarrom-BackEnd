@@ -23,6 +23,21 @@ def create_app(config_extra=None):
     if not app.config.get("SQLALCHEMY_DATABASE_URI"):
         raise RuntimeError("DATABASE_URL nao configurado no .env")
 
+    # Aplicar TLS após os overrides para não passar opções MySQL aos testes SQLite.
+    from sqlalchemy.engine import make_url
+    uri = make_url(app.config["SQLALCHEMY_DATABASE_URI"])
+    if uri.drivername == "mysql+pymysql" and app.config.get("MYSQL_SSL_CA"):
+        options = dict(app.config.get("SQLALCHEMY_ENGINE_OPTIONS") or {})
+        connect_args = dict(options.get("connect_args") or {})
+        connect_args.update(
+            ssl_ca=app.config["MYSQL_SSL_CA"],
+            ssl_verify_cert=True,
+            ssl_verify_identity=True,
+        )
+        options["connect_args"] = connect_args
+        options.setdefault("pool_pre_ping", True)
+        app.config["SQLALCHEMY_ENGINE_OPTIONS"] = options
+
     # Inicializa o banco
     db.init_app(app)
     # Migrações em migrations/ (`flask --app app db upgrade`).

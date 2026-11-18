@@ -21,6 +21,8 @@ class Config:
     SQLALCHEMY_DATABASE_URI = os.getenv("DATABASE_URL")
 
     SQLALCHEMY_TRACK_MODIFICATIONS = False
+    # Certificado CA local para serviços MySQL remotos (por exemplo, Aiven).
+    MYSQL_SSL_CA = os.getenv("MYSQL_SSL_CA")
 
     # API da SPTrans
     SPTRANS_API_URL = os.getenv(
