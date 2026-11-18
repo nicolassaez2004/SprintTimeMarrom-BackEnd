@@ -313,14 +313,14 @@ def test_api_nao_inicia_tarefas_ao_ser_importada(app, monkeypatch):
     executar.assert_not_called()
 
 
-def test_migracao_0004_corresponde_aos_modelos_e_compila_para_mysql(app):
+def test_migracao_0005_corresponde_aos_modelos_e_compila_para_mysql(app):
     import importlib.util
     from alembic.autogenerate import compare_metadata
     from alembic.migration import MigrationContext
     from alembic.operations import Operations
     from sqlalchemy import create_engine
 
-    arquivo = Path(__file__).resolve().parents[2] / "migrations/versions/0004_verificacoes_gtfs.py"
+    arquivo = Path(__file__).resolve().parents[2] / "migrations/versions/0005_verificacoes_gtfs.py"
     spec = importlib.util.spec_from_file_location("migracao_gtfs", arquivo)
     migracao = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(migracao)
@@ -342,3 +342,12 @@ def test_migracao_0004_corresponde_aos_modelos_e_compila_para_mysql(app):
         assert "CREATE TABLE verificacoes_gtfs" in sql
     finally:
         engine.dispose()
+
+
+def test_cadeia_de_migracoes_tem_uma_cabeca_e_preserva_a_us12():
+    from alembic.script import ScriptDirectory
+
+    scripts = ScriptDirectory(str(Path(__file__).resolve().parents[2] / "migrations"))
+    assert scripts.get_heads() == ["0005"]
+    assert scripts.get_revision("0005").down_revision == "0004"
+    assert scripts.get_revision("0004").module.__file__.endswith("0004_observacoes_tratadas.py")

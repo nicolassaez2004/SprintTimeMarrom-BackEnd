@@ -1,15 +1,15 @@
 """Histórico da agenda e do prazo de incorporação de versões GTFS.
 
-Revision ID: 0004
-Revises: 0003
+Revision ID: 0005
+Revises: 0004
 Create Date: 2026-11-18
 """
 from alembic import op
 import sqlalchemy as sa
 from sqlalchemy.dialects import mysql
 
-revision = "0004"
-down_revision = "0003"
+revision = "0005"
+down_revision = "0004"
 branch_labels = None
 depends_on = None
 
@@ -40,4 +40,4 @@ def upgrade():
 
 
 def downgrade():
-    raise RuntimeError("Downgrade da 0004 apagaria o histórico GTFS; restaure de um backup.")
+    raise RuntimeError("Downgrade da 0005 apagaria o histórico GTFS; restaure de um backup.")

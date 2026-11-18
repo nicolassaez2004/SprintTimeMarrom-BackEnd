@@ -46,6 +46,9 @@ O esquema é versionado com Flask-Migrate (Alembic), em `migrations/versions/`:
 - `0002`: alinhamento ao diagrama de classes. Não é destrutiva: só cria,
   renomeia, amplia tipos e copia valores.
 - `0003`: metadados de `ArquivoArmazenado` e `VersaoGTFS`, com unicidade por hash.
+- `0004`: `ObservacaoTratada` separada do bruto, com FK obrigatória/única para
+  `registros_gps` e FK opcional para a versão GTFS. Evidências e limites em
+  [US12-T01B](docs/US12-T01B.md).
 
 **Banco novo:** `flask --app app db upgrade`.
 
@@ -212,7 +215,7 @@ esses objetos enquanto houver capturas em andamento; eventual limpeza de
 ## Verificação diária do GTFS US02-T04
 
 O agendamento roda em um processo separado da API e do coletor GPS. Após o
-responsável pelo banco revisar e aplicar a migração **0004**, execute na raiz
+responsável pelo banco revisar e aplicar a migração **0005**, execute na raiz
 do back-end, usando o ambiente virtual do projeto:
 
 ```bash
