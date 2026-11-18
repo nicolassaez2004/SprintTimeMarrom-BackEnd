@@ -246,16 +246,17 @@ class LockColetor:
         "liberar": "SELECT RELEASE_LOCK(:nome)",
     }
 
-    def __init__(self, engine):
+    def __init__(self, engine, *, nome=NOME_LOCK_COLETOR):
         if engine.dialect.name != "mysql":
             raise RuntimeError(
                 f"O coletor requer MySQL para o lock singleton (atual: {engine.dialect.name})"
             )
         self.engine = engine
+        self.nome = nome
         self.conexao = None
 
     def _executar(self, comando):
-        return self.conexao.execute(text(self._SQL[comando]), {"nome": NOME_LOCK_COLETOR}).scalar()
+        return self.conexao.execute(text(self._SQL[comando]), {"nome": self.nome}).scalar()
 
     def adquirir(self):
         self.conexao = self.engine.connect()
