@@ -1,4 +1,4 @@
-"""Coleta periódica das posições dos ônibus selecionados (BusCollector)."""
+"""Coleta periódica das posições de toda a frota (BusCollector)."""
 
 import logging
 import argparse
@@ -10,7 +10,7 @@ from sqlalchemy import text
 from app import create_app, db
 from app.config import validar_intervalo_coleta
 from app.integrations.sptrans import SPTransClient
-from app.models import ExecucaoColeta, OnibusSelecionado, RegistroBrutoGPS
+from app.models import ExecucaoColeta, RegistroBrutoGPS, Veiculo
 from app.coleta.qualidade import validar_registro_gps, validar_unicidade_chave
 
 
@@ -42,17 +42,33 @@ def _ler_horario_api(valor):
     return horario.astimezone(timezone.utc)
 
 
+def _ler_sentido(valor):
+    """Converte `sl` da API (1 ou 2) para texto; qualquer outro valor vira NULL.
+
+    Na API Olho Vivo, `sl` é o sentido de operação da linha: 1 = terminal
+    principal -> secundário; 2 = secundário -> principal.
+    """
+    if isinstance(valor, bool):
+        return None
+    if isinstance(valor, int) and valor in (1, 2):
+        return str(valor)
+    if isinstance(valor, str) and valor.strip() in ("1", "2"):
+        return valor.strip()
+    return None
+
+
 class BusCollector:
     """Conduz um ciclo de coleta: consulta a SPTrans e grava o bruto e a execução.
 
-    A comunicação com a API fica em `SPTransClient`; esta classe não faz HTTP.
-    O início do ciclo é gravado antes da consulta, para que um ciclo que falhe
-    no meio continue contabilizado em `execucoes_coleta` com estado `FALHA`.
+    Cada ciclo lê as posições de toda a frota (`GET /Posicao`) em uma única
+    consulta. A comunicação com a API fica em `SPTransClient`; esta classe não
+    faz HTTP. O início do ciclo é gravado antes da consulta, para que um ciclo
+    que falhe no meio continue contabilizado em `execucoes_coleta` com estado
+    `FALHA`.
     """
 
     def coletar_ciclo(self, prevista_em=None):
         iniciado_em = datetime.now(timezone.utc)
-        onibus_selecionados = OnibusSelecionado.query.all()
         execucao = ExecucaoColeta(
             fonte="OLHO_VIVO",
             prevista_em=prevista_em,
@@ -65,37 +81,19 @@ class BusCollector:
         db.session.add(execucao)
         db.session.commit()
 
-        if not onibus_selecionados:
-            execucao.finalizada_em = datetime.now(timezone.utc)
-            execucao.estado = "OK"
-            db.session.commit()
-            logger.info("Nenhum ônibus selecionado; ciclo sem consultas.")
-            return 0
-
-        # A API é consultada uma vez por linha, mesmo que vários ônibus selecionados
-        # pertençam à mesma linha.
-        prefixos_por_linha = {}
-        for onibus in onibus_selecionados:
-            prefixos_por_linha.setdefault(onibus.codigo_linha, set()).add(str(onibus.prefixo))
-
         try:
             cliente = SPTransClient()
-            recebidos, erros, linhas_ok = self._consultar_posicoes(
-                cliente, prefixos_por_linha, execucao.id, iniciado_em
-            )
+            resposta = cliente.buscar_todas_posicoes()
+            recebidos = self._ler_frota(resposta, execucao.id, iniciado_em)
             novos = self._descartar_duplicados(recebidos)
             if novos:
+                self._registrar_veiculos_novos(novos)
                 db.session.add_all(novos)
             execucao.finalizada_em = datetime.now(timezone.utc)
             execucao.recebidos = len(recebidos)
             execucao.novos_persistidos = len(novos)
-            if not erros:
-                execucao.estado = "OK"
-            elif linhas_ok:
-                execucao.estado = "PARCIAL"
-            else:
-                execucao.estado = "FALHA"
-            execucao.erro = "; ".join(erros) or None
+            execucao.estado = "OK"
+            execucao.erro = None
             db.session.commit()
         except Exception as error:
             # Só o tipo do erro é gravado: mensagens da SPTrans podem conter o token.
@@ -116,39 +114,38 @@ class BusCollector:
         return len(novos)
 
     @staticmethod
-    def _consultar_posicoes(cliente, prefixos_por_linha, execucao_id, iniciado_em):
+    def _ler_frota(resposta, execucao_id, iniciado_em):
+        """Converte a resposta de `GET /Posicao` em registros brutos.
+
+        Formato: `{"hr", "l": [{"c", "cl", "sl", "lt0", "lt1", "qv", "vs": [...]}]}`.
+        Entradas fora do formato são ignoradas sem interromper o ciclo.
+        """
         registros = []
-        erros = []
-        linhas_ok = 0
-
-        for codigo_linha, prefixos in prefixos_por_linha.items():
-            try:
-                resposta = cliente.buscar_posicoes(codigo_linha)
-            except Exception:
-                logger.exception("Falha consultando posições da linha %s", codigo_linha)
-                erros.append(f"linha {codigo_linha}: falha na consulta")
+        for linha in resposta.get("l") or []:
+            if not isinstance(linha, dict):
                 continue
-            linhas_ok += 1
+            codigo_linha = linha.get("cl")
+            linha_origem = None if codigo_linha is None else str(codigo_linha)
+            sentido = _ler_sentido(linha.get("sl"))
+            veiculos = linha.get("vs")
+            if not isinstance(veiculos, list):
+                continue
 
-            # A resposta da API Olho Vivo organiza os veículos no array `vs`.
-            veiculos = resposta.get("vs", []) if isinstance(resposta, dict) else []
             for veiculo in veiculos:
                 if not isinstance(veiculo, dict):
                     continue
                 prefixo = veiculo.get("p")
                 prefixo = None if prefixo is None else str(prefixo)
-                if prefixo not in prefixos:
-                    continue
 
                 # O objeto original vai no payload; as colunas tipadas são uma
                 # leitura dele, com NULL para ausentes ou inválidos.
                 registros.append(
                     validar_registro_gps(RegistroBrutoGPS(
                         execucao_id=execucao_id,
-                        # Selecionados sempre referenciam um Veiculo existente.
                         veiculo_prefixo=prefixo,
                         prefixo_origem=prefixo,
-                        linha_origem=str(codigo_linha),
+                        linha_origem=linha_origem,
+                        sentido_origem=sentido,
                         latitude=_ler_coordenada(veiculo.get("py"), 90),
                         longitude=_ler_coordenada(veiculo.get("px"), 180),
                         horario_gps=_ler_horario_api(veiculo.get("ta")),
@@ -156,8 +153,22 @@ class BusCollector:
                         payload=veiculo,
                     ))
                 )
+        return registros
 
-        return registros, erros, linhas_ok
+    @staticmethod
+    def _registrar_veiculos_novos(registros):
+        """Cadastra em `veiculos` os prefixos ainda desconhecidos (FK do bruto)."""
+        prefixos = {r.veiculo_prefixo for r in registros if r.veiculo_prefixo is not None}
+        if not prefixos:
+            return
+        existentes = {
+            linha[0]
+            for linha in db.session.query(Veiculo.prefixo)
+            .filter(Veiculo.prefixo.in_(prefixos))
+            .all()
+        }
+        for prefixo in sorted(prefixos - existentes):
+            db.session.add(Veiculo(prefixo=prefixo))
 
     @staticmethod
     def _descartar_duplicados(registros):
