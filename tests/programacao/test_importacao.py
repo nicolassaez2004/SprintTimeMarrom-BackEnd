@@ -88,8 +88,8 @@ def test_ausencia_da_fonte_encaminha_fallback_sem_fabricar_partidas(versao, moti
     resultado = importar_oficial(*CONTEXTO, cliente=cliente)
     assert resultado["estado"] == "FALLBACK_GTFS_NECESSARIO"
     assert resultado["oficial_disponivel"] is False and resultado["motivo"] == motivo
-    # A T02B agora tenta gerar o fallback. Esta fixture só tem os metadados
-    # da versão, sem ZIP físico, então a falha deve ser explícita e não gravar.
+    # A US04-T02 já tenta gerar o fallback. Esta fixture só registra os
+    # metadados do GTFS e não fornece um ZIP: deve falhar sem fabricar saídas.
     assert resultado["fallback"]["fonte"] == "GTFS"
     assert resultado["fallback"]["estado"] == "FALHA_GERACAO"
     assert resultado["fallback"]["versao_gtfs_id"] == versao.id
@@ -105,15 +105,16 @@ def test_sem_versao_gtfs_o_fallback_expoe_precondicao_em_vez_de_escolher(app):
     assert resultado["fallback"]["estado"] == "SEM_VERSAO_GTFS"
 
 
-def test_erro_da_fonte_preserva_historico_e_prioridade_da_oficial_armazenada(versao, fabrica_captura):
+def test_erro_da_fonte_prioriza_oficial_armazenada_sem_alterar_verificacao(versao, fabrica_captura):
     anterior = importar_oficial(*CONTEXTO, captura=fabrica_captura(), agora=AGORA)
     cliente = Mock()
     cliente.obter.side_effect = FonteOficialIndisponivel("HTTP_403")
     resultado = importar_oficial(*CONTEXTO, cliente=cliente)
-    # A regra da T02B reutiliza a grade oficial existente e mantém a origem
-    # da tentativa frustrada, sem alterar o instante da captura armazenada.
-    assert resultado["estado"] == "OFICIAL_PRIORITARIA" and resultado["motivo"] == "HTTP_403"
+    assert resultado["estado"] == "OFICIAL_PRIORITARIA"
+    assert resultado["oficial_disponivel"] is True
     assert resultado["partidas"] == anterior["partidas"]
+    assert resultado["motivo"] == "HTTP_403"
+    assert resultado["procedencia"]["verificada_em"] == AGORA.isoformat()
     assert consultar_oficial(*CONTEXTO)["partidas"] == anterior["partidas"]
     assert ImportacaoProgramacao.query.one().verificada_em == AGORA
 

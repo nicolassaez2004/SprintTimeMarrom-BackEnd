@@ -25,15 +25,20 @@ def create_app(config_extra=None):
 
     # Aplicar TLS após os overrides para não passar opções MySQL aos testes SQLite.
     from sqlalchemy.engine import make_url
+
     uri = make_url(app.config["SQLALCHEMY_DATABASE_URI"])
-    if uri.drivername == "mysql+pymysql" and app.config.get("MYSQL_SSL_CA"):
+    if uri.drivername == "mysql+pymysql":
         options = dict(app.config.get("SQLALCHEMY_ENGINE_OPTIONS") or {})
         connect_args = dict(options.get("connect_args") or {})
-        connect_args.update(
-            ssl_ca=app.config["MYSQL_SSL_CA"],
-            ssl_verify_cert=True,
-            ssl_verify_identity=True,
-        )
+        connect_args.setdefault("connect_timeout", 5)
+        connect_args.setdefault("read_timeout", 15)
+        connect_args.setdefault("write_timeout", 15)
+        if app.config.get("MYSQL_SSL_CA"):
+            connect_args.update(
+                ssl_ca=app.config["MYSQL_SSL_CA"],
+                ssl_verify_cert=True,
+                ssl_verify_identity=True,
+            )
         options["connect_args"] = connect_args
         options.setdefault("pool_pre_ping", True)
         app.config["SQLALCHEMY_ENGINE_OPTIONS"] = options
@@ -66,15 +71,14 @@ def create_app(config_extra=None):
     # Rota simples para testar o servidor
     @app.get("/api/health")
     def health():
-        return {
-            "status": "ok",
-            "message": "Backend Flask funcionando"
-        }, 200
+        return {"status": "ok", "message": "Backend Flask funcionando"}, 200
 
     # Registra as rotas da API
     from app.api.routes import api_bp
+
     app.register_blueprint(api_bp)
     from app.correspondencia.routes import qualidade_bp
+
     app.register_blueprint(qualidade_bp)
     from app.programacao.routes import partidas_bp
     app.register_blueprint(partidas_bp)

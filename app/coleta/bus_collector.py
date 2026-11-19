@@ -67,51 +67,18 @@ class BusCollector:
     `FALHA`.
     """
 
+    def __init__(self, servico=None):
+        self.servico = servico
+
     def coletar_ciclo(self, prevista_em=None):
-        iniciado_em = datetime.now(timezone.utc)
-        execucao = ExecucaoColeta(
-            fonte="OLHO_VIVO",
-            prevista_em=prevista_em,
-            iniciada_em=iniciado_em,
-            estado="EM_ANDAMENTO",
-            tentativas=1,
-            recebidos=0,
-            novos_persistidos=0,
-        )
-        db.session.add(execucao)
-        db.session.commit()
+        if self.servico is not None:
+            return self.servico.coletar_ciclo(prevista_em)
+        from app.coleta.resiliencia import executar_worker
 
-        try:
-            cliente = SPTransClient()
-            resposta = cliente.buscar_todas_posicoes()
-            recebidos = self._ler_frota(resposta, execucao.id, iniciado_em)
-            novos = self._descartar_duplicados(recebidos)
-            if novos:
-                self._registrar_veiculos_novos(novos)
-                db.session.add_all(novos)
-            execucao.finalizada_em = datetime.now(timezone.utc)
-            execucao.recebidos = len(recebidos)
-            execucao.novos_persistidos = len(novos)
-            execucao.estado = "OK"
-            execucao.erro = None
-            db.session.commit()
-        except Exception as error:
-            # Só o tipo do erro é gravado: mensagens da SPTrans podem conter o token.
-            logger.exception("Falha no ciclo de coleta GPS")
-            db.session.rollback()
-            execucao.finalizada_em = datetime.now(timezone.utc)
-            execucao.estado = "FALHA"
-            execucao.recebidos = 0
-            execucao.novos_persistidos = 0
-            execucao.erro = type(error).__name__
-            db.session.commit()
-            return 0
-
-        logger.info(
-            "Ciclo concluído: %d posições recebidas, %d novas gravadas.",
-            len(recebidos), len(novos),
+        # Acesso direto também passa pela posse exclusiva e checkpoint.
+        return executar_worker(
+            max_ciclos=1, retornar_total=True, prevista_em=prevista_em
         )
-        return len(novos)
 
     @staticmethod
     def _ler_frota(resposta, execucao_id, iniciado_em):
@@ -140,25 +107,29 @@ class BusCollector:
                 # O objeto original vai no payload; as colunas tipadas são uma
                 # leitura dele, com NULL para ausentes ou inválidos.
                 registros.append(
-                    validar_registro_gps(RegistroBrutoGPS(
-                        execucao_id=execucao_id,
-                        veiculo_prefixo=prefixo,
-                        prefixo_origem=prefixo,
-                        linha_origem=linha_origem,
-                        sentido_origem=sentido,
-                        latitude=_ler_coordenada(veiculo.get("py"), 90),
-                        longitude=_ler_coordenada(veiculo.get("px"), 180),
-                        horario_gps=_ler_horario_api(veiculo.get("ta")),
-                        coletado_em=iniciado_em,
-                        payload=veiculo,
-                    ))
+                    validar_registro_gps(
+                        RegistroBrutoGPS(
+                            execucao_id=execucao_id,
+                            veiculo_prefixo=prefixo,
+                            prefixo_origem=prefixo,
+                            linha_origem=linha_origem,
+                            sentido_origem=sentido,
+                            latitude=_ler_coordenada(veiculo.get("py"), 90),
+                            longitude=_ler_coordenada(veiculo.get("px"), 180),
+                            horario_gps=_ler_horario_api(veiculo.get("ta")),
+                            coletado_em=iniciado_em,
+                            payload=veiculo,
+                        )
+                    )
                 )
         return registros
 
     @staticmethod
     def _registrar_veiculos_novos(registros):
         """Cadastra em `veiculos` os prefixos ainda desconhecidos (FK do bruto)."""
-        prefixos = {r.veiculo_prefixo for r in registros if r.veiculo_prefixo is not None}
+        prefixos = {
+            r.veiculo_prefixo for r in registros if r.veiculo_prefixo is not None
+        }
         if not prefixos:
             return
         existentes = {
@@ -185,6 +156,7 @@ def executar_coletor(
     limpar_sessao=None,
     manter_ativo=None,
     max_ciclos=None,
+    propagar_erros=False,
 ):
     """Roda ciclos em cadência fixa; relógio/espera são injetáveis para testes.
 
@@ -200,6 +172,8 @@ def executar_coletor(
     limpar_sessao = limpar_sessao or db.session.remove
 
     proxima_execucao = relogio()
+    origem_monotonic = proxima_execucao
+    origem_utc = datetime.now(timezone.utc)
     ciclos = 0
     while max_ciclos is None or ciclos < max_ciclos:
         espera = proxima_execucao - relogio()
@@ -211,13 +185,16 @@ def executar_coletor(
             break
 
         # Instante planejado para o ciclo, em UTC (ExecucaoColeta.prevista_em).
-        atraso = max(relogio() - proxima_execucao, 0)
-        prevista_em = datetime.now(timezone.utc) - timedelta(seconds=atraso)
+        prevista_em = origem_utc + timedelta(
+            seconds=proxima_execucao - origem_monotonic
+        )
         try:
             coletar(prevista_em)
         except Exception:
             db.session.rollback()
-            logger.exception("Falha no ciclo de coleta GPS")
+            logger.error("Falha no ciclo de coleta GPS")
+            if propagar_erros:
+                raise
         finally:
             # Garante uma sessão SQL nova a cada execução, mesmo após erro.
             limpar_sessao()
@@ -246,17 +223,21 @@ class LockColetor:
         "liberar": "SELECT RELEASE_LOCK(:nome)",
     }
 
-    def __init__(self, engine, *, nome=NOME_LOCK_COLETOR):
+    def __init__(self, engine, *, nome=None):
         if engine.dialect.name != "mysql":
             raise RuntimeError(
                 f"O coletor requer MySQL para o lock singleton (atual: {engine.dialect.name})"
             )
         self.engine = engine
-        self.nome = nome
+        # Preservar o nome da US01 também impede concorrência com um worker
+        # anterior que ainda esteja rodando durante a atualização do código.
+        self.nome = nome or NOME_LOCK_COLETOR
         self.conexao = None
 
     def _executar(self, comando):
-        return self.conexao.execute(text(self._SQL[comando]), {"nome": self.nome}).scalar()
+        return self.conexao.execute(
+            text(self._SQL[comando]), {"nome": self.nome}
+        ).scalar()
 
     def adquirir(self):
         self.conexao = self.engine.connect()
@@ -277,7 +258,7 @@ class LockColetor:
             self.conexao.commit()
             return ativo
         except Exception:
-            logger.exception("Falha verificando o lock do coletor")
+            logger.error("Falha verificando o lock do coletor")
             return False
 
     def liberar(self):
@@ -287,7 +268,7 @@ class LockColetor:
             self._executar("liberar")
             self.conexao.commit()
         except Exception:
-            logger.exception("Falha liberando o lock do coletor")
+            logger.error("Falha liberando o lock do coletor")
         finally:
             self.conexao.close()
             self.conexao = None
@@ -351,6 +332,11 @@ def imprimir_posicoes_da_linha(termo_linha):
 def main():
     logging.basicConfig(level=logging.INFO)
     parser = argparse.ArgumentParser(description="Coletor de posições GPS da SPTrans")
+    parser.add_argument(
+        "--ciclos",
+        type=int,
+        help="Limita a amostra de execução; ausente mantém coleta contínua",
+    )
     diagnostico = parser.add_mutually_exclusive_group()
     diagnostico.add_argument(
         "--localizar",
@@ -363,6 +349,8 @@ def main():
         help="imprime posições atuais dos veículos da linha informada e encerra",
     )
     args = parser.parse_args()
+    if args.ciclos is not None and args.ciclos < 1:
+        parser.error("--ciclos precisa ser positivo")
 
     app = create_app()
     with app.app_context():
@@ -371,21 +359,9 @@ def main():
         elif args.linha:
             imprimir_posicoes_da_linha(args.linha)
         else:
-            lock = LockColetor(db.engine)
-            if not lock.adquirir():
-                logger.error("Já existe um processo coletor ativo para este banco.")
-                return 1
-            try:
-                executar_coletor(
-                    app.config.get(
-                        "GPS_COLLECTION_INTERVAL_SECONDS",
-                        INTERVALO_COLETA_SEGUNDOS,
-                    ),
-                    manter_ativo=lock.ativo,
-                )
-            finally:
-                lock.liberar()
-                db.session.remove()
+            from app.coleta.resiliencia import executar_worker
+
+            return executar_worker(max_ciclos=args.ciclos)
     return 0
 
 

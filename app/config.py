@@ -17,6 +17,7 @@ def validar_intervalo_coleta(valor):
 
 
 class Config:
+    COLETA_STATE_DIR = os.getenv('COLETA_STATE_DIR') or None
     # Banco de dados
     SQLALCHEMY_DATABASE_URI = os.getenv("DATABASE_URL")
 

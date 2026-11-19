@@ -69,6 +69,8 @@ O esquema é versionado com Flask-Migrate (Alembic), em `migrations/versions/`:
 - `0010_us03_programacao`: integra US03/US04 em uma linha de migração.
 - `0011_merge_us12_us03`: une a linha US12 (`0009`) à US03/US04 (`0010`),
   sem repetir DDLs.
+- `us29_0012`: lacunas, notificações internas, posse exclusiva e medição de
+  confirmação da coleta ([US29](docs/US29.md)).
 
 A importação/consulta de partidas é explícita: `python -m app.programacao --help`.
 Consulte [US04-T01](docs/US04-T01.md) para fontes, normalização, testes e o
@@ -363,3 +365,21 @@ Bases existentes da Aiven em `0010_us03_programacao`, compatíveis com a entrega
 
 Consultar com o backend iniciado:
 `GET /qualidade/correspondencias?data=2026-11-19`
+
+## Coleta resistente a falhas — US29
+
+O worker usa no máximo seis tentativas de consulta, espera crescente, checkpoint
+persistente e proteção contra duplicação. Alertas após 10 minutos e recuperação
+ficam na caixa interna compartilhada, com cópia local durante queda do banco.
+
+```powershell
+python -m app.coleta.bus_collector
+python -m app.monitoramento alertas
+```
+
+A coleta precisa permanecer em um processo separado do Flask. Para uma amostra
+limitada, acrescentar `--ciclos 2`. O estado padrão fica em `instance/coleta/`;
+`COLETA_STATE_DIR` permite escolher um volume persistente.
+
+Na amostra real da Aiven, os dois ciclos gravaram em **18,939 s e 16,017 s**.
+É uma amostra curta, não uma observação mensal. [Evidência e critérios](docs/evidencias/US29-2026-11-19.json).
