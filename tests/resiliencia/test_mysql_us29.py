@@ -2,23 +2,25 @@
 
 import os
 from datetime import timedelta
+from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import Mock
-from pathlib import Path
+
 import pytest
+from flask_migrate import upgrade
 from sqlalchemy import inspect, text
 from sqlalchemy.engine import make_url
 from sqlalchemy.exc import OperationalError
-from flask_migrate import upgrade
+from test_us29 import Clock, resposta
+
 from app import create_app, db
-from app.models import ExecucaoColeta, RegistroBrutoGPS, LacunaColeta, NotificacaoColeta
 from app.coleta.bus_collector import LockColetor
 from app.coleta.resiliencia import CicloResiliente
 from app.integrations.sptrans import SPTransConexaoError
-from app.repositories.coleta import ColetaRepository, PossePerdida
+from app.models import ExecucaoColeta, LacunaColeta, NotificacaoColeta, RegistroBrutoGPS
 from app.monitoramento.journal import JournalColeta
 from app.monitoramento.metricas import medir_gravacao
-from test_us29 import Clock, resposta
+from app.repositories.coleta import ColetaRepository, PossePerdida
 
 
 def test_mysql_migracao_lock_reinicio_outbox_e_metrica(tmp_path, monkeypatch):
@@ -56,7 +58,8 @@ def test_mysql_migracao_lock_reinicio_outbox_e_metrica(tmp_path, monkeypatch):
             )
             assert service.coletar_ciclo(clock.inicio) == 1
             assert ExecucaoColeta.query.one().tentativas == 2
-            assert LacunaColeta.query.one().fim is not None
+            # Falha de 1 s recuperada antes do próximo ciclo: sem lacuna.
+            assert LacunaColeta.query.count() == 0
             # Resposta HTTP sem horário: commit do MySQL confirmado, ACK perdido.
             client.buscar_todas_posicoes = Mock(
                 return_value=resposta(clock, sem_horario=True)

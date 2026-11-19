@@ -12,10 +12,11 @@ from pathlib import Path
 from filelock import FileLock
 from filelock import Timeout as ArquivoOcupado
 from flask import current_app
-from sqlalchemy.exc import DBAPIError
+from sqlalchemy.exc import DataError, IntegrityError
 
 from app import db
-from app.monitoramento.journal import JournalColeta, instante
+from app.integrations.alertas import AlertaWebhook
+from app.monitoramento.journal import JournalColeta, instante, juntar_causas
 from app.repositories.coleta import ColetaRepository, PossePerdida
 
 from .retentativas import ESPERAS, MAX_TENTATIVAS, causa_segura, temporaria
@@ -47,8 +48,10 @@ class CicloResiliente:
         agora=None,
         monotonic=time.monotonic,
         dormir=time.sleep,
+        intervalo=30,
     ):
         self.journal = journal
+        self.intervalo = intervalo
         self.repo = repository
         self.cliente = cliente
         self.ativo = ativo
@@ -56,12 +59,36 @@ class CicloResiliente:
         self.monotonic = monotonic
         self.dormir = dormir
 
-    def falha(self, erro, inicio=None):
-        id = self.journal.abrir_lacuna(causa_segura(erro), inicio)
+    def registrar_falha(self, erro, inicio=None):
+        """Só anota a falha; a lacuna abre se o ciclo não gravar a tempo."""
+        causa = causa_segura(erro)
         c = self.journal.dados["ciclo"]
-        if c is not None:
-            self.journal.atualizar_ciclo(lacuna_id=id, erro=causa_segura(erro))
+        causas = c.get("causas") or []
+        self.journal.atualizar_ciclo(
+            erro=causa,
+            causas=causas + [causa] if causa not in causas else causas,
+            falha_inicio=c.get("falha_inicio") or (inicio or self.agora()).isoformat(),
+        )
+        self.journal.acrescentar_causa(causa)
         self.journal.verificar_alerta()
+
+    def abrir_lacuna(self):
+        """Intervalo sem cobertura, desde a primeira tentativa que falhou."""
+        c = self.journal.dados["ciclo"]
+        inicio = c.get("falha_inicio")
+        id = self.journal.abrir_lacuna(
+            juntar_causas(*(c.get("causas") or [c["erro"]])),
+            instante(inicio) if inicio else None,
+        )
+        self.journal.atualizar_ciclo(lacuna_id=id)
+        self.journal.verificar_alerta()
+
+    def _gravar(self, operacao, *args):
+        """Transação do repositório; após o commit, poda o checkpoint."""
+        snapshot = self.journal.snapshot()
+        resultado = operacao(self.journal.dados["ciclo"], snapshot, *args)
+        self.journal.podar(snapshot)
+        return resultado
 
     def _posse(self):
         if not self.ativo():
@@ -73,7 +100,7 @@ class CicloResiliente:
         inicio_mono = self.monotonic()
         try:
             self._posse()
-            self.repo.inicio(c, self.journal.snapshot())
+            self._gravar(self.repo.inicio)
             while c["resposta"] is None and not c["final_falha"]:
                 if c["tentativas"] >= MAX_TENTATIVAS:
                     self.journal.atualizar_ciclo(final_falha=True)
@@ -100,7 +127,7 @@ class CicloResiliente:
                         resposta=resposta, coletado_em=coletado.isoformat()
                     )
                 except Exception as erro:
-                    self.falha(erro, inicio_tentativa)
+                    self.registrar_falha(erro, inicio_tentativa)
                     if not temporaria(erro) or c["tentativas"] >= MAX_TENTATIVAS:
                         self.journal.atualizar_ciclo(final_falha=True)
                         break
@@ -115,8 +142,16 @@ class CicloResiliente:
                             fechar()
                         except Exception:
                             logger.error("Falha ao fechar sessão da fonte")
+            # Falha recuperada antes do próximo ciclo previsto não deixou
+            # intervalo sem cobertura; além disso, ou sem gravação, é lacuna.
+            if c["final_falha"] or (
+                c.get("falha_inicio")
+                and (self.agora() - instante(c["falha_inicio"])).total_seconds()
+                > self.intervalo
+            ):
+                self.abrir_lacuna()
             self._posse()
-            total = self.repo.concluir(c, self.journal.snapshot(), self.agora())
+            total = self._gravar(self.repo.concluir, self.agora())
             if not c["final_falha"]:
                 if c["confirmada_em"] is None:
                     confirmada = self.agora().isoformat()
@@ -131,7 +166,7 @@ class CicloResiliente:
                     )
                 self.journal.recuperar(self.agora())
                 self._posse()
-                self.repo.confirmar(c, self.journal.snapshot())
+                self._gravar(self.repo.confirmar)
             self.journal.encerrar_ciclo()
             logger.info(
                 "Ciclo %s: %s, tentativas=%d, novos=%d",
@@ -143,8 +178,9 @@ class CicloResiliente:
             return total
         except Exception as erro:
             db.session.rollback()
-            self.falha(erro)
-            if isinstance(erro, DBAPIError) and not temporaria(erro):
+            self.registrar_falha(erro)
+            self.abrir_lacuna()
+            if isinstance(erro, (IntegrityError, DataError)):
                 from app.monitoramento.journal import publicar
 
                 self.journal.atualizar_ciclo(final_falha=True)
@@ -154,7 +190,7 @@ class CicloResiliente:
                     self.journal.diretorio / "rejeitados" / (c["chave"] + ".json"), c
                 )
                 self._posse()
-                self.repo.concluir(c, self.journal.snapshot(), self.agora())
+                self._gravar(self.repo.concluir, self.agora())
                 self.journal.encerrar_ciclo()
                 return 0
             raise
@@ -179,7 +215,12 @@ def executar_worker(
     pasta.mkdir(parents=True, exist_ok=True)
     try:
         with FileLock(pasta / "worker.lock", timeout=0):
-            journal = JournalColeta(pasta, **({"agora": agora} if agora else {}))
+            url = current_app.config.get("ALERTA_WEBHOOK_URL")
+            journal = JournalColeta(
+                pasta,
+                notificar=AlertaWebhook(url) if url else None,
+                **({"agora": agora} if agora else {}),
+            )
             parar = threading.Event()
             monitor = threading.Thread(
                 target=journal.vigiar, args=(parar,), daemon=True
@@ -207,6 +248,7 @@ def executar_worker(
                             SPTransClient,
                             ativo=lock.ativo,
                             dormir=dormir,
+                            intervalo=intervalo,
                         )
                         resultado = [0]
                         coletor = BusCollector(servico=ciclo)
@@ -235,10 +277,13 @@ def executar_worker(
                         journal.abrir_lacuna(causa_segura(erro))
                         journal.verificar_alerta()
                         logger.error("Coletor aguarda retomada: %s", causa_segura(erro))
-                        if isinstance(erro, PossePerdida) and retornar_total:
+                        if retornar_total and (
+                            isinstance(erro, PossePerdida) or not temporaria(erro)
+                        ):
                             raise
-                        if not temporaria(erro) and not isinstance(erro, PossePerdida):
-                            raise
+                        # Worker contínuo nunca encerra sozinho: mesmo um erro
+                        # não classificado (bug, configuração) mantém a lacuna
+                        # aberta, gera o alerta de 10 min e é tentado de novo.
                         dormir(min(2 ** min(reconexoes, 5), 30))
                         reconexoes += 1
                     finally:

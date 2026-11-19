@@ -27,7 +27,7 @@ def listar_alertas(limite=100):
         .all()
     )
     mensagens = {
-        "TESTE": "TESTE US29: caixa interna funcionando. Não representa falha real da coleta.",
+        "TESTE": "TESTE US29: canal de alertas funcionando. Não representa falha real da coleta.",
         "FALHA": "Falha contínua da coleta há pelo menos 10 minutos.",
         "RECUPERACAO": "Coleta recuperada e gravação confirmada.",
     }
@@ -117,16 +117,14 @@ class ColetaRepository:
             )
             for l in snapshot["lacunas"]
         ]
-        self._upsert(
-            LacunaColeta.__table__, lacunas, {"id", "inicio", "causa", "fonte"}
-        )
+        self._upsert(LacunaColeta.__table__, lacunas, {"id", "inicio", "fonte"})
         alertas = [
             dict(
                 id=a["id"],
                 lacuna_id=a["lacuna_id"],
                 tipo=a["tipo"],
                 criada_em=instante(a["criada_em"]),
-                enviada_em=instante(a["enviada_em"]),
+                enviada_em=instante(a["enviada_em"]) if a["enviada_em"] else None,
                 canal=a["canal"],
             )
             for a in snapshot["alertas"]
@@ -150,9 +148,9 @@ class ColetaRepository:
                 chave_logica=ciclo["chave"],
                 fonte="OLHO_VIVO",
                 iniciada_em=instante(ciclo["inicio"]),
-                prevista_em=instante(ciclo["prevista_em"])
-                if ciclo["prevista_em"]
-                else None,
+                prevista_em=(
+                    instante(ciclo["prevista_em"]) if ciclo["prevista_em"] else None
+                ),
                 estado="EM_ANDAMENTO",
                 tentativas=0,
                 recebidos=0,
@@ -270,6 +268,8 @@ class ColetaRepository:
             proxima = ultima.prevista_em + timedelta(seconds=intervalo)
             if agora > proxima and chave is None:
                 journal.abrir_lacuna("PROCESSO_INTERROMPIDO", proxima)
-        self.sincronizar(journal.snapshot())
+        snapshot = journal.snapshot()
+        self.sincronizar(snapshot)
         db.session.commit()
+        journal.podar(snapshot)
         journal.salvar()
