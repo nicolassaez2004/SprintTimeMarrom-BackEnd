@@ -63,6 +63,7 @@ def create_app(config_extra=None):
             r"/posicoes/atuais": {"origins": origens_frontend},
             r"/qualidade": {"origins": origens_frontend},
             r"/documentos": {"origins": origens_frontend},
+            r"/downloads": {"origins": origens_frontend},
         }
     )
 
@@ -91,5 +92,7 @@ def create_app(config_extra=None):
     app.register_blueprint(qualidade_coleta_bp)
     from app.documentos.routes import documentos_bp
     app.register_blueprint(documentos_bp)
+    from app.exportacoes.routes import downloads_bp
+    app.register_blueprint(downloads_bp)
 
     return app

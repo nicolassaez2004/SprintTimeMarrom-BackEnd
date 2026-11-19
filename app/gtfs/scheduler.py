@@ -146,12 +146,35 @@ def verificar_gtfs(prevista_em=None, *, relogio=None, cliente=None):
     return resultado
 
 
+def _executar_periodicas(periodicas, agora, bloqueadas):
+    """Tarefas idempotentes chamadas a cada volta (no máximo 60 s entre elas).
+
+    A falha de uma não afeta o GTFS nem as demais; ela só volta a ser tentada
+    após INTERVALO_REPETICAO, para não repetir uma rotina pesada a cada minuto.
+    """
+    for tarefa in periodicas:
+        nome = getattr(tarefa, "__name__", repr(tarefa))
+        if bloqueadas.get(nome, agora) > agora:
+            continue
+        try:
+            tarefa(agora)
+            bloqueadas.pop(nome, None)
+        except Exception as erro:
+            db.session.rollback()
+            bloqueadas[nome] = agora + INTERVALO_REPETICAO
+            _registrar("tarefa_periodica_falha", logging.ERROR,
+                       tarefa=nome, tipo_erro=type(erro).__name__)
+        finally:
+            db.session.remove()
+
+
 def executar_tarefas(*, relogio=None, dormir=None, manter_ativo=None,
-                     verificar=None, max_ciclos=None):
+                     verificar=None, max_ciclos=None, periodicas=()):
     """Ciclo imediato quando devido; depois aguarda a agenda persistida.
 
     Relógio e espera injetáveis permitem simular dias sem acessar rede/MySQL.
     O chamador deve manter o lock exclusivo durante toda a execução.
+    `periodicas` recebe callables `tarefa(agora)` executados no mesmo processo.
     """
     relogio = relogio or agora_utc
     dormir = dormir or time.sleep
@@ -159,11 +182,13 @@ def executar_tarefas(*, relogio=None, dormir=None, manter_ativo=None,
     manter_ativo = manter_ativo or (lambda: True)
     ciclos = 0
     recuperado = False
+    bloqueadas = {}
     while max_ciclos is None or ciclos < max_ciclos:
         if not manter_ativo():
             _registrar("gtfs_lock_perdido", logging.ERROR)
             break
         try:
+            _executar_periodicas(periodicas, _instante(relogio), bloqueadas)
             agora = _instante(relogio)
             if not recuperado:
                 recuperar_interrompidas(agora)

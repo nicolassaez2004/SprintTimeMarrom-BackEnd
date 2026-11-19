@@ -3,7 +3,9 @@
 from __future__ import annotations
 
 import json
+import logging
 import os
+import re
 import tempfile
 from datetime import date, datetime, time, timedelta, timezone
 from pathlib import Path
@@ -12,6 +14,8 @@ from zoneinfo import ZoneInfo
 import pyarrow as pa
 import pyarrow.parquet as pq
 from sqlalchemy import and_, or_, select
+
+from flask import current_app
 
 from app import db
 from app.models import RegistroBrutoGPS
@@ -23,6 +27,14 @@ LICENCA = "CC BY 4.0"
 LICENCA_URL = "https://creativecommons.org/licenses/by/4.0/"
 # Dia operacional de São Paulo, como nas demais rotinas diárias do projeto.
 FUSO = ZoneInfo("America/Sao_Paulo")
+# Folga após a meia-noite para os últimos ciclos do dia serem gravados (US29:
+# registro em até 60 s). Exportação anterior a isso não é considerada completa.
+MARGEM_FECHAMENTO = timedelta(minutes=10)
+# US09: arquivo do dia D disponível até 06:00 de D+1 (America/Sao_Paulo).
+HORARIO_LIMITE = time(6)
+MIME_PARQUET = "application/vnd.apache.parquet"
+_NOME = re.compile(r"registros_gps_([0-9]{4}-[0-9]{2}-[0-9]{2})\.parquet")
+logger = logging.getLogger(__name__)
 
 _SCHEMA = pa.schema([
     pa.field("id", pa.int64()),
@@ -40,6 +52,13 @@ _SCHEMA = pa.schema([
 ])
 
 
+def periodo_utc(dia):
+    """[00:00 de D, 00:00 de D+1) em America/Sao_Paulo, convertido para UTC."""
+    inicio = datetime.combine(dia, time.min, tzinfo=FUSO).astimezone(timezone.utc)
+    fim = datetime.combine(dia + timedelta(days=1), time.min, tzinfo=FUSO).astimezone(timezone.utc)
+    return inicio, fim
+
+
 def _utc(value):
     if value is None:
         return None
@@ -48,7 +67,7 @@ def _utc(value):
     return value.astimezone(timezone.utc)
 
 
-def gerar_parquet_diario(dia: date, destino, *, tamanho_lote: int = 5000) -> dict:
+def gerar_parquet_diario(dia: date, destino, *, tamanho_lote: int = 5000, relogio=None) -> dict:
     """Exporta `coletado_em` no dia de São Paulo informado; publica só ao concluir.
 
     Os instantes continuam em UTC no arquivo. A consulta é paginada por
@@ -62,8 +81,9 @@ def gerar_parquet_diario(dia: date, destino, *, tamanho_lote: int = 5000) -> dic
 
     destino = Path(destino)
     destino.parent.mkdir(parents=True, exist_ok=True)
-    inicio = datetime.combine(dia, time.min, tzinfo=FUSO).astimezone(timezone.utc)
-    fim = datetime.combine(dia + timedelta(days=1), time.min, tzinfo=FUSO).astimezone(timezone.utc)
+    inicio, fim = periodo_utc(dia)
+    # Registrado antes do snapshot da transação: tudo gravado até aqui está no arquivo.
+    gerado_em = (relogio or (lambda: datetime.now(timezone.utc)))().astimezone(timezone.utc)
     colunas = [
         RegistroBrutoGPS.id, RegistroBrutoGPS.execucao_id,
         RegistroBrutoGPS.veiculo_prefixo, RegistroBrutoGPS.prefixo_origem,
@@ -81,6 +101,7 @@ def gerar_parquet_diario(dia: date, destino, *, tamanho_lote: int = 5000) -> dic
         b"date_field": b"coletado_em, dia em America/Sao_Paulo; instantes em UTC",
         b"period_start_utc": inicio.isoformat().encode(),
         b"period_end_utc": fim.isoformat().encode(),
+        b"generated_at_utc": gerado_em.isoformat().encode(),
     }
     esquema = _SCHEMA.with_metadata(metadados)
     temp_path = None
@@ -148,3 +169,126 @@ def gerar_parquet_diario(dia: date, destino, *, tamanho_lote: int = 5000) -> dic
             writer.close()
         if temp_path is not None:
             temp_path.unlink(missing_ok=True)
+
+
+# --- Publicação e catálogo (US09-T02) ---------------------------------------
+
+def diretorio_exportacoes():
+    return Path(current_app.config.get("EXPORTACOES_DIR")
+                or Path(current_app.instance_path) / "exportacoes")
+
+
+def nome_arquivo(dia):
+    return f"registros_gps_{dia.isoformat()}.parquet"
+
+
+def prazo_publicacao(dia):
+    """06:00 de D+1 em São Paulo, em UTC."""
+    return datetime.combine(dia + timedelta(days=1), HORARIO_LIMITE, tzinfo=FUSO).astimezone(timezone.utc)
+
+
+def arquivo_completo(diretorio, dia):
+    """Resumo público do Parquet de `dia`, ou None se ausente/parcial/inválido.
+
+    Completo = nome final (temporários ficam ocultos), rodapé Parquet legível,
+    esquema da exportação, metadado `date` igual ao dia e geração iniciada após
+    o fim do dia + MARGEM_FECHAMENTO. Uma exportação manual do dia corrente não
+    passa nesta última regra.
+    """
+    caminho = Path(diretorio) / nome_arquivo(dia)
+    try:
+        metadados = pq.read_metadata(caminho)
+        extras = metadados.metadata or {}
+        _, fim = periodo_utc(dia)
+        gerado_em = datetime.fromisoformat(extras[b"generated_at_utc"].decode())
+        if (extras.get(b"date") != dia.isoformat().encode()
+                or not metadados.schema.to_arrow_schema().equals(_SCHEMA)
+                or gerado_em < fim + MARGEM_FECHAMENTO):
+            return None
+    except (OSError, KeyError, ValueError, pa.ArrowException):
+        return None
+    return {"caminho": caminho, "data": dia.isoformat(), "registros": metadados.num_rows,
+            "tamanho_bytes": caminho.stat().st_size, "gerado_em": gerado_em.isoformat()}
+
+
+def datas_disponiveis(diretorio):
+    """Dias com Parquet completo, do mais recente ao mais antigo."""
+    diretorio = Path(diretorio)
+    if not diretorio.is_dir():
+        return []
+    itens = []
+    for caminho in diretorio.iterdir():
+        encontrado = _NOME.fullmatch(caminho.name)
+        if not encontrado:
+            continue
+        try:
+            dia = date.fromisoformat(encontrado.group(1))
+        except ValueError:
+            continue
+        resumo = arquivo_completo(diretorio, dia)
+        if resumo is not None:
+            itens.append(resumo)
+    return sorted(itens, key=lambda item: item["data"], reverse=True)
+
+
+def dia_a_publicar(agora):
+    """Último dia de São Paulo já encerrado há pelo menos MARGEM_FECHAMENTO."""
+    local = (agora.astimezone(timezone.utc) - MARGEM_FECHAMENTO).astimezone(FUSO)
+    return local.date() - timedelta(days=1)
+
+
+def publicar_brutos(agora, *, diretorio=None, relogio=None):
+    """Tarefa periódica do processo `app.tarefas`: idempotente e sem estado.
+
+    Gera o Parquet do último dia encerrado se ainda não houver arquivo completo.
+    Retorna o resultado da exportação, ou None quando não há o que publicar.
+    """
+    relogio = relogio or (lambda: datetime.now(timezone.utc))
+    diretorio = Path(diretorio or diretorio_exportacoes())
+    dia = dia_a_publicar(agora)
+    if arquivo_completo(diretorio, dia) is not None:
+        return None
+    resultado = gerar_parquet_diario(dia, diretorio / nome_arquivo(dia), relogio=relogio)
+    publicado_em = relogio().astimezone(timezone.utc)
+    no_prazo = publicado_em <= prazo_publicacao(dia)
+    logger.log(logging.INFO if no_prazo else logging.ERROR, json.dumps({
+        "evento": "brutos_parquet_publicado" if no_prazo else "brutos_parquet_prazo_excedido",
+        "data": dia.isoformat(), "registros": resultado["registros"],
+        "publicado_em": publicado_em.isoformat(), "prazo": prazo_publicacao(dia).isoformat(),
+    }))
+    return {**resultado, "publicado_em": publicado_em.isoformat(), "prazo_atendido": no_prazo}
+
+
+_DESCRICOES = {
+    "id": ("Identificador do registro bruto na base (registros_gps.id).", None),
+    "execucao_id": ("Ciclo de coleta (ExecucaoColeta) que persistiu o registro pela primeira vez.", None),
+    "veiculo_prefixo": ("Prefixo do veículo no cadastro de veículos; igual a prefixo_origem quando informado.", None),
+    "prefixo_origem": ("Prefixo do veículo como recebido da API Olho Vivo (campo p).", None),
+    "linha_origem": ("Código interno da linha na API Olho Vivo (campo cl); não é o letreiro.", None),
+    "sentido_origem": ("Sentido de operação recebido (campo sl): 1 = terminal principal → secundário; "
+                       "2 = secundário → principal. Outros valores ficam nulos.", None),
+    "latitude": ("Latitude da posição (campo py). Nula se ausente ou fora de [-90, 90].", "graus decimais"),
+    "longitude": ("Longitude da posição (campo px). Nula se ausente ou fora de [-180, 180].", "graus decimais"),
+    "horario_gps": ("Instante da posição informado pela API (campo ta). Nulo se ausente ou inválido.",
+                    "instante UTC, precisão de microssegundos"),
+    "coletado_em": ("Início da consulta à API que produziu o registro. Define o dia do arquivo "
+                    "(dia civil em America/Sao_Paulo).", "instante UTC, precisão de microssegundos"),
+    "payload": ("Objeto do veículo como recebido da API, serializado como texto JSON UTF-8.", "JSON"),
+}
+
+
+def dicionario_dados():
+    """Dicionário gerado a partir do esquema real dos arquivos (_SCHEMA)."""
+    return {
+        "arquivo": "registros_gps_AAAA-MM-DD.parquet",
+        "formato": "Apache Parquet, compressão snappy",
+        "tipo_conteudo": MIME_PARQUET,
+        "recorte": "coletado_em no dia civil de America/Sao_Paulo; instantes gravados em UTC",
+        "disponibilidade": "arquivo do dia D publicado até 06:00 de D+1 (America/Sao_Paulo)",
+        "fonte": FONTE, "fonte_url": FONTE_URL, "licenca": LICENCA, "licenca_url": LICENCA_URL,
+        "metadados_arquivo": ["source", "source_url", "license", "license_url", "date", "date_field",
+                              "period_start_utc", "period_end_utc", "generated_at_utc"],
+        "campos": [{"nome": campo.name, "tipo": str(campo.type), "anulavel": campo.nullable,
+                    "descricao": _DESCRICOES[campo.name][0], "unidade": _DESCRICOES[campo.name][1]}
+                   for campo in _SCHEMA],
+    }
