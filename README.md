@@ -83,6 +83,10 @@ A consulta de partidas persistidas atende em
 `/api/partidas`). Filtros, respostas, schema e evidência em
 [US04-T03](docs/US04-T03.md). A rota não gera programação.
 
+A conferência de 30 linhas contra o GTFS real, com dois sentidos e registro das
+diferenças, está em [US04-T04](docs/US04-T04.md). O ensaio usa SQLite local e
+preserva as pendências de revisão e validação operacional.
+
 **Banco novo:** `flask --app app db upgrade`.
 
 **Banco que já tem as tabelas da `main`** (criadas antes das migrações):

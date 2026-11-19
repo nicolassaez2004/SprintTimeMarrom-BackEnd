@@ -1,0 +1,97 @@
+{
+  "verificado_em": "2026-11-19T16:02:39.351138+00:00",
+  "bancos": [
+    {
+      "banco": "sptrans_dev",
+      "quantidades": {
+        "versoes_gtfs": 1,
+        "linhas": 1366,
+        "importacoes_programacao": 0,
+        "partidas_programadas": 0
+      },
+      "versoes": [
+        {
+          "id": "4939c8b4-deac-462e-a106-807d81dd893a",
+          "hash": "3141809bcbb8c1677244bd3e4499faa612857d9685d056317b137dc1d0195655",
+          "vigencia_inicio": "2026-11-19",
+          "vigencia_fim": null,
+          "capturada_em": "2026-11-19 11:39:00.397655",
+          "chave": "gtfs/3141809bcbb8c1677244bd3e4499faa612857d9685d056317b137dc1d0195655.zip",
+          "tamanho_bytes": 14326297
+        }
+      ],
+      "amostra_codigos": [
+        "1012-10",
+        "1012-21",
+        "1014-10",
+        "1015-10",
+        "1016-10",
+        "1017-10",
+        "1018-10",
+        "1019-10",
+        "1020-10",
+        "1021-10",
+        "1022-10",
+        "1023-10",
+        "1024-10",
+        "1025-10",
+        "1026-10",
+        "1027-10",
+        "1034-10",
+        "1036-10",
+        "106A-10",
+        "107T-10",
+        "1156-10",
+        "1177-10",
+        "1177-31",
+        "1178-10",
+        "1178-31",
+        "1178-32",
+        "1178-33",
+        "1178-42",
+        "118C-10",
+        "118Y-10",
+        "119C-10",
+        "119L-10",
+        "1206-10",
+        "121G-10",
+        "128Y-10",
+        "129F-10",
+        "129F-41",
+        "139A-10",
+        "148L-10",
+        "148P-10"
+      ],
+      "programacoes": []
+    },
+    {
+      "banco": "sptrans_test",
+      "quantidades": {
+        "versoes_gtfs": 0,
+        "linhas": 0,
+        "importacoes_programacao": 0,
+        "partidas_programadas": 0
+      },
+      "versoes": [],
+      "amostra_codigos": [],
+      "programacoes": []
+    }
+  ],
+  "fontes": {
+    "catalogo_oficial": {
+      "url": "https://itinerariosapi.sptrans.com.br/RetornarLinhasTeste",
+      "metodo": "POST",
+      "status": 403,
+      "content_type": "text/plain; charset=utf-8"
+    },
+    "gtfs": {
+      "url": "https://www.sptrans.com.br/umbraco/Surface/PerfilDesenvolvedor/BaixarGTFS?memberName=sptrans",
+      "metodo": "GET",
+      "status": 200,
+      "content_type": "application/octet-stream",
+      "arquivo": "gtfs.zip",
+      "sha256": "3141809bcbb8c1677244bd3e4499faa612857d9685d056317b137dc1d0195655",
+      "tamanho_bytes": 14326297
+    }
+  }
+}

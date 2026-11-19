@@ -1,0 +1,32 @@
+{
+  "tarefa": "US04-T04",
+  "data": "2026-11-19",
+  "divergencias_de_totais": [],
+  "aprovado": false,
+  "pendencias": [
+    {
+      "id": "US04-T04-P01",
+      "estado": "ABERTA",
+      "assunto": "Revisão da amostra e aceite por outra pessoa",
+      "detalhe": "Os 30 totais conferem no ensaio local. O PO ou outro integrante deve revisar as linhas, datas, sentidos, referência e resultados antes de aprovar."
+    },
+    {
+      "id": "US04-T04-P02",
+      "estado": "ABERTA",
+      "assunto": "Validação operacional no banco compartilhado",
+      "detalhe": "A consulta somente leitura encontrou zero importações e zero partidas na Aiven. O ensaio foi realizado em SQLite novo, sem gravar na Aiven. A persistência e consulta em operação ainda não foram conferidas para essa amostra."
+    },
+    {
+      "id": "US04-T04-P03",
+      "estado": "ABERTA",
+      "assunto": "Confronto com horários do portal, se exigido pelo PO",
+      "detalhe": "A consulta ao catálogo de horários do portal retornou HTTP 403. A referência desta conferência é o GTFS real publicado pela SPTrans, fonte de fallback da US04. Não foi comprovada equivalência com partidas oficiais do portal."
+    },
+    {
+      "id": "US04-T04-P04",
+      "estado": "LIMITACAO_REGISTRADA",
+      "assunto": "Cobertura real de oferta fixa",
+      "detalhe": "As 2268 viagens deste GTFS possuem frequencies.txt. A amostra cobre oferta por frequência; não se inventaram partidas FIXA para completar cobertura. Oferta fixa e exceções de calendário têm testes sintéticos separados, sem comprovação operacional neste feed."
+    }
+  ]
+}
