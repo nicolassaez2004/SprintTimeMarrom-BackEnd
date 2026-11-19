@@ -21,6 +21,14 @@ from app.repositories import programacao as repositorio
 from app.storage import FileStore
 
 
+class LinhaNaoEncontrada(LookupError):
+    pass
+
+
+class ProgramacaoAmbigua(LookupError):
+    pass
+
+
 def _armazenamento(diretorio=None):
     return FileStore(diretorio or current_app.config.get("PROGRAMACAO_STORAGE_DIR")
                      or Path(current_app.instance_path) / "programacao")
@@ -219,3 +227,25 @@ def consultar_oficial(linha, sentido, data_operacao, tipo_dia, *, versao_fonte=N
     # Nunca devolver como verificável uma captura cujo bruto sumiu ou mudou.
     _armazenamento(diretorio).caminho_programacao(item.arquivo.chave, item.versao_fonte)
     return _serializar(item, "ARMAZENADA")
+
+
+def consultar_partidas(filtros):
+    """Leitura para HTTP: nenhum download, geração, gravação ou acesso ao FileStore.
+
+    Sem tipo de dia explícito, só atende um contexto de calendário inequívoco.
+    A fonte oficial tem prioridade, conforme a US04-T02B. Dentro da fonte,
+    escolhe a captura verificada mais recentemente.
+    """
+    versao = _selecionar_versao(filtros.data, filtros.versao_gtfs_id)
+    if repositorio.obter_linha(versao.id, filtros.linha) is None:
+        raise LinhaNaoEncontrada("Linha não encontrada na versão GTFS selecionada.")
+    item, tipos = repositorio.consultar_por_dia(
+        versao.id, filtros.linha, filtros.sentido, filtros.data, filtros.tipo_dia,
+    )
+    if len(tipos) > 1:
+        raise ProgramacaoAmbigua("Há grades de tipos de dia diferentes; informe tipo_dia.")
+    if item is None:
+        return {"estado": "NAO_IMPORTADA", "linha": filtros.linha, "sentido": filtros.sentido,
+                "data_operacao": filtros.data.isoformat(), "tipo_dia": filtros.tipo_dia,
+                "quantidade": 0, "procedencia": None, "partidas": []}
+    return _serializar(item, "DISPONIVEL" if item.partidas else "SEM_PARTIDAS")

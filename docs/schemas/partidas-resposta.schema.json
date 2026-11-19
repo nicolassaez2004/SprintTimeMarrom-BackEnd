@@ -1,0 +1,88 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "GET /partidas — resposta HTTP 200",
+  "$ref": "#/$defs/ConsultaPartidas",
+  "$defs": {
+    "ConsultaPartidas": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["estado", "linha", "sentido", "data_operacao", "tipo_dia", "quantidade", "procedencia", "partidas"],
+      "properties": {
+        "estado": {"enum": ["DISPONIVEL", "SEM_PARTIDAS", "NAO_IMPORTADA"]},
+        "linha": {"type": "string", "minLength": 1, "maxLength": 64},
+        "sentido": {"enum": ["0", "1"]},
+        "data_operacao": {"type": "string", "format": "date"},
+        "tipo_dia": {"enum": ["UTIL", "SABADO", "DOMINGO", "FERIADO", null]},
+        "quantidade": {"type": "integer", "minimum": 0},
+        "procedencia": {"oneOf": [{"type": "null"}, {"$ref": "#/$defs/Procedencia"}]},
+        "partidas": {"type": "array", "items": {"$ref": "#/$defs/Partida"}}
+      },
+      "allOf": [
+        {
+          "if": {"properties": {"estado": {"const": "DISPONIVEL"}}},
+          "then": {"properties": {"quantidade": {"minimum": 1}, "partidas": {"minItems": 1}}},
+          "else": {"properties": {"quantidade": {"const": 0}, "partidas": {"maxItems": 0}}}
+        },
+        {
+          "if": {"properties": {"estado": {"const": "NAO_IMPORTADA"}}},
+          "then": {"properties": {"procedencia": {"type": "null"}}},
+          "else": {"properties": {"procedencia": {"$ref": "#/$defs/Procedencia"}, "tipo_dia": {"type": "string"}}}
+        }
+      ]
+    },
+    "Procedencia": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["fonte", "versao_fonte", "versao_gtfs_id", "url", "referencia", "capturada_em", "verificada_em", "arquivo"],
+      "properties": {
+        "fonte": {"enum": ["OFICIAL", "GTFS"]},
+        "versao_fonte": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+        "versao_gtfs_id": {"type": "string", "format": "uuid"},
+        "url": {"type": ["string", "null"], "format": "uri"},
+        "referencia": {"type": ["string", "null"], "format": "uri"},
+        "capturada_em": {"type": "string", "format": "date-time"},
+        "verificada_em": {"type": "string", "format": "date-time"},
+        "arquivo": {"type": "string", "minLength": 1}
+      },
+      "allOf": [{
+        "if": {"properties": {"fonte": {"const": "OFICIAL"}}},
+        "then": {"properties": {"url": {"type": "string"}, "referencia": {"type": "null"}}},
+        "else": {"properties": {"url": {"type": "null"}, "referencia": {"type": "string"}}}
+      }]
+    },
+    "Partida": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "ordem", "saida_prevista", "tipo_oferta", "intervalo_seg"],
+      "properties": {
+        "id": {"type": "string", "format": "uuid"},
+        "ordem": {"type": "integer", "minimum": 1},
+        "saida_prevista": {"type": "string", "format": "date-time"},
+        "tipo_oferta": {"enum": ["FIXA", "FREQUENCIA"]},
+        "intervalo_seg": {"type": ["integer", "null"], "minimum": 1}
+      },
+      "allOf": [{
+        "if": {"properties": {"tipo_oferta": {"const": "FIXA"}}},
+        "then": {"properties": {"intervalo_seg": {"type": "null"}}},
+        "else": {"properties": {"intervalo_seg": {"type": "integer"}}}
+      }]
+    },
+    "Erro": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["erro"],
+      "properties": {
+        "erro": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["codigo", "mensagem"],
+          "properties": {
+            "codigo": {"enum": ["FILTRO_INVALIDO", "VERSAO_GTFS_NAO_ENCONTRADA", "LINHA_NAO_ENCONTRADA", "VERSAO_GTFS_AMBIGUA", "GRADE_AMBIGUA", "CONSULTA_INDISPONIVEL"]},
+            "mensagem": {"type": "string", "minLength": 1},
+            "campo": {"type": "string"}
+          }
+        }
+      }
+    }
+  }
+}
