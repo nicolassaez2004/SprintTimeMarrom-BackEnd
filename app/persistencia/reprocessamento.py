@@ -11,7 +11,6 @@ from sqlalchemy.exc import IntegrityError
 from app import db
 from app.models import (
     ExecucaoProcessamento,
-    ObservacaoTratada,
     RegistroBrutoGPS,
     ResultadoReprocessamento,
 )
@@ -139,6 +138,9 @@ def tratar_bruto_basico(bruto, manifesto):
 def executar_reprocessamento(execucao_id, *, processador=tratar_bruto_basico, tamanho_lote=500):
     """Processa lotes ordenados; cada lote tratado tem sua própria transação.
 
+    Grava somente `ResultadoReprocessamento`; não altera brutos nem a visão
+    tratada atual (`ObservacaoTratada`), mantida pelo MatchingService.
+
     Uma execução falha pode ser retomada com o mesmo ID: lotes já confirmados
     são ignorados, e o UNIQUE (execução, bruto) protege repetições concorrentes.
     """
@@ -219,40 +221,25 @@ def executar_reprocessamento(execucao_id, *, processador=tratar_bruto_basico, ta
                 db.session.commit()
                 break
 
-            observacoes_atuais = {
-                observacao.bruto_id: observacao
-                for observacao in ObservacaoTratada.query.filter(
-                    ObservacaoTratada.bruto_id.in_([bruto.id for bruto in lote])
-                ).all()
-            }
             resultados = []
             for bruto in lote:
                 resultado = processador(bruto, manifesto)
-                if not isinstance(resultado, dict) or "valida" not in resultado:
+                if not isinstance(resultado, dict) or not isinstance(resultado.get("valida"), bool):
+                    # Não converter "pendente" (None) em inválida silenciosamente.
                     raise ReprocessamentoInvalido(
-                        "processador deve retornar um dicionário com 'valida'"
+                        "processador deve retornar um dicionário com 'valida' booleana"
                     )
-                valida = bool(resultado["valida"])
-                motivo = resultado.get("motivo_invalidez")
-                versao_gtfs = manifesto.versao_gtfs_id
                 resultados.append(ResultadoReprocessamento(
                     execucao_processamento_id=manifesto.id,
                     bruto_id=bruto.id,
-                    valida=valida,
-                    motivo_invalidez=motivo,
+                    valida=resultado["valida"],
+                    motivo_invalidez=resultado.get("motivo_invalidez"),
                     versao_correspondencia=manifesto.versao_regra,
-                    versao_gtfs_id=versao_gtfs,
+                    versao_gtfs_id=manifesto.versao_gtfs_id,
                 ))
-                # ObservacaoTratada é a visão atual 1:1 do diagrama; o snapshot
-                # de cada execução/versionamento fica na tabela acima.
-                observacao = observacoes_atuais.get(bruto.id)
-                if observacao is None:
-                    observacao = ObservacaoTratada(bruto_id=bruto.id)
-                    db.session.add(observacao)
-                observacao.valida = valida
-                observacao.motivo_invalidez = motivo
-                observacao.versao_correspondencia = manifesto.versao_regra
-                observacao.versao_gtfs_id = versao_gtfs
+            # O resultado fica apenas no snapshot desta execução. ObservacaoTratada
+            # é a visão atual do MatchingService (US03): sobrescrevê-la com uma
+            # regra parcial apagaria validade espacial e vínculo de linha.
             db.session.add_all(resultados)
             # Revalida a posse depois do trabalho do lote e antes do commit.
             agora = datetime.now(timezone.utc)
