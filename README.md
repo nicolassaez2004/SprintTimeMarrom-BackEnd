@@ -47,8 +47,9 @@ O esquema é versionado com Flask-Migrate (Alembic), em `migrations/versions/`:
   renomeia, amplia tipos e copia valores.
 - `0003`: metadados de `ArquivoArmazenado` e `VersaoGTFS`, com unicidade por hash.
 - `0004`: `ObservacaoTratada` separada do bruto, com FK obrigatória/única para
-  `registros_gps` e FK opcional para a versão GTFS. Evidências e limites em
-  [US12-T01B](docs/US12-T01B.md).
+  `registros_gps` e FK opcional para a versão GTFS. A `0009` cria uma tabela de
+  snapshots por execução e bruto, sem mudar a relação 1:1 desta classe.
+  Evidências e limites em [US12-T01B](docs/US12-T01B.md).
 - `0005`: `verificacoes_gtfs`, agenda e resultado da verificação diária do GTFS
   ([US02-T04](docs/US02-T04.md)).
 - `0006`: `linhas` e `paradas`, com chave (versão GTFS, código).
@@ -56,6 +57,8 @@ O esquema é versionado com Flask-Migrate (Alembic), em `migrations/versions/`:
   mesma versão GTFS.
 - `0008`: capturas da programação oficial e `partidas_programadas`, com
   procedência e histórico ([US04-T01](docs/US04-T01.md)).
+- `0009`: manifesto `ExecucaoProcessamento` e vínculo dos resultados tratados
+  por execução. Mantém observações antigas com execução NULL e não altera brutos.
 
 A importação/consulta de partidas é explícita: `python -m app.programacao --help`.
 Consulte [US04-T01](docs/US04-T01.md) para fontes, normalização, testes e o
@@ -108,6 +111,20 @@ Segue o diagrama de componentes e serviços:
   `prevista_em`, início, fim, `estado` (`EM_ANDAMENTO`, `OK`, `PARCIAL` ou
   `FALHA`), `tentativas`, `recebidos`, `novos_persistidos` e `erro`. É
   diferente de `LacunaColeta`, o intervalo sem cobertura.
+- `execucoes_processamento` (`ExecucaoProcessamento`): manifesto do período,
+  com chave lógica, parâmetros, versões de base, GTFS, código e regra e estados
+  de job alinhados ao diagrama. O serviço `app.persistencia.reprocessamento` lê
+  por `coletado_em` em ordem crescente de ID, confirma cada lote tratado em
+  transação própria e pode retomar um manifesto com erro. `ObservacaoTratada`
+  mantém a relação 1:1 do diagrama como visão tratada atual; `resultados_reprocessamento`
+  guarda o resultado de cada execução com referências ao bruto e às versões.
+  Nenhuma etapa do serviço atualiza ou apaga `registros_gps`.
+
+**US12-T04 — reprodução mensal de indicadores.** O relatório em
+[docs/US12-T04.md](docs/US12-T04.md) registra a dependência ainda ausente de
+US14/US16, do `IndicatorService` e de um conjunto mensal publicado. O aceite
+integral permanece pendente; os testes sintéticos do reprocessamento não são
+apresentados como prova de indicadores reais.
 
 **Duplicação.** Cada registro aponta ao ciclo que o gravou primeiro.
 

@@ -399,9 +399,9 @@ class VerificacaoGTFS(db.Model):
 class ObservacaoTratada(db.Model):
     """Resultado de tratamento separado da posição bruta imutável (US12).
 
-    Um bruto pode ainda não ter tratamento e pode gerar no máximo uma
-    observação. Linha e viagem serão ligadas quando existirem nas suas
-    histórias; a correspondência GTFS pode permanecer desconhecida (NULL).
+    Visão tratada atual, com cardinalidade de no máximo uma observação por
+    bruto como no diagrama. Resultados históricos de cada reprocessamento ficam
+    em `ResultadoReprocessamento`, sem multiplicar esta relação.
     """
 
     __tablename__ = "observacoes_tratadas"
@@ -437,7 +437,6 @@ class ObservacaoTratada(db.Model):
         backref=db.backref("observacao_tratada", uselist=False, passive_deletes="all"),
     )
     versao_gtfs = db.relationship("VersaoGTFS")
-
 
 class ImportacaoProgramacao(db.Model):
     """Captura versionada, inclusive vazia, da programação de uma linha/dia.
@@ -531,3 +530,105 @@ class PartidaProgramada(db.Model):
     @property
     def versao_gtfs(self):
         return self.importacao.linha.versao_gtfs
+
+class ExecucaoProcessamento(db.Model):
+    """Job durável e versionado, compatível com o contrato do diagrama."""
+
+    __tablename__ = "execucoes_processamento"
+    __table_args__ = (
+        CheckConstraint(
+            "estado IN ('AGUARDANDO', 'PROCESSANDO', 'PRONTO', 'ERRO')",
+            name="ck_execucoes_processamento_estado",
+        ),
+        CheckConstraint("periodo_fim > periodo_inicio",
+                        name="ck_execucoes_processamento_periodo"),
+        CheckConstraint("tentativas >= 0",
+                        name="ck_execucoes_processamento_tentativas"),
+        CheckConstraint(
+            "(reserva_token IS NULL AND reserva_ate IS NULL) OR "
+            "(reserva_token IS NOT NULL AND reserva_ate IS NOT NULL)",
+            name="ck_execucoes_processamento_reserva",
+        ),
+        UniqueConstraint("chave_logica", name="uq_execucoes_processamento_chave_logica"),
+        Index("ix_execucoes_processamento_periodo", "periodo_inicio", "periodo_fim"),
+        {"mysql_engine": "InnoDB"},
+    )
+
+    id = db.Column(db.String(36), primary_key=True, default=lambda: str(uuid4()))
+    tipo = db.Column(db.String(32), nullable=False, default="REPROCESSAMENTO")
+    chave_logica = db.Column(
+        db.String(255), nullable=False, default=lambda: str(uuid4())
+    )
+    parametros = db.Column(db.JSON, nullable=False, default=dict)
+    estado = db.Column(db.String(16), nullable=False, default="AGUARDANDO")
+    periodo_inicio = db.Column(UTCDateTime, nullable=False)
+    periodo_fim = db.Column(UTCDateTime, nullable=False)
+    # Snapshot fechado: novos brutos com coleta retroativa não entram neste manifesto.
+    bruto_id_maximo = db.Column(IdGrande, nullable=False)
+    versao_base = db.Column(db.String(128), nullable=False)
+    versao_gtfs_id = db.Column(
+        db.String(36),
+        db.ForeignKey("versoes_gtfs.id", name="fk_execucoes_processamento_gtfs",
+                      ondelete="RESTRICT"),
+        nullable=True,
+    )
+    versao_codigo = db.Column(db.String(128), nullable=False)
+    versao_regra = db.Column(db.String(128), nullable=False)
+    tentativas = db.Column(db.Integer, nullable=False, default=0)
+    criada_em = db.Column(UTCDateTime, nullable=False, default=agora_utc)
+    iniciada_em = db.Column(UTCDateTime, nullable=True)
+    finalizada_em = db.Column(UTCDateTime, nullable=True)
+    reserva_token = db.Column(db.String(36), nullable=True)
+    reserva_ate = db.Column(UTCDateTime, nullable=True)
+    erro = db.Column(db.String(128), nullable=True)
+
+    versao_gtfs = db.relationship("VersaoGTFS")
+    resultados_reprocessamento = db.relationship(
+        "ResultadoReprocessamento", back_populates="execucao_processamento"
+    )
+
+
+class ResultadoReprocessamento(db.Model):
+    """Snapshot versionado de um resultado produzido por uma execução."""
+
+    __tablename__ = "resultados_reprocessamento"
+    __table_args__ = (
+        UniqueConstraint(
+            "execucao_processamento_id", "bruto_id",
+            name="uq_resultados_reprocessamento_execucao_bruto",
+        ),
+        CheckConstraint("LENGTH(TRIM(versao_correspondencia)) > 0",
+                        name="ck_resultados_reprocessamento_versao"),
+        {"mysql_engine": "InnoDB"},
+    )
+
+    id = db.Column(db.String(36), primary_key=True, default=lambda: str(uuid4()))
+    execucao_processamento_id = db.Column(
+        db.String(36),
+        db.ForeignKey("execucoes_processamento.id",
+                      name="fk_resultados_reprocessamento_execucao", ondelete="RESTRICT"),
+        nullable=False,
+        index=True,
+    )
+    bruto_id = db.Column(
+        IdGrande,
+        db.ForeignKey("registros_gps.id", name="fk_resultados_reprocessamento_bruto",
+                      ondelete="RESTRICT"),
+        nullable=False,
+        index=True,
+    )
+    valida = db.Column(db.Boolean, nullable=False)
+    motivo_invalidez = db.Column(db.Text, nullable=True)
+    versao_correspondencia = db.Column(db.String(128), nullable=False)
+    versao_gtfs_id = db.Column(
+        db.String(36),
+        db.ForeignKey("versoes_gtfs.id", name="fk_resultados_reprocessamento_gtfs",
+                      ondelete="RESTRICT"),
+        nullable=True,
+    )
+
+    execucao_processamento = db.relationship(
+        "ExecucaoProcessamento", back_populates="resultados_reprocessamento"
+    )
+    bruto = db.relationship("RegistroBrutoGPS")
+    versao_gtfs = db.relationship("VersaoGTFS")

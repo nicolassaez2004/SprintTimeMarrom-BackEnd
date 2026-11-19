@@ -348,9 +348,34 @@ def test_cadeia_de_migracoes_tem_uma_cabeca_e_preserva_a_us12():
     from alembic.script import ScriptDirectory
 
     scripts = ScriptDirectory(str(Path(__file__).resolve().parents[2] / "migrations"))
-    assert scripts.get_heads() == ["0008"]
-    assert scripts.get_revision("0008").down_revision == "0007"
+    assert scripts.get_heads() == ["0009"]
+    assert scripts.get_revision("0009").down_revision == "0008"
     assert scripts.get_revision("0007").down_revision == "0006"
     assert scripts.get_revision("0006").down_revision == "0005"
     assert scripts.get_revision("0005").down_revision == "0004"
     assert scripts.get_revision("0004").module.__file__.endswith("0004_observacoes_tratadas.py")
+
+
+def test_migracao_0009_cria_manifesto_e_resultados_por_execucao():
+    from alembic.migration import MigrationContext
+    from alembic.operations import Operations
+    from alembic.script import ScriptDirectory
+
+    scripts = ScriptDirectory(str(Path(__file__).resolve().parents[2] / "migrations"))
+    migracao = scripts.get_revision("0009").module
+    saida = io.StringIO()
+    offline = MigrationContext.configure(
+        dialect_name="mysql", opts={"as_sql": True, "output_buffer": saida}
+    )
+    with Operations.context(offline):
+        migracao.upgrade()
+    sql = saida.getvalue()
+    assert "CREATE TABLE execucoes_processamento" in sql
+    assert "bruto_id_maximo BIGINT NOT NULL" in sql
+    assert "chave_logica VARCHAR(255) NOT NULL" in sql
+    assert "parametros JSON NOT NULL" in sql
+    assert "reserva_token VARCHAR(36)" in sql
+    assert "CREATE TABLE resultados_reprocessamento" in sql
+    assert "uq_resultados_reprocessamento_execucao_bruto" in sql
+    assert "fk_resultados_reprocessamento_bruto" in sql
+    assert "ALTER TABLE observacoes_tratadas" not in sql
