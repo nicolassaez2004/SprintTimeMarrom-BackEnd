@@ -27,6 +27,24 @@ def _get(app, **filtros):
     return app.test_client().get("/partidas", query_string={**FILTROS, **filtros})
 
 
+def _conforme_contrato(dados):
+    """Regras condicionais do JSON Schema (if/then), sem depender de jsonschema."""
+    if dados["estado"] == "DISPONIVEL":
+        assert dados["quantidade"] == len(dados["partidas"]) >= 1
+    else:
+        assert dados["quantidade"] == 0 and dados["partidas"] == []
+    if dados["estado"] == "NAO_IMPORTADA":
+        assert dados["procedencia"] is None
+    else:
+        procedencia = dados["procedencia"]
+        assert isinstance(dados["tipo_dia"], str)
+        oficial = procedencia["fonte"] == "OFICIAL"
+        assert isinstance(procedencia["url"], str) is oficial
+        assert isinstance(procedencia["referencia"], str) is not oficial
+    for partida in dados["partidas"]:
+        assert (partida["intervalo_seg"] is None) is (partida["tipo_oferta"] == "FIXA")
+
+
 def _oficial(fabrica_captura, horarios=("05:00", "23:50", "00:10"), **kwargs):
     return service.importar_oficial("3762-10", "ida", DATA, "UTIL",
                                     captura=fabrica_captura(horarios), agora=AGORA, **kwargs)
@@ -58,6 +76,7 @@ def test_consulta_oficial_com_procedencia_utc_e_alias(app, versao, fabrica_captu
     assert set(dados) == set(schema["$defs"]["ConsultaPartidas"]["required"])
     assert set(dados["procedencia"]) == set(schema["$defs"]["Procedencia"]["required"])
     assert set(dados["partidas"][0]) == set(schema["$defs"]["Partida"]["required"])
+    _conforme_contrato(dados)
 
 
 def test_oferta_gtfs_fixa_e_por_frequencia_mantem_tipo_intervalo_e_versao(app, versao):
@@ -73,6 +92,7 @@ def test_oferta_gtfs_fixa_e_por_frequencia_mantem_tipo_intervalo_e_versao(app, v
     assert [(p["tipo_oferta"], p["intervalo_seg"]) for p in dados["partidas"]] == [
         ("FIXA", None), ("FREQUENCIA", 600),
     ]
+    _conforme_contrato(dados)
 
 
 @pytest.mark.parametrize("horarios", [(), ("05:00",)])
@@ -91,12 +111,14 @@ def test_lista_vazia_valida_e_ausencia_de_importacao_tem_estados_distintos(app, 
     assert sem_importacao.status_code == 200
     assert sem_importacao.get_json()["estado"] == "NAO_IMPORTADA"
     assert sem_importacao.get_json()["procedencia"] is None
+    _conforme_contrato(sem_importacao.get_json())
     _oficial(fabrica_captura, ())
     sem_partidas = _get(app)
     assert sem_partidas.status_code == 200
     dados = sem_partidas.get_json()
     assert dados["estado"] == "SEM_PARTIDAS" and dados["procedencia"]["fonte"] == "OFICIAL"
     assert dados["partidas"] == [] and dados["quantidade"] == 0
+    _conforme_contrato(dados)
 
 
 @pytest.mark.parametrize("filtros", [{"sentido": "volta"}, {"data": "2026-11-20"},

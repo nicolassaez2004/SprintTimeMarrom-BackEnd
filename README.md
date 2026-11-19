@@ -45,14 +45,18 @@ mesmo sem o MySQL estar no ar. A conexão real será conferida na US12-T01B.
 
 ## Exportação diária dos brutos para Parquet (US09-T01)
 
-Instale as dependências e execute, por exemplo,
+Instale as dependências, aplique as migrações (o índice `us09_0013` atende à
+consulta por dia) e execute, por exemplo,
 `python -m app.exportacoes --data 2026-11-18 --saida ./exportacoes`.
-O dia é interpretado em UTC pelo campo `coletado_em`; use `--lote` para ajustar
-o tamanho dos lotes (padrão 5000). O exportador lê `registros_gps` em uma
-transação consistente, mantém os campos tipados e os NULL, e representa `payload`
-JSON como texto UTF-8. O arquivo inclui os metadados de fonte, data e licença
-CC BY 4.0. A escrita ocorre em arquivo temporário no mesmo diretório e só é
-publicada após a conclusão, por substituição atômica.
+O dia é o dia civil de `America/Sao_Paulo` aplicado a `coletado_em`; os instantes
+ficam em UTC no arquivo. Use `--lote` para ajustar o tamanho dos lotes (padrão
+5000). O exportador lê `registros_gps` em uma transação consistente, paginada por
+(`coletado_em`, `id`), mantém os campos tipados e os NULL, e representa `payload`
+JSON como texto UTF-8 (forma normalizada pelo tipo JSON do MySQL). O arquivo
+inclui fonte e URL de origem, licença CC BY 4.0 com URL, data e período UTC.
+A escrita ocorre em arquivo temporário no mesmo diretório e só é publicada
+após a conclusão, por substituição atômica, com permissão de leitura `0644`.
+Evidência em `docs/US09-T01.md`.
 
 ## Migrações do banco
 

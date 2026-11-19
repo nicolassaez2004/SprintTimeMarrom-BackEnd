@@ -185,6 +185,8 @@ class RegistroBrutoGPS(db.Model):
         CheckConstraint("latitude BETWEEN -90 AND 90", name="ck_registros_gps_latitude"),
         CheckConstraint("longitude BETWEEN -180 AND 180", name="ck_registros_gps_longitude"),
         Index("ix_registros_gps_onibus_instante", "prefixo_origem", "coletado_em"),
+        # Exportação diária (US09): faixa por dia e paginação keyset.
+        Index("ix_registros_gps_coletado_em_id", "coletado_em", "id"),
         UniqueConstraint(
             "prefixo_origem", "horario_gps", name="uq_registros_gps_prefixo_horario"
         ),

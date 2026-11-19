@@ -7,17 +7,22 @@ import os
 import tempfile
 from datetime import date, datetime, time, timedelta, timezone
 from pathlib import Path
+from zoneinfo import ZoneInfo
 
 import pyarrow as pa
 import pyarrow.parquet as pq
-from sqlalchemy import select
+from sqlalchemy import and_, or_, select
 
 from app import db
 from app.models import RegistroBrutoGPS
 
 
 FONTE = "SPTrans Olho Vivo (registros brutos coletados pela aplicação)"
+FONTE_URL = "https://api.olhovivo.sptrans.com.br/v2.1/Posicao"
 LICENCA = "CC BY 4.0"
+LICENCA_URL = "https://creativecommons.org/licenses/by/4.0/"
+# Dia operacional de São Paulo, como nas demais rotinas diárias do projeto.
+FUSO = ZoneInfo("America/Sao_Paulo")
 
 _SCHEMA = pa.schema([
     pa.field("id", pa.int64()),
@@ -44,9 +49,10 @@ def _utc(value):
 
 
 def gerar_parquet_diario(dia: date, destino, *, tamanho_lote: int = 5000) -> dict:
-    """Exporta `coletado_em` no dia UTC informado e publica somente ao concluir.
+    """Exporta `coletado_em` no dia de São Paulo informado; publica só ao concluir.
 
-    A consulta é keyset paginada dentro de uma transação consistente. O arquivo
+    Os instantes continuam em UTC no arquivo. A consulta é paginada por
+    (`coletado_em`, `id`) dentro de uma transação consistente. O arquivo
     temporário fica no diretório de destino; `os.replace` publica atomicamente.
     """
     if isinstance(dia, datetime) or not isinstance(dia, date):
@@ -56,8 +62,8 @@ def gerar_parquet_diario(dia: date, destino, *, tamanho_lote: int = 5000) -> dic
 
     destino = Path(destino)
     destino.parent.mkdir(parents=True, exist_ok=True)
-    inicio = datetime.combine(dia, time.min, tzinfo=timezone.utc)
-    fim = inicio + timedelta(days=1)
+    inicio = datetime.combine(dia, time.min, tzinfo=FUSO).astimezone(timezone.utc)
+    fim = datetime.combine(dia + timedelta(days=1), time.min, tzinfo=FUSO).astimezone(timezone.utc)
     colunas = [
         RegistroBrutoGPS.id, RegistroBrutoGPS.execucao_id,
         RegistroBrutoGPS.veiculo_prefixo, RegistroBrutoGPS.prefixo_origem,
@@ -68,14 +74,18 @@ def gerar_parquet_diario(dia: date, destino, *, tamanho_lote: int = 5000) -> dic
     ]
     metadados = {
         b"source": FONTE.encode(),
+        b"source_url": FONTE_URL.encode(),
         b"license": LICENCA.encode(),
+        b"license_url": LICENCA_URL.encode(),
         b"date": dia.isoformat().encode(),
-        b"date_field": b"coletado_em (UTC)",
+        b"date_field": b"coletado_em, dia em America/Sao_Paulo; instantes em UTC",
+        b"period_start_utc": inicio.isoformat().encode(),
+        b"period_end_utc": fim.isoformat().encode(),
     }
     esquema = _SCHEMA.with_metadata(metadados)
     temp_path = None
     total = 0
-    ultimo_id = 0
+    ultimo = None
     writer = None
     try:
         with tempfile.NamedTemporaryFile(
@@ -93,10 +103,16 @@ def gerar_parquet_diario(dia: date, destino, *, tamanho_lote: int = 5000) -> dic
                         select(*colunas)
                         .where(RegistroBrutoGPS.coletado_em >= inicio)
                         .where(RegistroBrutoGPS.coletado_em < fim)
-                        .where(RegistroBrutoGPS.id > ultimo_id)
-                        .order_by(RegistroBrutoGPS.id)
+                        .order_by(RegistroBrutoGPS.coletado_em, RegistroBrutoGPS.id)
                         .limit(tamanho_lote)
                     )
+                    if ultimo is not None:
+                        # Keyset em ix_registros_gps_coletado_em_id: não relê o histórico.
+                        consulta = consulta.where(or_(
+                            RegistroBrutoGPS.coletado_em > ultimo[0],
+                            and_(RegistroBrutoGPS.coletado_em == ultimo[0],
+                                 RegistroBrutoGPS.id > ultimo[1]),
+                        ))
                     lote = conn.execute(consulta).mappings().all()
                     if not lote:
                         break
@@ -117,11 +133,13 @@ def gerar_parquet_diario(dia: date, destino, *, tamanho_lote: int = 5000) -> dic
                     tabela = pa.Table.from_pylist(linhas, schema=esquema)
                     writer.write_table(tabela)
                     total += len(lote)
-                    ultimo_id = lote[-1]["id"]
+                    ultimo = (lote[-1]["coletado_em"], lote[-1]["id"])
                 writer.close()
                 writer = None
                 with open(temp_path, "rb") as arquivo:
                     os.fsync(arquivo.fileno())
+        # NamedTemporaryFile cria 0600; o arquivo publicado é de leitura pública.
+        os.chmod(temp_path, 0o644)
         os.replace(temp_path, destino)
         temp_path = None
         return {"arquivo": str(destino), "registros": total, "data": dia.isoformat()}
