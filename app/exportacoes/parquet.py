@@ -18,7 +18,7 @@ from sqlalchemy import and_, or_, select
 from flask import current_app
 
 from app import db
-from app.models import RegistroBrutoGPS
+from app.models import ExecucaoColeta, RegistroBrutoGPS
 
 
 FONTE = "SPTrans Olho Vivo (registros brutos coletados pela aplicação)"
@@ -33,6 +33,8 @@ MARGEM_FECHAMENTO = timedelta(minutes=10)
 # US09: arquivo do dia D disponível até 06:00 de D+1 (America/Sao_Paulo).
 HORARIO_LIMITE = time(6)
 MIME_PARQUET = "application/vnd.apache.parquet"
+# Dias anteriores revistos a cada execução para dados gravados com atraso.
+REVISAO_DIAS = 7
 _NOME = re.compile(r"registros_gps_([0-9]{4}-[0-9]{2}-[0-9]{2})\.parquet")
 logger = logging.getLogger(__name__)
 
@@ -237,26 +239,69 @@ def dia_a_publicar(agora):
     return local.date() - timedelta(days=1)
 
 
-def publicar_brutos(agora, *, diretorio=None, relogio=None):
-    """Tarefa periódica do processo `app.tarefas`: idempotente e sem estado.
+def _ciclos_do_dia(dia):
+    """Ciclos que podem ter gravado registros com `coletado_em` no dia.
 
-    Gera o Parquet do último dia encerrado se ainda não houver arquivo completo.
-    Retorna o resultado da exportação, ou None quando não há o que publicar.
+    `coletado_em` >= `iniciada_em`; a folga de 1 h cobre ciclos com
+    retentativas (US29) iniciados antes da meia-noite.
     """
-    relogio = relogio or (lambda: datetime.now(timezone.utc))
-    diretorio = Path(diretorio or diretorio_exportacoes())
-    dia = dia_a_publicar(agora)
-    if arquivo_completo(diretorio, dia) is not None:
-        return None
+    inicio, fim = periodo_utc(dia)
+    E = ExecucaoColeta
+    return db.session.query(E.id).filter(
+        E.fonte == "OLHO_VIVO", E.iniciada_em >= inicio - timedelta(hours=1), E.iniciada_em < fim)
+
+
+def _ciclo_em_aberto(dia):
+    E = ExecucaoColeta
+    return _ciclos_do_dia(dia).filter(
+        or_(E.estado == "EM_ANDAMENTO", E.finalizada_em.is_(None))).first() is not None
+
+
+def _gravado_apos(dia, gerado_em):
+    """Ciclo do dia finalizado depois da exportação: o arquivo pode estar sem ele.
+
+    A US29 grava o ciclo guardado no checkpoint local quando o MySQL volta;
+    `finalizada_em` é atualizado na mesma transação dos registros e na confirmação.
+    """
+    return _ciclos_do_dia(dia).filter(ExecucaoColeta.finalizada_em >= gerado_em).first() is not None
+
+
+def _exportar(diretorio, dia, relogio, motivo):
     resultado = gerar_parquet_diario(dia, diretorio / nome_arquivo(dia), relogio=relogio)
     publicado_em = relogio().astimezone(timezone.utc)
     no_prazo = publicado_em <= prazo_publicacao(dia)
     logger.log(logging.INFO if no_prazo else logging.ERROR, json.dumps({
         "evento": "brutos_parquet_publicado" if no_prazo else "brutos_parquet_prazo_excedido",
-        "data": dia.isoformat(), "registros": resultado["registros"],
+        "motivo": motivo, "data": dia.isoformat(), "registros": resultado["registros"],
         "publicado_em": publicado_em.isoformat(), "prazo": prazo_publicacao(dia).isoformat(),
     }))
     return {**resultado, "publicado_em": publicado_em.isoformat(), "prazo_atendido": no_prazo}
+
+
+def publicar_brutos(agora, *, diretorio=None, relogio=None):
+    """Tarefa periódica do processo `app.tarefas`: idempotente e sem estado.
+
+    1. Gera o Parquet do último dia encerrado se ainda não houver arquivo
+       completo. Espera enquanto houver ciclo desse dia em andamento, salvo a
+       partir das 06:00 de D+1, quando publica para cumprir o prazo.
+    2. Regera arquivos dos últimos REVISAO_DIAS dias quando um ciclo do dia foi
+       gravado depois da exportação (dado atrasado). A troca é atômica.
+
+    Retorna o resultado da última exportação, ou None quando não há o que fazer.
+    """
+    relogio = relogio or (lambda: datetime.now(timezone.utc))
+    diretorio = Path(diretorio or diretorio_exportacoes())
+    dia = dia_a_publicar(agora)
+    resultado = None
+    if arquivo_completo(diretorio, dia) is None and (
+            agora >= prazo_publicacao(dia) or not _ciclo_em_aberto(dia)):
+        resultado = _exportar(diretorio, dia, relogio, "NOVO_DIA")
+    for atraso in range(REVISAO_DIAS):
+        anterior = dia - timedelta(days=atraso)
+        resumo = arquivo_completo(diretorio, anterior)
+        if resumo and _gravado_apos(anterior, datetime.fromisoformat(resumo["gerado_em"])):
+            resultado = _exportar(diretorio, anterior, relogio, "DADO_ATRASADO")
+    return resultado
 
 
 _DESCRICOES = {
