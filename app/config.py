@@ -45,6 +45,7 @@ class Config:
     GTFS_TASK_LOG_FILE = os.getenv("GTFS_TASK_LOG_FILE") or None
     PROGRAMACAO_STORAGE_DIR = os.getenv("PROGRAMACAO_STORAGE_DIR") or None
     DOCUMENTOS_STORAGE_DIR = os.getenv("DOCUMENTOS_STORAGE_DIR") or None
+    EXPORTACOES_DIR = os.getenv("EXPORTACOES_DIR") or None
 
     # O processo coletor usa 30 s por padrão e aceita intervalo de 15 a 60 s.
     # Valor vazio no .env (como em .env.example) também usa o padrão.
