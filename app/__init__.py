@@ -75,5 +75,7 @@ def create_app(config_extra=None):
     # Registra as rotas da API
     from app.api.routes import api_bp
     app.register_blueprint(api_bp)
+    from app.correspondencia.routes import qualidade_bp
+    app.register_blueprint(qualidade_bp)
 
     return app

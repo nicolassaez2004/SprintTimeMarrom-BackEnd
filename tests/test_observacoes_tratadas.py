@@ -68,7 +68,6 @@ def test_nao_permite_dois_tratamentos_para_mesmo_bruto(contexto):
 @pytest.mark.parametrize('campo,valor', [
     ('bruto_id', 999999), ('bruto_id', None), ('versao_gtfs_id', 'inexistente'),
     ('versao_correspondencia', ''), ('versao_correspondencia', '   '),
-    ('valida', None),
 ])
 def test_rejeita_tratado_inconsistente(contexto, campo, valor):
     dados = dict(bruto_id=contexto.id, valida=True, versao_correspondencia='v1')

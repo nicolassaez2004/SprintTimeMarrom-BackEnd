@@ -1,0 +1,22 @@
+{
+  "versao": "SUBSTITUIR-POR-VERSAO-CONFERIDA",
+  "versao_gtfs_id": "SUBSTITUIR-PELO-ID-GTFS",
+  "vigencia_inicio": "2026-11-19",
+  "vigencia_fim": null,
+  "fonte": "SUBSTITUIR-PELA-FONTE-E-CONFERENCIA-DO-VINCULO",
+  "entradas": [
+    {
+      "codigo_olho_vivo": "CODIGO_CONFERIDO",
+      "sentido_olho_vivo": "1",
+      "linha_codigo": "ROUTE_ID_CONFERIDO",
+      "sentido_gtfs": "0"
+    },
+    {
+      "codigo_olho_vivo": "CODIGO_A_REVISAR",
+      "sentido_olho_vivo": "2",
+      "linha_codigo": null,
+      "sentido_gtfs": null,
+      "motivo": "Vínculo ainda não resolvido pelo time"
+    }
+  ]
+}

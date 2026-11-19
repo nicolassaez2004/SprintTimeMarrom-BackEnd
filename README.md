@@ -18,6 +18,11 @@ responde `{"status": "ok"}`. O Flask não cria `/docs` automaticamente.
 
 ## Configuração
 
+Correspondência de códigos/sentidos, validação em metros/UTC e relatório diário
+estão documentados em [US03-T01 a T04](docs/US03.md). As migrações `us03_0008` e `us03_0009` estendem
+os tratados com linha versionada e proveniência. Os vínculos precisam de uma
+tabela conferida; configurar o `.env` não cria essa tabela de dados automaticamente.
+
 Para preparar bases separadas de desenvolvimento/teste e conexões no Workbench,
 seguir [US12-T01A](docs/US12-T01A.md). O script de conferência usa a conexão real
 da aplicação, não apenas `/health`: `python -m scripts.verificar_bases_mysql`.
@@ -56,6 +61,9 @@ O esquema é versionado com Flask-Migrate (Alembic), em `migrations/versions/`:
   mesma versão GTFS.
 - `0008`: capturas da programação oficial e `partidas_programadas`, com
   procedência e histórico ([US04-T01](docs/US04-T01.md)).
+- `us03_0008`: correspondência versionada e proveniência do tratamento.
+- `us03_0009`: revisões de correspondência preservando tabelas anteriores.
+- `0010_us03_programacao`: integra US03/US04 em uma única cabeça de migração.
 
 A importação/consulta de partidas é explícita: `python -m app.programacao --help`.
 Consulte [US04-T01](docs/US04-T01.md) para fontes, normalização, testes e o
@@ -318,3 +326,12 @@ python -m pytest -v
 
 Os testes usam SQLite em memória e não precisam de MySQL nem de `.env`. Nenhum
 teste automatizado chama a SPTrans de verdade.
+
+## Resultado real da US03 — 19/11/2026
+
+**Meta de 98% atendida: 99,55% (11.253 / 11.304 válidas).** Foram processadas 11.479 posições reais, preservando os brutos. A correção conferiu 194 códigos/sentidos de circuitos fechados e recuperou 587 observações, sem alterar o denominador. As 51 válidas sem associação continuam visíveis.
+
+Bases existentes da Aiven em `0010_us03_programacao`, compatíveis com a entrega US04 da main. **228 testes e 4 verificações MySQL passaram.** [Evidência final](docs/evidencias/US03-2026-11-19.json).
+
+Consultar com o backend iniciado:
+`GET /qualidade/correspondencias?data=2026-11-19`

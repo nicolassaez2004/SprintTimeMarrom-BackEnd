@@ -400,12 +400,20 @@ class ObservacaoTratada(db.Model):
     """Resultado de tratamento separado da posição bruta imutável (US12).
 
     Um bruto pode ainda não ter tratamento e pode gerar no máximo uma
-    observação. Linha e viagem serão ligadas quando existirem nas suas
-    histórias; a correspondência GTFS pode permanecer desconhecida (NULL).
+    observação. A linha usa a chave composta da rede GTFS; a viagem será
+    ligada na sua história. Validade NULL significa validação pendente,
+    sem contá-la como inválida ou incluí-la no denominador da associação.
     """
 
     __tablename__ = "observacoes_tratadas"
     __table_args__ = (
+        db.ForeignKeyConstraint(
+            ["versao_gtfs_id", "linha_codigo"], ["linhas.versao_gtfs_id", "linhas.codigo"],
+            name="fk_observacoes_linha_versionada", ondelete="RESTRICT"),
+        db.ForeignKeyConstraint(
+            ['correspondencia_id','versao_gtfs_id'],
+            ['correspondencias_codigos.id','correspondencias_codigos.versao_gtfs_id'],
+            name='fk_observacoes_correspondencia',ondelete='RESTRICT'),
         UniqueConstraint("bruto_id", name="uq_observacoes_tratadas_bruto"),
         CheckConstraint("LENGTH(TRIM(versao_correspondencia)) > 0",
                         name="ck_observacoes_tratadas_versao"),
@@ -421,7 +429,8 @@ class ObservacaoTratada(db.Model):
                       ondelete="RESTRICT"),
         nullable=False,
     )
-    valida = db.Column(db.Boolean, nullable=False)
+    # NULL: validação espacial pendente (sem GTFS, traçado ou limite municipal).
+    valida = db.Column(db.Boolean, nullable=True)
     motivo_invalidez = db.Column(db.Text, nullable=True)
     versao_correspondencia = db.Column(db.String(128), nullable=False)
     versao_gtfs_id = db.Column(
@@ -437,6 +446,67 @@ class ObservacaoTratada(db.Model):
         backref=db.backref("observacao_tratada", uselist=False, passive_deletes="all"),
     )
     versao_gtfs = db.relationship("VersaoGTFS")
+    linha_codigo = db.Column(CodigoGTFS, nullable=True)
+    sentido_gtfs = db.Column(db.String(8), nullable=True)
+    correspondencia_id = db.Column(db.String(36), nullable=True)
+    motivo_correspondencia = db.Column(db.String(64), nullable=True)
+    candidatos_correspondencia = db.Column(db.JSON, nullable=True)
+    distancia_tracado_m = db.Column(db.Float, nullable=True)
+    versao_validacao = db.Column(db.String(128), nullable=True)
+    processada_em = db.Column(UTCDateTime, nullable=True)
+    linha = db.relationship("Linha", overlaps="versao_gtfs")
+
+
+class TabelaCorrespondencia(db.Model):
+    """Conjunto imutável de vínculos conferidos, por GTFS e vigência inclusiva."""
+    __tablename__ = 'tabelas_correspondencia'
+    __table_args__ = (
+        UniqueConstraint('id', 'versao_gtfs_id', name='uq_tabela_correspondencia_gtfs'),
+        db.ForeignKeyConstraint(['substitui_id', 'versao_gtfs_id'],
+            ['tabelas_correspondencia.id', 'tabelas_correspondencia.versao_gtfs_id'],
+            name='fk_tabela_correspondencia_anterior', ondelete='RESTRICT'),
+        CheckConstraint('substitui_id IS NULL OR substitui_id <> id',
+                        name='ck_tabela_correspondencia_nao_auto'),
+        CheckConstraint('vigencia_fim IS NULL OR vigencia_fim >= vigencia_inicio',
+                        name='ck_tabela_correspondencia_vigencia'),
+    )
+    id = db.Column(db.String(36), primary_key=True, default=lambda: str(uuid4()))
+    versao = db.Column(db.String(96), nullable=False, unique=True)
+    versao_gtfs_id = db.Column(db.String(36), db.ForeignKey('versoes_gtfs.id',
+        name='fk_tabela_correspondencia_gtfs', ondelete='RESTRICT'), nullable=False)
+    vigencia_inicio = db.Column(db.Date, nullable=False)
+    vigencia_fim = db.Column(db.Date, nullable=True)
+    fonte = db.Column(db.String(255), nullable=False)
+    hash = db.Column(db.String(64), nullable=False)
+    criada_em = db.Column(UTCDateTime, nullable=False, default=agora_utc)
+    substitui_id = db.Column(db.String(36), nullable=True)
+
+
+class CorrespondenciaCodigo(db.Model):
+    __tablename__ = 'correspondencias_codigos'
+    __table_args__ = (
+        UniqueConstraint('id','versao_gtfs_id',name='uq_correspondencia_id_gtfs'),
+        db.ForeignKeyConstraint(['tabela_id', 'versao_gtfs_id'],
+            ['tabelas_correspondencia.id', 'tabelas_correspondencia.versao_gtfs_id'],
+            name='fk_correspondencia_tabela_gtfs', ondelete='RESTRICT'),
+        db.ForeignKeyConstraint(['versao_gtfs_id', 'linha_codigo'],
+            ['linhas.versao_gtfs_id', 'linhas.codigo'],
+            name='fk_correspondencia_linha', ondelete='RESTRICT'),
+        CheckConstraint("sentido_olho_vivo IN ('1','2')", name='ck_correspondencia_sentido_ov'),
+        CheckConstraint("sentido_gtfs IS NULL OR sentido_gtfs IN ('0','1')", name='ck_correspondencia_sentido_gtfs'),
+        CheckConstraint('(linha_codigo IS NULL AND sentido_gtfs IS NULL) OR '
+                        '(linha_codigo IS NOT NULL AND sentido_gtfs IS NOT NULL)', name='ck_correspondencia_destino'),
+        Index('ix_correspondencia_origem', 'codigo_olho_vivo', 'sentido_olho_vivo'),
+    )
+    id = db.Column(db.String(36), primary_key=True, default=lambda: str(uuid4()))
+    tabela_id = db.Column(db.String(36), nullable=False)
+    versao_gtfs_id = db.Column(db.String(36), nullable=False)
+    codigo_olho_vivo = db.Column(db.String(32), nullable=False)
+    sentido_olho_vivo = db.Column(db.String(8), nullable=False)
+    linha_codigo = db.Column(CodigoGTFS, nullable=True)
+    sentido_gtfs = db.Column(db.String(8), nullable=True)
+    motivo = db.Column(db.String(255), nullable=True)
+
 
 
 class ImportacaoProgramacao(db.Model):

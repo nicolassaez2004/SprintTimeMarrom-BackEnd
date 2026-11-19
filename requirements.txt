@@ -7,4 +7,6 @@ cryptography
 python-dotenv
 requests
 pytest
+shapely>=2.0,<3
+pyproj>=3.6,<4
 tzdata

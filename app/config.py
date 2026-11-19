@@ -23,6 +23,7 @@ class Config:
     SQLALCHEMY_TRACK_MODIFICATIONS = False
     # Certificado CA local para serviços MySQL remotos (por exemplo, Aiven).
     MYSQL_SSL_CA = os.getenv("MYSQL_SSL_CA")
+    MUNICIPIO_GEOJSON = os.getenv("MUNICIPIO_GEOJSON")
 
     # API da SPTrans
     SPTRANS_API_URL = os.getenv(

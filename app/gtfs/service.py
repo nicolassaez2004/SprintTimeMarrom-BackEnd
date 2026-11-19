@@ -399,14 +399,18 @@ def importar_trechos(versao_id, *, diretorio=None):
             segmento = tracado[indices[i]:indices[i + 1] + 1] if indices else []
             if len(segmento) < 2:
                 segmento = coordenadas[i:i + 2]
-            trechos.append(Trecho(
+            trechos.append(dict(
+                id=str(uuid4()),
                 versao_gtfs_id=versao.id, linha_codigo=linha, sentido=sentido,
                 trajeto=trip_id, ordem=i + 1,
                 parada_origem_codigo=sequencia[i], parada_destino_codigo=sequencia[i + 1],
                 geometria=[list(ponto) for ponto in segmento],
             ))
     try:
-        db.session.add_all(trechos)
+        # VALUES explícitos agrupam ST_GeomFromText no mesmo comando. O
+        # executemany do PyMySQL pode executar uma ida à nuvem por geometria.
+        for inicio in range(0, len(trechos), 250):
+            db.session.execute(Trecho.__table__.insert().values(trechos[inicio:inicio + 250]))
         db.session.commit()
     except IntegrityError:
         db.session.rollback()
