@@ -1,4 +1,4 @@
-"""Comandos explícitos de importação/consulta de programação (US04-T01)."""
+"""Comandos explícitos de programação oficial e GTFS (US04)."""
 
 import argparse
 import json
@@ -10,12 +10,12 @@ from sqlalchemy.exc import SQLAlchemyError
 from app import create_app, db
 from app.integrations.programacao import CapturaProgramacao
 from app.programacao.normalizacao import TIPOS_DIA
-from app.programacao.service import consultar_oficial, importar_oficial
+from app.programacao.service import consultar_oficial, gerar_programacao_gtfs, importar_oficial
 
 
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("acao", choices=("importar", "consultar"))
+    parser.add_argument("acao", choices=("importar", "consultar", "gerar-gtfs"))
     parser.add_argument("--linha", required=True)
     parser.add_argument("--sentido", required=True, choices=("ida", "volta", "0", "1"))
     parser.add_argument("--data", required=True, type=date.fromisoformat)
@@ -27,9 +27,9 @@ def main(argv=None):
     args = parser.parse_args(argv)
     if bool(args.arquivo_json) != bool(args.fonte_url):
         parser.error("--arquivo-json e --fonte-url devem ser informados juntos")
-    if args.acao == "consultar" and args.arquivo_json:
-        parser.error("consulta não importa arquivo")
-    if args.acao == "importar" and args.versao_fonte:
+    if args.acao != "importar" and args.arquivo_json:
+        parser.error("esta ação não importa arquivo oficial")
+    if args.acao != "consultar" and args.versao_fonte:
         parser.error("--versao-fonte é usado apenas na consulta")
     app = create_app()
     with app.app_context():
@@ -38,6 +38,9 @@ def main(argv=None):
             if args.acao == "consultar":
                 resultado = consultar_oficial(*argumentos, versao_fonte=args.versao_fonte,
                                                versao_gtfs_id=args.versao_gtfs)
+            elif args.acao == "gerar-gtfs":
+                resultado = gerar_programacao_gtfs(*argumentos,
+                    versao_gtfs_id=args.versao_gtfs)
             else:
                 captura = (CapturaProgramacao(args.arquivo_json.read_bytes(), args.fonte_url)
                            if args.arquivo_json else None)

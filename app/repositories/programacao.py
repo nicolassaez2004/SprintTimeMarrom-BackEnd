@@ -14,10 +14,11 @@ def obter_linha(versao_id, codigo):
     return db.session.get(Linha, (versao_id, codigo))
 
 
-def consultar(versao_id, codigo, sentido, data_operacao, tipo_dia, versao_fonte=None):
+def consultar(versao_id, codigo, sentido, data_operacao, tipo_dia, versao_fonte=None,
+              fonte="OFICIAL"):
     consulta = ImportacaoProgramacao.query.filter_by(
         versao_gtfs_id=versao_id, linha_codigo=codigo, sentido=sentido,
-        data_operacao=data_operacao, tipo_dia=tipo_dia, fonte="OFICIAL",
+        data_operacao=data_operacao, tipo_dia=tipo_dia, fonte=fonte,
     )
     if versao_fonte is not None:
         consulta = consulta.filter_by(versao_fonte=versao_fonte)
@@ -25,7 +26,8 @@ def consultar(versao_id, codigo, sentido, data_operacao, tipo_dia, versao_fonte=
                              ImportacaoProgramacao.id.desc()).first()
 
 
-def guardar(programacao, versao_id, digest, chave, fonte_url, tamanho, agora):
+def guardar(programacao, versao_id, digest, chave, fonte_url, tamanho, agora, *,
+            fonte="OFICIAL", arquivo_existente=None, capturada_em=None):
     """Repetições atualizam a última verificação e preservam a primeira captura.
 
     A restrição única também protege contra dois processos inserindo o mesmo
@@ -33,7 +35,7 @@ def guardar(programacao, versao_id, digest, chave, fonte_url, tamanho, agora):
     """
     def existente():
         return consultar(versao_id, programacao.linha, programacao.sentido,
-                         programacao.data_operacao, programacao.tipo_dia, digest)
+                         programacao.data_operacao, programacao.tipo_dia, digest, fonte)
 
     def confirmar_repeticao(item):
         # Não regredir o horário caso uma consulta mais antiga termine depois.
@@ -47,7 +49,7 @@ def guardar(programacao, versao_id, digest, chave, fonte_url, tamanho, agora):
         item = existente()
         if item is not None:
             return confirmar_repeticao(item)
-        arquivo = ArquivoArmazenado.query.filter_by(chave=chave).one_or_none()
+        arquivo = arquivo_existente or ArquivoArmazenado.query.filter_by(chave=chave).one_or_none()
         if arquivo is None:
             arquivo = ArquivoArmazenado(
                 chave=chave, nome_original="programacao-sptrans.json", mime_type="application/json",
@@ -57,12 +59,16 @@ def guardar(programacao, versao_id, digest, chave, fonte_url, tamanho, agora):
         item = ImportacaoProgramacao(
             versao_gtfs_id=versao_id, linha_codigo=programacao.linha,
             sentido=programacao.sentido, data_operacao=programacao.data_operacao,
-            tipo_dia=programacao.tipo_dia, fonte="OFICIAL", versao_fonte=digest,
-            fonte_url=fonte_url, capturada_em=agora, verificada_em=agora, arquivo=arquivo,
+            tipo_dia=programacao.tipo_dia, fonte=fonte, versao_fonte=digest,
+            fonte_url=fonte_url, capturada_em=capturada_em or agora,
+            verificada_em=agora, arquivo=arquivo,
         )
-        item.partidas = [PartidaProgramada(ordem=ordem, saida_prevista=saida,
-                                         tipo_oferta="FIXA", intervalo_seg=None)
-                         for ordem, saida in enumerate(programacao.saidas, start=1)]
+        item.partidas = [PartidaProgramada(
+            ordem=ordem,
+            saida_prevista=getattr(partida, "saida_prevista", partida),
+            tipo_oferta=getattr(partida, "tipo_oferta", "FIXA"),
+            intervalo_seg=getattr(partida, "intervalo_seg", None),
+        ) for ordem, partida in enumerate(programacao.saidas, start=1)]
         db.session.add(item)
         db.session.commit()
         return item, True
