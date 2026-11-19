@@ -47,15 +47,14 @@ def create_app(config_extra=None):
     from app import models  # noqa: F401
 
     # Permite requisicoes do frontend local
+    origens_frontend = ["http://localhost:5173", "http://127.0.0.1:5173"]
     CORS(
         app,
         resources={
             r"/api/*": {
-                "origins": [
-                    "http://localhost:5173",
-                    "http://127.0.0.1:5173"
-                ]
-            }
+                "origins": origens_frontend
+            },
+            r"/partidas": {"origins": origens_frontend},
         }
     )
 
@@ -77,5 +76,7 @@ def create_app(config_extra=None):
     app.register_blueprint(api_bp)
     from app.correspondencia.routes import qualidade_bp
     app.register_blueprint(qualidade_bp)
+    from app.programacao.routes import partidas_bp
+    app.register_blueprint(partidas_bp)
 
     return app

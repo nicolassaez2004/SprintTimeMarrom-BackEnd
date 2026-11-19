@@ -76,6 +76,11 @@ encaminhamento de fallback quando a fonte oficial está indisponível. A geraç�
 por calendário GTFS e horários acima de 24h está documentada em
 [US04-T02A](docs/US04-T02A.md) e [US04-T02B](docs/US04-T02B.md).
 
+A consulta de partidas persistidas atende em
+`GET /partidas?linha=3762-10&sentido=ida&data=2026-11-19` (também em
+`/api/partidas`). Filtros, respostas, schema e evidência em
+[US04-T03](docs/US04-T03.md). A rota não gera programação.
+
 **Banco novo:** `flask --app app db upgrade`.
 
 **Banco que já tem as tabelas da `main`** (criadas antes das migrações):
