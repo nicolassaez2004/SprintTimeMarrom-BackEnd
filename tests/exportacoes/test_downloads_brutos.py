@@ -282,3 +282,67 @@ def test_processo_de_tarefas_registra_a_publicacao(app, monkeypatch, tmp_path):
     monkeypatch.setattr(tarefas, "executar_tarefas", lambda **kwargs: capturado.update(kwargs))
     tarefas.main([])
     assert capturado["periodicas"] == (publicar_brutos,)
+
+
+# --- Review: dados gravados com atraso (US29) e data limite --------------------
+
+def ciclo(iniciada_em, finalizada_em=None, estado="OK"):
+    execucao = ExecucaoColeta(iniciada_em=iniciada_em, finalizada_em=finalizada_em, estado=estado)
+    db.session.add(execucao)
+    db.session.commit()
+    return execucao
+
+
+def test_espera_ciclo_em_andamento_do_dia_ate_o_prazo(app, pasta):
+    ciclo(sp(2026, 11, 18, 23, 59, 30), estado="EM_ANDAMENTO")
+    assert publicar_brutos(sp(2026, 11, 19, 0, 15), relogio=relogio_fixo(sp(2026, 11, 19, 0, 15))) is None
+    assert arquivo_completo(pasta, DIA) is None
+    # Ciclo de depois da meia-noite em andamento não bloqueia o dia anterior.
+    ciclo(sp(2026, 11, 19, 0, 0, 30), estado="EM_ANDAMENTO")
+    # No prazo, publica mesmo com o ciclo travado, para não perder as 06:00.
+    resultado = publicar_brutos(sp(2026, 11, 19, 6), relogio=relogio_fixo(sp(2026, 11, 19, 6)))
+    assert resultado["data"] == "2026-11-18" and resultado["prazo_atendido"] is True
+    # Ciclo travado sem finalizada_em não provoca regeração a cada minuto.
+    gerar = Mock()
+    with pytest.MonkeyPatch.context() as mp:
+        mp.setattr(parquet, "gerar_parquet_diario", gerar)
+        assert publicar_brutos(sp(2026, 11, 19, 6, 1)) is None
+    gerar.assert_not_called()
+
+
+def test_regera_quando_ciclo_do_dia_e_gravado_depois_da_exportacao(app, pasta, caplog):
+    caplog.set_level(logging.INFO, logger="app.exportacoes.parquet")
+    publicar_brutos(sp(2026, 11, 19, 0, 15), relogio=relogio_fixo(sp(2026, 11, 19, 0, 15)))
+    assert arquivo_completo(pasta, DIA)["registros"] == 3
+    # MySQL fora às 23:59: o checkpoint grava o ciclo do dia 18 só à 01:00.
+    atrasado = ciclo(sp(2026, 11, 18, 23, 59, 40), finalizada_em=sp(2026, 11, 19, 1))
+    db.session.add(RegistroBrutoGPS(execucao_id=atrasado.id, prefixo_origem="atrasado",
+                                    coletado_em=sp(2026, 11, 18, 23, 59, 40)))
+    db.session.commit()
+    resultado = publicar_brutos(sp(2026, 11, 19, 1, 1), relogio=relogio_fixo(sp(2026, 11, 19, 1, 1)))
+    assert resultado["data"] == "2026-11-18" and resultado["registros"] == 4
+    assert json.loads(caplog.records[-1].getMessage())["motivo"] == "DADO_ATRASADO"
+    tabela = pq.read_table(pasta / nome_arquivo(DIA))
+    assert "atrasado" in tabela.column("prefixo_origem").to_pylist()
+    # Já regerado: não repete.
+    assert publicar_brutos(sp(2026, 11, 19, 1, 2), relogio=relogio_fixo(sp(2026, 11, 19, 1, 2))) is None
+
+
+def test_revisao_de_atrasos_limitada_aos_ultimos_dias(app, pasta):
+    antigo = date(2026, 11, 10)
+    exportar(pasta, antigo)
+    ciclo(sp(2026, 11, 10, 12), finalizada_em=sp(2026, 11, 19))
+    gerar = Mock()
+    with pytest.MonkeyPatch.context() as mp:
+        mp.setattr(parquet, "gerar_parquet_diario", gerar)
+        mp.setattr(parquet, "_ciclo_em_aberto", lambda dia: True)  # isola a revisão
+        publicar_brutos(sp(2026, 11, 19, 3))
+    gerar.assert_not_called()  # 10/11 está fora dos REVISAO_DIAS: usar a CLI
+
+
+def test_data_maxima_nao_gera_erro_interno(cliente):
+    resposta = cliente.get("/downloads/brutos?data=9999-12-31")
+    assert resposta.status_code == 404
+    erro = resposta.get_json()["erro"]
+    assert erro["codigo"] == "ARQUIVO_AINDA_INDISPONIVEL" and erro["previsto_ate"] is None
+    assert cliente.get("/downloads/brutos?data=0001-01-01").status_code == 404

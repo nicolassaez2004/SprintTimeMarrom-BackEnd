@@ -59,11 +59,14 @@ def baixar():
 
     resumo = arquivo_completo(diretorio_exportacoes(), dia)
     if resumo is None:
-        prazo = prazo_publicacao(dia)
-        if agora_utc() < prazo:
+        try:
+            prazo = prazo_publicacao(dia)
+        except OverflowError:  # 9999-12-31: D+1 não é representável
+            prazo = None
+        if prazo is None or agora_utc() < prazo:
             return _erro("ARQUIVO_AINDA_INDISPONIVEL",
                          "Os dados deste dia ainda não foram consolidados.", 404,
-                         previsto_ate=prazo.isoformat())
+                         previsto_ate=prazo.isoformat() if prazo else None)
         return _erro("ARQUIVO_INEXISTENTE", "Não há arquivo de brutos publicado para esta data.", 404)
     resposta = send_file(resumo["caminho"], mimetype=MIME_PARQUET, as_attachment=True,
                          download_name=nome_arquivo(dia), max_age=0)

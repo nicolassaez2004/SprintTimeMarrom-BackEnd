@@ -8,7 +8,8 @@ escolha, para um ônibus que trocou de linha não aparecer na linha antiga.
 
 from datetime import timedelta
 
-from sqlalchemy import and_, func
+from sqlalchemy import and_, func, select
+from sqlalchemy.orm import aliased
 
 from app import db
 from app.models import (
@@ -16,6 +17,7 @@ from app.models import (
     Linha,
     ObservacaoTratada,
     RegistroBrutoGPS,
+    Veiculo,
     agora_utc,
 )
 
@@ -45,33 +47,32 @@ def ultimas_posicoes(*, linha=None, linha_gtfs=None, agora=None):
     agora = agora or agora_utc()
     desde = agora - JANELA_CONSULTA
     R = RegistroBrutoGPS
-    com_posicao = (
-        R.veiculo_prefixo.is_not(None), R.latitude.is_not(None),
-        R.longitude.is_not(None), R.horario_gps.is_not(None),
-        R.coletado_em >= desde, R.coletado_em <= agora,
-    )
-    ultimos = (
-        db.session.query(R.veiculo_prefixo.label("prefixo"),
-                         func.max(R.coletado_em).label("coletado_em"))
-        .filter(*com_posicao).group_by(R.veiculo_prefixo).subquery()
+    ultima = aliased(RegistroBrutoGPS)
+    # Uma busca por veículo no índice (prefixo_origem, coletado_em), do mais
+    # novo para o mais antigo: não agrupa as 24 h de brutos (US22/US27). O
+    # coletor grava prefixo_origem = veiculo_prefixo (FK para veiculos).
+    ultimo_id = (
+        select(ultima.id)
+        .where(ultima.prefixo_origem == Veiculo.prefixo,
+               ultima.veiculo_prefixo.is_not(None), ultima.latitude.is_not(None),
+               ultima.longitude.is_not(None), ultima.horario_gps.is_not(None),
+               ultima.coletado_em >= desde, ultima.coletado_em <= agora)
+        # Só colunas do índice (o InnoDB anexa o id): sem filesort por veículo.
+        .order_by(ultima.coletado_em.desc(), ultima.id.desc())
+        .limit(1).correlate(Veiculo).scalar_subquery()
     )
     consulta = (
         db.session.query(R, ObservacaoTratada, Linha)
-        .join(ultimos, and_(R.veiculo_prefixo == ultimos.c.prefixo,
-                            R.coletado_em == ultimos.c.coletado_em))
-        .filter(*com_posicao)
+        .select_from(Veiculo)
+        .join(R, R.id == ultimo_id)
         .outerjoin(ObservacaoTratada, ObservacaoTratada.bruto_id == R.id)
         .outerjoin(Linha, and_(Linha.versao_gtfs_id == ObservacaoTratada.versao_gtfs_id,
                                Linha.codigo == ObservacaoTratada.linha_codigo))
-        .order_by(R.veiculo_prefixo, R.horario_gps.desc(), R.id.desc())
+        .order_by(R.veiculo_prefixo)
     )
-    # Mesmo ciclo com duas posições do veículo: fica a de horário GPS mais novo.
-    escolhidos = {}
-    for registro, observacao, linha_rede in consulta:
-        escolhidos.setdefault(registro.veiculo_prefixo, (registro, observacao, linha_rede))
-
+    # A subconsulta já escolhe um registro por veículo (empate no ciclo: maior id).
     veiculos = []
-    for registro, observacao, linha_rede in escolhidos.values():
+    for registro, observacao, linha_rede in consulta:
         gtfs = _linha_gtfs(observacao, linha_rede)
         if linha is not None and registro.linha_origem != linha:
             continue

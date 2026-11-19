@@ -159,3 +159,21 @@ def test_rota_rejeita_filtros_invalidos(client, consulta, campo):
     resposta = client.get(f"/posicoes/atuais?{consulta}")
     assert resposta.status_code == 400
     assert resposta.get_json()["erro"]["campo"] == campo
+
+
+def test_review_um_registro_por_veiculo_mesmo_com_empate_no_ciclo(app):
+    """Consulta por índice (review): empate no mesmo coletado_em fica com o maior id."""
+    primeiro = bruto("11001", "100", 10)
+    segundo = RegistroBrutoGPS(
+        execucao_id=primeiro.execucao_id, veiculo_prefixo="11001", prefixo_origem="11001",
+        linha_origem="200", sentido_origem="2", latitude=-23.6, longitude=-46.7,
+        horario_gps=primeiro.horario_gps - timedelta(seconds=1), coletado_em=primeiro.coletado_em)
+    db.session.add(segundo)
+    bruto("11002", "100", 4000)  # fora dos 60 s, ainda na janela de 24 h
+    db.session.add(Veiculo(prefixo="sem-posicao"))
+    db.session.commit()
+    resposta = ultimas_posicoes(agora=AGORA)
+    assert resposta["total"] == 2
+    veiculos = por_prefixo(resposta)
+    assert veiculos["11001"]["linha"]["codigo_olho_vivo"] == "200"  # maior id
+    assert veiculos["11002"]["recente"] is False and veiculos["11002"]["idade_segundos"] == 4000
