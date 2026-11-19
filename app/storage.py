@@ -44,3 +44,19 @@ class FileStore:
         if not caminho.is_file() or hash_arquivo(caminho)[0] != digest:
             raise FileNotFoundError("ZIP GTFS ausente ou divergente do hash")
         return caminho
+
+    def publicar_programacao(self, temporario, digest, tamanho):
+        """Publica o JSON bruto sem modificar os bytes recebidos da fonte."""
+        destino = self.diretorio / f"{digest}.json"
+        try:
+            os.link(temporario, destino)
+        except FileExistsError:
+            if hash_arquivo(destino) != (digest, tamanho):
+                raise RuntimeError("arquivo de programação divergente no armazenamento")
+        return f"programacao/{digest}.json"
+
+    def caminho_programacao(self, chave, digest):
+        caminho = self.diretorio / Path(chave).name
+        if not caminho.is_file() or hash_arquivo(caminho)[0] != digest:
+            raise FileNotFoundError("JSON de programação ausente ou divergente do hash")
+        return caminho

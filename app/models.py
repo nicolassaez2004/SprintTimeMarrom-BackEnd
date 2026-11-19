@@ -437,3 +437,97 @@ class ObservacaoTratada(db.Model):
         backref=db.backref("observacao_tratada", uselist=False, passive_deletes="all"),
     )
     versao_gtfs = db.relationship("VersaoGTFS")
+
+
+class ImportacaoProgramacao(db.Model):
+    """Captura versionada, inclusive vazia, da programação de uma linha/dia.
+
+    Extensão operacional ao diagrama: guarda a procedência comum às partidas
+    e permite distinguir zero partidas oficiais de ausência de importação.
+    """
+
+    __tablename__ = "importacoes_programacao"
+    __table_args__ = (
+        db.ForeignKeyConstraint(
+            ["versao_gtfs_id", "linha_codigo"], ["linhas.versao_gtfs_id", "linhas.codigo"],
+            name="fk_importacoes_programacao_linha", ondelete="RESTRICT",
+        ),
+        UniqueConstraint("versao_gtfs_id", "linha_codigo", "data_operacao", "sentido",
+                         "tipo_dia", "fonte", "versao_fonte", name="uq_importacoes_programacao_contexto"),
+        CheckConstraint("sentido IN ('0', '1')", name="ck_importacoes_programacao_sentido"),
+        CheckConstraint("tipo_dia IN ('UTIL', 'SABADO', 'DOMINGO', 'FERIADO')",
+                        name="ck_importacoes_programacao_tipo_dia"),
+        CheckConstraint("fonte IN ('OFICIAL', 'GTFS')", name="ck_importacoes_programacao_fonte"),
+    )
+
+    id = db.Column(db.String(36), primary_key=True, default=lambda: str(uuid4()))
+    versao_gtfs_id = db.Column(db.String(36), nullable=False)
+    linha_codigo = db.Column(CodigoGTFS, nullable=False)
+    data_operacao = db.Column(db.Date, nullable=False)
+    sentido = db.Column(db.String(1), nullable=False)
+    tipo_dia = db.Column(db.String(12), nullable=False)
+    fonte = db.Column(db.String(8), nullable=False)
+    versao_fonte = db.Column(db.String(64), nullable=False)
+    fonte_url = db.Column(db.String(512), nullable=False)
+    capturada_em = db.Column(UTCDateTime, nullable=False)
+    verificada_em = db.Column(UTCDateTime, nullable=False)
+    arquivo_id = db.Column(db.String(36), db.ForeignKey(
+        "arquivos_armazenados.id", name="fk_importacoes_programacao_arquivo", ondelete="RESTRICT",
+    ), nullable=False)
+
+    linha = db.relationship("Linha")
+    arquivo = db.relationship("ArquivoArmazenado")
+    partidas = db.relationship("PartidaProgramada", back_populates="importacao",
+                               order_by="PartidaProgramada.ordem", passive_deletes="all")
+
+
+class PartidaProgramada(db.Model):
+    """Saída com contexto/procedência herdados da captura, sem duplicar colunas.
+
+    A ordem preserva partidas simultâneas da fonte. O sentido segue o GTFS:
+    0 = ida, 1 = volta; não recebe diretamente os códigos 1/2 do Olho Vivo.
+    """
+
+    __tablename__ = "partidas_programadas"
+    __table_args__ = (
+        UniqueConstraint("importacao_id", "ordem", name="uq_partidas_programadas_ordem"),
+        CheckConstraint("ordem >= 1", name="ck_partidas_programadas_ordem"),
+        CheckConstraint("tipo_oferta IN ('FIXA', 'FREQUENCIA')", name="ck_partidas_programadas_tipo"),
+        CheckConstraint("(tipo_oferta = 'FIXA' AND intervalo_seg IS NULL) OR "
+                        "(tipo_oferta = 'FREQUENCIA' AND intervalo_seg IS NOT NULL AND intervalo_seg > 0)",
+                        name="ck_partidas_programadas_intervalo"),
+    )
+
+    id = db.Column(db.String(36), primary_key=True, default=lambda: str(uuid4()))
+    importacao_id = db.Column(db.String(36), db.ForeignKey(
+        "importacoes_programacao.id", name="fk_partidas_programadas_importacao", ondelete="RESTRICT",
+    ), nullable=False)
+    ordem = db.Column(db.Integer, nullable=False)
+    saida_prevista = db.Column(UTCDateTime, nullable=False)
+    tipo_oferta = db.Column(db.String(12), nullable=False, default="FIXA")
+    intervalo_seg = db.Column(db.Integer, nullable=True)
+    importacao = db.relationship("ImportacaoProgramacao", back_populates="partidas")
+
+    @property
+    def linha(self):
+        return self.importacao.linha
+
+    @property
+    def data_operacao(self):
+        return self.importacao.data_operacao
+
+    @property
+    def sentido(self):
+        return self.importacao.sentido
+
+    @property
+    def fonte(self):
+        return self.importacao.fonte
+
+    @property
+    def versao_fonte(self):
+        return self.importacao.versao_fonte
+
+    @property
+    def versao_gtfs(self):
+        return self.importacao.linha.versao_gtfs

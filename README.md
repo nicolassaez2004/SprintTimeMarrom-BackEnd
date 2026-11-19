@@ -54,6 +54,13 @@ O esquema é versionado com Flask-Migrate (Alembic), em `migrations/versions/`:
 - `0006`: `linhas` e `paradas`, com chave (versão GTFS, código).
 - `0007`: `trechos`, com chaves estrangeiras compostas para linha e paradas da
   mesma versão GTFS.
+- `0008`: capturas da programação oficial e `partidas_programadas`, com
+  procedência e histórico ([US04-T01](docs/US04-T01.md)).
+
+A importação/consulta de partidas é explícita: `python -m app.programacao --help`.
+Consulte [US04-T01](docs/US04-T01.md) para fontes, normalização, testes e o
+encaminhamento de fallback quando a fonte oficial está indisponível. A geração
+de partidas GTFS depende da continuação da US04.
 
 **Banco novo:** `flask --app app db upgrade`.
 
