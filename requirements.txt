@@ -10,4 +10,5 @@ pytest
 shapely>=2.0,<3
 pyproj>=3.6,<4
 tzdata
+pyarrow>=16,<25
 filelock>=3.16,<4

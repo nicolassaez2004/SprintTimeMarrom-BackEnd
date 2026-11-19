@@ -43,6 +43,17 @@ Git). Nenhuma senha ou token é escrito no código. Use `.env.example` como mode
 A API só abre conexão com o banco quando precisa dele, então `/health` responde
 mesmo sem o MySQL estar no ar. A conexão real será conferida na US12-T01B.
 
+## Exportação diária dos brutos para Parquet (US09-T01)
+
+Instale as dependências e execute, por exemplo,
+`python -m app.exportacoes --data 2026-11-18 --saida ./exportacoes`.
+O dia é interpretado em UTC pelo campo `coletado_em`; use `--lote` para ajustar
+o tamanho dos lotes (padrão 5000). O exportador lê `registros_gps` em uma
+transação consistente, mantém os campos tipados e os NULL, e representa `payload`
+JSON como texto UTF-8. O arquivo inclui os metadados de fonte, data e licença
+CC BY 4.0. A escrita ocorre em arquivo temporário no mesmo diretório e só é
+publicada após a conclusão, por substituição atômica.
+
 ## Migrações do banco
 
 O esquema é versionado com Flask-Migrate (Alembic), em `migrations/versions/`:
