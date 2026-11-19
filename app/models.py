@@ -8,7 +8,7 @@ gravar, rejeita valores sem fuso (ambíguos) e devolve sempre `datetime` com
 Alterações de esquema são feitas por migrações em `migrations/versions/`.
 """
 
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from uuid import uuid4
 
 from sqlalchemy import CheckConstraint, DateTime, Double, Index, UniqueConstraint, func
@@ -756,3 +756,48 @@ class ResultadoReprocessamento(db.Model):
     )
     bruto = db.relationship("RegistroBrutoGPS")
     versao_gtfs = db.relationship("VersaoGTFS")
+
+
+# US05: documento novo catalogado em até 30 dias após a descoberta.
+PRAZO_CATALOGACAO = timedelta(days=30)
+
+
+class DocumentoOficial(db.Model):
+    """PDF oficial (contrato, indicador) catalogado com metadados e procedência.
+
+    O PDF original fica no FileStore e é referenciado por ArquivoArmazenado;
+    um mesmo arquivo pode ser catalogado por mais de um documento (0..*).
+    `descoberto_em` e `catalogado_em` permitem auditar o prazo de 30 dias.
+    """
+
+    __tablename__ = "documentos_oficiais"
+    __table_args__ = (
+        CheckConstraint("catalogado_em >= descoberto_em",
+                        name="ck_documentos_oficiais_catalogacao_apos_descoberta"),
+    )
+
+    id = db.Column(db.String(36), primary_key=True, default=lambda: str(uuid4()))
+    titulo = db.Column(db.String(500), nullable=False)
+    tipo = db.Column(db.String(64), nullable=False)
+    data_documento = db.Column(db.Date, nullable=False)
+    orgao = db.Column(db.String(255), nullable=False)
+    fonte = db.Column(db.String(1024), nullable=False)
+    descoberto_em = db.Column(UTCDateTime, nullable=False)
+    catalogado_em = db.Column(UTCDateTime, nullable=False, default=agora_utc)
+    arquivo_id = db.Column(
+        db.String(36),
+        db.ForeignKey("arquivos_armazenados.id", name="fk_documentos_oficiais_arquivo",
+                      ondelete="RESTRICT"),
+        nullable=False,
+        index=True,
+    )
+
+    arquivo = db.relationship("ArquivoArmazenado")
+
+    @property
+    def tempo_ate_catalogacao(self):
+        return self.catalogado_em - self.descoberto_em
+
+    @property
+    def catalogado_no_prazo(self):
+        return self.tempo_ate_catalogacao <= PRAZO_CATALOGACAO

@@ -60,3 +60,19 @@ class FileStore:
         if not caminho.is_file() or hash_arquivo(caminho)[0] != digest:
             raise FileNotFoundError("JSON de programação ausente ou divergente do hash")
         return caminho
+
+    def publicar_pdf(self, temporario, digest, tamanho):
+        """Publica o PDF oficial original, sem alterar os bytes recebidos."""
+        destino = self.diretorio / f"{digest}.pdf"
+        try:
+            os.link(temporario, destino)
+        except FileExistsError:
+            if hash_arquivo(destino) != (digest, tamanho):
+                raise RuntimeError("PDF divergente no armazenamento")
+        return f"documentos/{digest}.pdf"
+
+    def caminho_pdf(self, chave, digest):
+        caminho = self.diretorio / Path(chave).name
+        if not caminho.is_file() or hash_arquivo(caminho)[0] != digest:
+            raise FileNotFoundError("PDF original ausente ou divergente do hash")
+        return caminho
