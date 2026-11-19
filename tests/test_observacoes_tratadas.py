@@ -6,7 +6,9 @@ from sqlalchemy import event
 from sqlalchemy.exc import IntegrityError
 
 from app import create_app, db
-from app.models import ExecucaoColeta, RegistroBrutoGPS, ObservacaoTratada
+from app.models import (
+    ExecucaoColeta, ExecucaoProcessamento, RegistroBrutoGPS, ObservacaoTratada,
+)
 
 
 @pytest.fixture
@@ -36,14 +38,14 @@ def contexto():
 def test_tratamento_preserva_payload_e_campos_originais(contexto):
     bruto = contexto
     payload, instante = deepcopy(bruto.payload), bruto.coletado_em
-    assert bruto.observacao_tratada is None
+    assert bruto.observacoes_tratadas == []
     obs = ObservacaoTratada(bruto_id=bruto.id, valida=False,
                             motivo_invalidez='coordenada inválida',
                             versao_correspondencia='validacao-v1')
     db.session.add(obs)
     db.session.commit()
     db.session.expire_all()
-    assert bruto.observacao_tratada.id == obs.id
+    assert bruto.observacoes_tratadas == [obs]
     assert obs.bruto.id == bruto.id and obs.versao_gtfs is None
     assert bruto.payload == payload
     assert bruto.latitude is None and bruto.coletado_em == instante
@@ -55,14 +57,41 @@ def test_tratamento_preserva_payload_e_campos_originais(contexto):
 
 
 def test_nao_permite_dois_tratamentos_para_mesmo_bruto(contexto):
+    execucao = ExecucaoProcessamento(
+        periodo_inicio=datetime(2026, 11, 17, tzinfo=timezone.utc),
+        periodo_fim=datetime(2026, 11, 19, tzinfo=timezone.utc), bruto_id_maximo=contexto.id,
+        versao_base="gps:id<=1", versao_codigo="codigo-v1", versao_regra="regra-v1",
+    )
+    db.session.add(execucao)
+    db.session.flush()
     for _ in range(2):
         db.session.add(ObservacaoTratada(bruto_id=contexto.id, valida=True,
-                                        versao_correspondencia='v1'))
+                                        versao_correspondencia='v1',
+                                        execucao_processamento_id=execucao.id))
     with pytest.raises(IntegrityError):
         db.session.commit()
     db.session.rollback()
     assert ObservacaoTratada.query.count() == 0
     assert RegistroBrutoGPS.query.count() == 1
+
+
+def test_bruto_pode_ter_resultado_em_execucoes_distintas(contexto):
+    for indice in range(2):
+        execucao = ExecucaoProcessamento(
+            periodo_inicio=datetime(2026, 11, 17, tzinfo=timezone.utc),
+            periodo_fim=datetime(2026, 11, 19, tzinfo=timezone.utc),
+            bruto_id_maximo=contexto.id, versao_base="gps:id<=1",
+            versao_codigo=f"codigo-v{indice + 1}", versao_regra="regra-v1",
+        )
+        db.session.add(execucao)
+        db.session.flush()
+        db.session.add(ObservacaoTratada(
+            bruto_id=contexto.id, valida=True, versao_correspondencia="regra-v1",
+            execucao_processamento_id=execucao.id,
+        ))
+    db.session.commit()
+    assert ObservacaoTratada.query.count() == 2
+    assert RegistroBrutoGPS.query.one().observacoes_tratadas
 
 
 @pytest.mark.parametrize('campo,valor', [

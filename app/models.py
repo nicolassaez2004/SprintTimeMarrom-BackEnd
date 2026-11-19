@@ -399,14 +399,17 @@ class VerificacaoGTFS(db.Model):
 class ObservacaoTratada(db.Model):
     """Resultado de tratamento separado da posição bruta imutável (US12).
 
-    Um bruto pode ainda não ter tratamento e pode gerar no máximo uma
-    observação. Linha e viagem serão ligadas quando existirem nas suas
-    histórias; a correspondência GTFS pode permanecer desconhecida (NULL).
+    Cada execução de processamento pode gerar no máximo uma observação por
+    bruto. Uma nova execução versionada pode produzir outro resultado sem
+    sobrescrever o anterior. A correspondência GTFS pode permanecer NULL.
     """
 
     __tablename__ = "observacoes_tratadas"
     __table_args__ = (
-        UniqueConstraint("bruto_id", name="uq_observacoes_tratadas_bruto"),
+        UniqueConstraint(
+            "execucao_processamento_id", "bruto_id",
+            name="uq_observacoes_execucao_bruto",
+        ),
         CheckConstraint("LENGTH(TRIM(versao_correspondencia)) > 0",
                         name="ck_observacoes_tratadas_versao"),
         # Herda charset/collation da base, assim como versoes_gtfs (0003),
@@ -415,6 +418,13 @@ class ObservacaoTratada(db.Model):
     )
 
     id = db.Column(db.String(36), primary_key=True, default=lambda: str(uuid4()))
+    execucao_processamento_id = db.Column(
+        db.String(36),
+        db.ForeignKey("execucoes_processamento.id", name="fk_observacoes_execucao",
+                      ondelete="RESTRICT"),
+        nullable=True,
+        index=True,
+    )
     bruto_id = db.Column(
         IdGrande,
         db.ForeignKey("registros_gps.id", name="fk_observacoes_tratadas_bruto",
@@ -434,6 +444,53 @@ class ObservacaoTratada(db.Model):
 
     bruto = db.relationship(
         "RegistroBrutoGPS",
-        backref=db.backref("observacao_tratada", uselist=False, passive_deletes="all"),
+        backref=db.backref("observacoes_tratadas", passive_deletes="all"),
     )
     versao_gtfs = db.relationship("VersaoGTFS")
+    execucao_processamento = db.relationship(
+        "ExecucaoProcessamento", back_populates="observacoes_tratadas"
+    )
+
+
+class ExecucaoProcessamento(db.Model):
+    """Manifesto imutável para reprocessamento reproduzível de dados brutos."""
+
+    __tablename__ = "execucoes_processamento"
+    __table_args__ = (
+        CheckConstraint(
+            "estado IN ('EM_ANDAMENTO', 'CONCLUIDA', 'FALHA')",
+            name="ck_execucoes_processamento_estado",
+        ),
+        CheckConstraint("periodo_fim > periodo_inicio",
+                        name="ck_execucoes_processamento_periodo"),
+        CheckConstraint("tentativas >= 0",
+                        name="ck_execucoes_processamento_tentativas"),
+        Index("ix_execucoes_processamento_periodo", "periodo_inicio", "periodo_fim"),
+        {"mysql_engine": "InnoDB"},
+    )
+
+    id = db.Column(db.String(36), primary_key=True, default=lambda: str(uuid4()))
+    tipo = db.Column(db.String(32), nullable=False, default="REPROCESSAMENTO")
+    periodo_inicio = db.Column(UTCDateTime, nullable=False)
+    periodo_fim = db.Column(UTCDateTime, nullable=False)
+    # Snapshot fechado: novos brutos com coleta retroativa não entram neste manifesto.
+    bruto_id_maximo = db.Column(IdGrande, nullable=False)
+    versao_base = db.Column(db.String(128), nullable=False)
+    versao_gtfs_id = db.Column(
+        db.String(36),
+        db.ForeignKey("versoes_gtfs.id", name="fk_execucoes_processamento_gtfs",
+                      ondelete="RESTRICT"),
+        nullable=True,
+    )
+    versao_codigo = db.Column(db.String(128), nullable=False)
+    versao_regra = db.Column(db.String(128), nullable=False)
+    estado = db.Column(db.String(16), nullable=False, default="EM_ANDAMENTO")
+    tentativas = db.Column(db.Integer, nullable=False, default=1)
+    criada_em = db.Column(UTCDateTime, nullable=False, default=agora_utc)
+    finalizada_em = db.Column(UTCDateTime, nullable=True)
+    erro = db.Column(db.String(128), nullable=True)
+
+    versao_gtfs = db.relationship("VersaoGTFS")
+    observacoes_tratadas = db.relationship(
+        "ObservacaoTratada", back_populates="execucao_processamento"
+    )

@@ -47,13 +47,16 @@ O esquema é versionado com Flask-Migrate (Alembic), em `migrations/versions/`:
   renomeia, amplia tipos e copia valores.
 - `0003`: metadados de `ArquivoArmazenado` e `VersaoGTFS`, com unicidade por hash.
 - `0004`: `ObservacaoTratada` separada do bruto, com FK obrigatória/única para
-  `registros_gps` e FK opcional para a versão GTFS. Evidências e limites em
-  [US12-T01B](docs/US12-T01B.md).
+  `registros_gps` e FK opcional para a versão GTFS. A `0008` passa a garantir
+  unicidade por execução e bruto, mantendo o tratamento legado sem manifesto.
+  Evidências e limites em [US12-T01B](docs/US12-T01B.md).
 - `0005`: `verificacoes_gtfs`, agenda e resultado da verificação diária do GTFS
   ([US02-T04](docs/US02-T04.md)).
 - `0006`: `linhas` e `paradas`, com chave (versão GTFS, código).
 - `0007`: `trechos`, com chaves estrangeiras compostas para linha e paradas da
   mesma versão GTFS.
+- `0008`: manifesto `ExecucaoProcessamento` e vínculo dos resultados tratados
+  por execução. Mantém observações antigas com execução NULL e não altera brutos.
 
 **Banco novo:** `flask --app app db upgrade`.
 
@@ -101,6 +104,12 @@ Segue o diagrama de componentes e serviços:
   `prevista_em`, início, fim, `estado` (`EM_ANDAMENTO`, `OK`, `PARCIAL` ou
   `FALHA`), `tentativas`, `recebidos`, `novos_persistidos` e `erro`. É
   diferente de `LacunaColeta`, o intervalo sem cobertura.
+- `execucoes_processamento` (`ExecucaoProcessamento`): manifesto do período,
+  limite de snapshot dos brutos e versões de base, GTFS, código e regra. O serviço
+  `app.persistencia.reprocessamento` lê por `coletado_em` em ordem crescente de ID,
+  confirma cada lote tratado separadamente e pode retomar um manifesto com falha.
+  Cada `ObservacaoTratada` aponta ao bruto e à execução que a produziu; nenhuma
+  etapa do serviço atualiza ou apaga `registros_gps`.
 
 **Duplicação.** Cada registro aponta ao ciclo que o gravou primeiro.
 
