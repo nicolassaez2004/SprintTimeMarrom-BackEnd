@@ -7,7 +7,7 @@
     "US29-T04"
   ],
   "branch": "US29",
-  "main_integrada": "731bd0a",
+  "main_integrada": "8e166ae",
   "bases": {
     "sptrans_dev": "us29_0012",
     "sptrans_test": "us29_0012"
@@ -123,7 +123,7 @@
     "email_ou_discord_configurado": false
   },
   "verificacoes": {
-    "suite_passaram": 280,
+    "suite_passaram": 316,
     "ignorados": 6,
     "subtestes_passaram": 14,
     "integracao_mysql_local_passou": true,
@@ -156,6 +156,6 @@
   },
   "criterios_tecnicos_implementados": true,
   "trello_alterado": false,
-  "commit_e_push_pendentes": true,
+  "commit_e_push_pendentes": false,
   "coleta_continua_deixada_executando": false
 }

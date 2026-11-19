@@ -159,3 +159,17 @@ def test_horario_acima_de_24_converte_em_segundos_de_servico():
     from app.programacao.gtfs import _segundos_gtfs
 
     assert _segundos_gtfs("25:10:00", 2) == 90_600
+
+
+def test_consulta_http_recupera_partidas_persistidas_pelo_gerador_gtfs(feed, tmp_path, app):
+    gerada = gerar_programacao_gtfs(
+        "3762-10", "ida", DATA, "FERIADO", versao_gtfs_id=feed.id,
+        diretorio=tmp_path / "feed-gtfs", agora=AGORA,
+    )
+    resposta = app.test_client().get("/partidas", query_string={
+        "linha": "3762-10", "sentido": "ida", "data": DATA.isoformat(),
+    })
+    assert resposta.status_code == 200
+    assert resposta.get_json()["partidas"] == gerada["partidas"]
+    assert resposta.get_json()["procedencia"] == gerada["procedencia"]
+    assert resposta.get_json()["tipo_dia"] == "FERIADO"

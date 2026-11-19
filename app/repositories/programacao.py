@@ -1,6 +1,7 @@
 """Histórico de programação; cada captura e suas partidas são atômicas."""
 
 from sqlalchemy.exc import IntegrityError
+from sqlalchemy.orm import joinedload, selectinload
 
 from app import db
 from app.models import ArquivoArmazenado, ImportacaoProgramacao, Linha, PartidaProgramada, VersaoGTFS
@@ -24,6 +25,29 @@ def consultar(versao_id, codigo, sentido, data_operacao, tipo_dia, versao_fonte=
         consulta = consulta.filter_by(versao_fonte=versao_fonte)
     return consulta.order_by(ImportacaoProgramacao.verificada_em.desc(),
                              ImportacaoProgramacao.id.desc()).first()
+
+
+def consultar_por_dia(versao_id, codigo, sentido, data_operacao, tipo_dia=None):
+    """Consulta somente dados persistidos, de qualquer uma das fontes da US04.
+
+    Retorna os tipos encontrados para o serviço decidir sobre ambiguidade.
+    A regra de calendário não é deduzida do dia da semana da data civil.
+    """
+    consulta = ImportacaoProgramacao.query.filter_by(
+        versao_gtfs_id=versao_id, linha_codigo=codigo, sentido=sentido, data_operacao=data_operacao,
+    ).filter(ImportacaoProgramacao.fonte.in_(("OFICIAL", "GTFS")))
+    if tipo_dia is not None:
+        consulta = consulta.filter_by(tipo_dia=tipo_dia)
+    tipos = [linha[0] for linha in consulta.with_entities(ImportacaoProgramacao.tipo_dia).distinct().all()]
+    if len(tipos) != 1:
+        return None, tipos
+    item = consulta.options(joinedload(ImportacaoProgramacao.arquivo),
+                            selectinload(ImportacaoProgramacao.partidas)).order_by(
+        db.case((ImportacaoProgramacao.fonte == "OFICIAL", 0), else_=1),
+        ImportacaoProgramacao.verificada_em.desc(), ImportacaoProgramacao.capturada_em.desc(),
+        ImportacaoProgramacao.id.desc(),
+    ).first()
+    return item, tipos
 
 
 def guardar(programacao, versao_id, digest, chave, fonte_url, tamanho, agora, *,
