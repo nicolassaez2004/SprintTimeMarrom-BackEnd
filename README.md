@@ -100,6 +100,13 @@ Segue o diagrama de componentes e serviços:
 - Coordenadas e horário inválidos/ausentes ficam `NULL`; o payload original é
   mantido. Coordenadas presentes fora da faixa e horários sem fuso são inválidos.
 
+**Confirmação do lote.** O ciclo começa como `EM_ANDAMENTO`; depois da coleta,
+os registros brutos, os veículos novos e o resumo final do ciclo são confirmados
+juntos em uma transação. `OK` e a contagem de novos registros só ficam gravados
+com o `commit`. Se a gravação falhar, o lote inteiro sofre `rollback` e o ciclo
+é registrado como `FALHA`. A consulta prévia de duplicatas reduz trabalho, mas a
+constraint `uq_registros_gps_prefixo_horario` é quem resolve colisões concorrentes.
+
 Para contar ciclos em uma janela de tempo:
 
 - ciclos esperados = duração da janela ÷ `GPS_COLLECTION_INTERVAL_SECONDS`

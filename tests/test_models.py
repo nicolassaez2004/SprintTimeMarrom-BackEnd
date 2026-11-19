@@ -211,6 +211,59 @@ def test_frota_inteira_e_gravada_e_veiculos_novos_sao_cadastrados(app):
     assert registros[1].payload["p"] == 9001
 
 
+def test_colisao_concorrente_reverte_lote_inteiro_sem_duplicar(app):
+    # Uma segunda coleta passa pela consulta prévia antes da primeira confirmar.
+    execucao_anterior = _execucao("OK", 0, novos_persistidos=1)
+    db.session.add(RegistroBrutoGPS(
+        execucao_id=execucao_anterior.id, veiculo_prefixo="5810", prefixo_origem="5810",
+        latitude=-23.5, longitude=-46.6, horario_gps=INICIO, coletado_em=INICIO,
+    ))
+    db.session.commit()
+    resposta = _frota(
+        {"p": "5810", "py": -23.5, "px": -46.6, "ta": "2026-11-17T15:00:00Z"},
+        {"p": 9001, "py": -23.4, "px": -46.5, "ta": "2026-11-17T15:00:03Z"},
+    )
+    with patch.object(bus_collector, "SPTransClient", return_value=_cliente(resposta)):
+        # Simula consulta concorrente desatualizada: deixa o UNIQUE do banco decidir.
+        with patch.object(bus_collector.BusCollector, "_descartar_duplicados", side_effect=lambda itens: itens):
+            coletor = bus_collector.BusCollector()
+            assert coletor.coletar_ciclo() == 0
+
+    assert RegistroBrutoGPS.query.count() == 1
+    assert RegistroBrutoGPS.query.one().execucao_id == execucao_anterior.id
+    assert "9001" not in {veiculo.prefixo for veiculo in Veiculo.query.all()}
+    falha = ExecucaoColeta.query.filter_by(estado="FALHA").one()
+    assert (falha.estado, falha.novos_persistidos, falha.erro) == (
+        "FALHA", 0, "IntegrityError"
+    )
+
+
+def test_registro_confirmado_permanece_apos_recriar_app(tmp_path):
+    banco = tmp_path / "durabilidade.sqlite"
+    config = {"TESTING": True, "SQLALCHEMY_DATABASE_URI": f"sqlite:///{banco}"}
+    primeira_app = create_app(config)
+    with primeira_app.app_context():
+        db.create_all()
+        db.session.add(Veiculo(prefixo="5810"))
+        db.session.add(OnibusSelecionado(prefixo="5810", codigo_linha=123))
+        db.session.commit()
+        resposta = _frota(
+            {"p": "5810", "py": -23.5, "px": -46.6, "ta": "2026-11-17T15:00:00Z"}
+        )
+        with patch.object(bus_collector, "SPTransClient", return_value=_cliente(resposta)):
+            assert bus_collector.BusCollector().coletar_ciclo() == 1
+        db.session.remove()
+
+    segunda_app = create_app(config)
+    with segunda_app.app_context():
+        registro = RegistroBrutoGPS.query.one()
+        assert (registro.prefixo_origem, registro.horario_gps) == (
+            "5810", datetime(2026, 11, 17, 15, 0, tzinfo=timezone.utc)
+        )
+        assert ExecucaoColeta.query.one().estado == "OK"
+        db.session.remove()
+
+
 def test_desmarcar_onibus_preserva_historico_bruto(app):
     resposta = _frota({"p": "5810", "py": -23.5, "px": -46.6, "ta": "2026-11-17T15:00:00Z"})
     with patch.object(bus_collector, "SPTransClient", return_value=_cliente(resposta)):
