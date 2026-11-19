@@ -94,8 +94,8 @@ def test_manifesto_fixa_conjunto_versoes_e_resultados_repetiveis():
              bruto.horario_gps, bruto.coletado_em)
             for bruto in RegistroBrutoGPS.query.order_by(RegistroBrutoGPS.id)
         ] == snapshot_origem
-        assert ObservacaoTratada.query.count() == 2
-        assert len({o.bruto_id for o in ObservacaoTratada.query.all()}) == 2
+        # A visão atual pertence ao MatchingService (US03); o replay só gera snapshots.
+        assert ObservacaoTratada.query.count() == 0
 
         db.session.remove()
         db.engine.dispose()
@@ -190,6 +190,113 @@ def test_falha_de_lote_registra_erro_e_permite_retoma():
         db.session.refresh(manifesto)
         assert manifesto.estado == "PRONTO"
         assert ResultadoReprocessamento.query.count() == 1
-        assert ObservacaoTratada.query.count() == 1
+        assert ObservacaoTratada.query.count() == 0
+        db.session.remove()
+        db.engine.dispose()
+
+
+def _brutos(quantidade, instante):
+    coleta = ExecucaoColeta(estado="OK", novos_persistidos=quantidade)
+    db.session.add(coleta)
+    db.session.flush()
+    brutos = [
+        RegistroBrutoGPS(
+            execucao_id=coleta.id, prefixo_origem=str(1000 + i),
+            latitude=None if i % 3 == 0 else -23.5, longitude=-46.6,
+            horario_gps=instante, coletado_em=instante, payload={"p": i},
+        )
+        for i in range(quantidade)
+    ]
+    db.session.add_all(brutos)
+    db.session.commit()
+    return brutos
+
+
+def test_lotes_seguem_ordem_de_id_e_resultado_independe_do_tamanho_do_lote():
+    app = create_app({"TESTING": True, "SQLALCHEMY_DATABASE_URI": "sqlite://"})
+    inicio = datetime(2026, 11, 18, tzinfo=timezone.utc)
+    with app.app_context():
+        db.create_all()
+        _brutos(7, inicio)
+        vistos = []
+
+        def registrar(bruto, manifesto):
+            vistos.append(bruto.id)
+            from app.persistencia.reprocessamento import tratar_bruto_basico
+            return tratar_bruto_basico(bruto, manifesto)
+
+        resultados = []
+        for indice, lote in enumerate((1, 3, 500)):
+            vistos.clear()
+            execucao = criar_execucao_reprocessamento(
+                periodo_inicio=inicio, periodo_fim=inicio + timedelta(days=1),
+                versao_base="gps:id<=7", versao_codigo="git:abc", versao_regra="regra-v1",
+                chave_logica=f"lote-{indice}",
+            )
+            assert executar_reprocessamento(execucao.id, processador=registrar,
+                                            tamanho_lote=lote) == 7
+            assert vistos == sorted(vistos)
+            resultados.append([
+                (r.bruto_id, r.valida, r.motivo_invalidez, r.versao_correspondencia)
+                for r in ResultadoReprocessamento.query.filter_by(
+                    execucao_processamento_id=execucao.id
+                ).order_by(ResultadoReprocessamento.bruto_id)
+            ])
+        assert resultados[0] == resultados[1] == resultados[2]
+        assert ResultadoReprocessamento.query.count() == 21
+        db.session.remove()
+        db.engine.dispose()
+
+
+def test_reprocessamento_nao_sobrescreve_observacao_da_correspondencia_us03():
+    app = create_app({"TESTING": True, "SQLALCHEMY_DATABASE_URI": "sqlite://"})
+    inicio = datetime(2026, 11, 18, tzinfo=timezone.utc)
+    with app.app_context():
+        db.create_all()
+        (bruto,) = _brutos(2, inicio)[1:2]
+        db.session.add(ObservacaoTratada(
+            bruto_id=bruto.id, valida=False, motivo_invalidez="DISTANCIA_MAIOR_100M",
+            motivo_correspondencia="DISTANCIA_MAIOR_100M", versao_correspondencia="tabela-v1",
+            linha_codigo="3762-10", sentido_gtfs="0", distancia_tracado_m=250.0,
+        ))
+        db.session.commit()
+        antes = [(o.bruto_id, o.valida, o.motivo_invalidez, o.versao_correspondencia,
+                  o.linha_codigo, o.distancia_tracado_m) for o in ObservacaoTratada.query]
+        execucao = criar_execucao_reprocessamento(
+            periodo_inicio=inicio, periodo_fim=inicio + timedelta(days=1),
+            versao_base="b", versao_codigo="c", versao_regra="r",
+        )
+        assert executar_reprocessamento(execucao.id) == 2
+        depois = [(o.bruto_id, o.valida, o.motivo_invalidez, o.versao_correspondencia,
+                   o.linha_codigo, o.distancia_tracado_m) for o in ObservacaoTratada.query]
+        assert depois == antes
+        # O snapshot da execução continua rastreável ao bruto e às versões.
+        snapshot = ResultadoReprocessamento.query.filter_by(bruto_id=bruto.id).one()
+        assert (snapshot.execucao_processamento_id, snapshot.versao_correspondencia) == (
+            execucao.id, "r")
+        db.session.remove()
+        db.engine.dispose()
+
+
+def test_validade_pendente_nao_e_convertida_em_invalida():
+    import pytest
+
+    from app.persistencia.reprocessamento import ReprocessamentoInvalido
+
+    app = create_app({"TESTING": True, "SQLALCHEMY_DATABASE_URI": "sqlite://"})
+    inicio = datetime(2026, 11, 18, tzinfo=timezone.utc)
+    with app.app_context():
+        db.create_all()
+        _brutos(1, inicio)
+        execucao = criar_execucao_reprocessamento(
+            periodo_inicio=inicio, periodo_fim=inicio + timedelta(days=1),
+            versao_base="b", versao_codigo="c", versao_regra="r",
+        )
+        with pytest.raises(ReprocessamentoInvalido, match="booleana"):
+            executar_reprocessamento(execucao.id,
+                                     processador=lambda _b, _m: {"valida": None})
+        db.session.refresh(execucao)
+        assert execucao.estado == "ERRO"
+        assert ResultadoReprocessamento.query.count() == 0
         db.session.remove()
         db.engine.dispose()

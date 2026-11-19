@@ -62,8 +62,8 @@ O esquema é versionado com Flask-Migrate (Alembic), em `migrations/versions/`:
   mesma versão GTFS.
 - `0008`: capturas da programação oficial e `partidas_programadas`, com
   procedência e histórico ([US04-T01](docs/US04-T01.md)).
-- `0009`: manifesto `ExecucaoProcessamento` e vínculo dos resultados tratados
-  por execução. Mantém observações antigas com execução NULL e não altera brutos.
+- `0009`: manifesto `ExecucaoProcessamento` e `resultados_reprocessamento`
+  (resultado por execução e bruto). Não altera brutos nem `observacoes_tratadas`.
 - `us03_0008`: correspondência versionada e proveniência do tratamento.
 - `us03_0009`: revisões de correspondência preservando tabelas anteriores.
 - `0010_us03_programacao`: integra US03/US04 em uma linha de migração.
@@ -125,10 +125,13 @@ Segue o diagrama de componentes e serviços:
   com chave lógica, parâmetros, versões de base, GTFS, código e regra e estados
   de job alinhados ao diagrama. O serviço `app.persistencia.reprocessamento` lê
   por `coletado_em` em ordem crescente de ID, confirma cada lote tratado em
-  transação própria e pode retomar um manifesto com erro. `ObservacaoTratada`
-  mantém a relação 1:1 do diagrama como visão tratada atual; `resultados_reprocessamento`
-  guarda o resultado de cada execução com referências ao bruto e às versões.
-  Nenhuma etapa do serviço atualiza ou apaga `registros_gps`.
+  transação própria e pode retomar um manifesto com erro. O serviço grava apenas
+  `resultados_reprocessamento`, com referências ao bruto, à execução e às versões.
+  `ObservacaoTratada` continua sendo a visão atual 1:1 mantida pelo MatchingService
+  (US03) e não é sobrescrita pelo reprocessamento. Nenhuma etapa do serviço
+  atualiza ou apaga `registros_gps`. Limitação: `resultados_reprocessamento.valida`
+  é NOT NULL; usar o MatchingService como processador (validade pendente = NULL)
+  exige migração revisada.
 
 **US12-T04 — reprodução mensal de indicadores.** O relatório em
 [docs/US12-T04.md](docs/US12-T04.md) registra a dependência ainda ausente de
