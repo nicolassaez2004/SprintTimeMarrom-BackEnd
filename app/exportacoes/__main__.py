@@ -1,4 +1,4 @@
-"""Uso: python -m app.exportacoes.parquet_cli --data AAAA-MM-DD --saida DIR"""
+"""Uso: python -m app.exportacoes --data AAAA-MM-DD --saida DIR"""
 
 import argparse
 from datetime import date
@@ -10,7 +10,7 @@ from app.exportacoes.parquet import gerar_parquet_diario
 
 def main():
     parser = argparse.ArgumentParser(description="Exporta brutos GPS diários para Parquet")
-    parser.add_argument("--data", required=True, type=date.fromisoformat, help="dia UTC (AAAA-MM-DD)")
+    parser.add_argument("--data", required=True, type=date.fromisoformat, help="dia em America/Sao_Paulo (AAAA-MM-DD)")
     parser.add_argument("--saida", default="exportacoes", help="diretório de publicação")
     parser.add_argument("--lote", type=int, default=5000, help="linhas por lote")
     args = parser.parse_args()

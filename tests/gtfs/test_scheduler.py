@@ -348,7 +348,8 @@ def test_cadeia_de_migracoes_tem_uma_cabeca_e_preserva_a_us12():
     from alembic.script import ScriptDirectory
 
     scripts = ScriptDirectory(str(Path(__file__).resolve().parents[2] / "migrations"))
-    assert scripts.get_heads() == ["us29_0012"]
+    assert scripts.get_heads() == ["us09_0013"]
+    assert scripts.get_revision("us09_0013").down_revision == "us29_0012"
     assert scripts.get_revision("us29_0012").down_revision == "0011_merge_us12_us03"
     assert set(scripts.get_revision("0010_us03_programacao").down_revision) == {"0008", "us03_0009"}
     assert scripts.get_revision("0011_merge_us12_us03").down_revision == ("0009", "0010_us03_programacao")
