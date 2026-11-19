@@ -12,6 +12,7 @@ from datetime import date
 from pathlib import Path
 
 from flask import current_app
+from sqlalchemy.orm import joinedload
 
 from app import db
 from app.models import PRAZO_CATALOGACAO, ArquivoArmazenado, DocumentoOficial, agora_utc
@@ -107,7 +108,29 @@ def _obter(documento_id):
 
 def consultar_documento(documento_id):
     """Metadados, procedência do PDF e verificação do prazo de catalogação."""
-    documento = _obter(documento_id)
+    return _serializar(_obter(documento_id))
+
+
+def buscar_documentos(*, tipo=None, data_inicio=None, data_fim=None, pagina=1, por_pagina=20):
+    """Página do acervo; filtros combináveis por tipo e intervalo de data_documento."""
+    consulta = DocumentoOficial.query.options(joinedload(DocumentoOficial.arquivo))
+    if tipo is not None:
+        consulta = consulta.filter(DocumentoOficial.tipo == tipo)
+    if data_inicio is not None:
+        consulta = consulta.filter(DocumentoOficial.data_documento >= data_inicio)
+    if data_fim is not None:
+        consulta = consulta.filter(DocumentoOficial.data_documento <= data_fim)
+    total = consulta.order_by(None).count()
+    itens = (consulta.order_by(DocumentoOficial.data_documento.desc(), DocumentoOficial.id)
+             .offset((pagina - 1) * por_pagina).limit(por_pagina).all())
+    return {
+        "itens": [_serializar(documento) for documento in itens],
+        "paginacao": {"pagina": pagina, "por_pagina": por_pagina, "total": total,
+                      "paginas": -(-total // por_pagina)},
+    }
+
+
+def _serializar(documento):
     arquivo = documento.arquivo
     return {
         "id": documento.id,
@@ -137,4 +160,7 @@ def consultar_documento(documento_id):
 def caminho_original(documento_id, diretorio=None):
     """Caminho do PDF original, conferido pelo SHA-256 registrado."""
     arquivo = _obter(documento_id).arquivo
+    if arquivo.mime_type != "application/pdf":
+        # Só entrega PDFs catalogados; ArquivoArmazenado também guarda ZIP/JSON.
+        raise FileNotFoundError("arquivo do documento não é um PDF catalogado")
     return _armazenamento(diretorio).caminho_pdf(arquivo.chave, arquivo.sha256)
