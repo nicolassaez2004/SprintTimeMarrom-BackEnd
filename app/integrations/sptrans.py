@@ -23,6 +23,10 @@ class SPTransConexaoError(SPTransError):
     """Falha de rede: timeout, DNS, conexão recusada etc."""
 
 
+class SPTransTimeoutError(SPTransConexaoError):
+    """Prazo de conexão ou leitura esgotado; causa distinta nas lacunas."""
+
+
 class SPTransConfiguracaoError(SPTransError):
     """TLS, URL ou redirecionamento inválido; não repetir automaticamente."""
 
@@ -57,9 +61,11 @@ class SPTransClient:
         # A sessão guarda o cookie de autenticação e é reutilizada nas consultas.
         self.session = session or requests.Session()
 
-        try:self.autenticar()
+        try:
+            self.autenticar()
         except Exception:
-            if session is None:self.session.close()
+            if session is None:
+                self.session.close()
             raise
 
     def fechar(self):
@@ -83,7 +89,12 @@ class SPTransClient:
             raise SPTransConfiguracaoError(type(error).__name__) from None
         except requests.RequestException as error:
             # A exceção original contém a URL (com o token, na autenticação).
-            raise SPTransConexaoError(
+            classe = (
+                SPTransTimeoutError
+                if isinstance(error, requests.Timeout)
+                else SPTransConexaoError
+            )
+            raise classe(
                 f"Falha de comunicação com a SPTrans em {caminho} "
                 f"({type(error).__name__})"
             ) from None

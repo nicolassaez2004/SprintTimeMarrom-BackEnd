@@ -9,6 +9,7 @@ from sqlalchemy.exc import SQLAlchemyError
 
 from app import create_app, db
 from app.coleta.resiliencia import diretorio_journal
+from app.integrations.alertas import AlertaEntregaError, AlertaWebhook
 from app.models import NotificacaoColeta
 from app.repositories.coleta import listar_alertas
 
@@ -24,7 +25,8 @@ def main():
         help="Lê a caixa compartilhada MySQL e usa a caixa local durante falhas",
     )
     sub.add_parser(
-        "teste-canal", help="Entrega uma mensagem TESTE, sem criar incidente ou GPS"
+        "teste-canal",
+        help="Entrega uma mensagem TESTE ao canal configurado, sem incidente ou GPS",
     )
     met = sub.add_parser("metricas")
     met.add_argument("--inicio", required=True, type=datetime.fromisoformat)
@@ -65,6 +67,7 @@ def main():
             elif args.comando == "teste-canal":
                 agora = datetime.now(timezone.utc)
                 id = str(uuid4())
+                url = app.config.get("ALERTA_WEBHOOK_URL")
                 mensagem = dict(
                     id=id,
                     lacuna_id=None,
@@ -72,9 +75,17 @@ def main():
                     simulado=True,
                     criada_em=agora.isoformat(),
                     enviada_em=agora.isoformat(),
-                    canal="CAIXA_INTERNA",
-                    mensagem="TESTE US29: caixa interna funcionando. Não representa falha real da coleta.",
+                    canal="WEBHOOK" if url else "CAIXA_INTERNA",
+                    mensagem="TESTE US29: canal de alertas funcionando. Não representa falha real da coleta.",
                 )
+                if url:
+                    try:
+                        AlertaWebhook(url)(mensagem)
+                        mensagem["enviada_em"] = datetime.now(timezone.utc).isoformat()
+                    except AlertaEntregaError as erro:
+                        # Registrado como não entregue; a saída não tem a URL.
+                        mensagem["enviada_em"] = None
+                        mensagem["erro_entrega"] = str(erro)
                 publicar(diretorio_journal() / "alertas" / (id + ".json"), mensagem)
                 db.session.add(
                     NotificacaoColeta(
@@ -82,12 +93,18 @@ def main():
                         lacuna_id=None,
                         tipo="TESTE",
                         criada_em=agora,
-                        enviada_em=agora,
-                        canal="CAIXA_INTERNA",
+                        enviada_em=(
+                            datetime.fromisoformat(mensagem["enviada_em"])
+                            if mensagem["enviada_em"]
+                            else None
+                        ),
+                        canal=mensagem["canal"],
                     )
                 )
                 db.session.commit()
                 print(json.dumps(mensagem, ensure_ascii=False, indent=2))
+                if mensagem["enviada_em"] is None:
+                    raise SystemExit(1)
             else:
                 print(
                     json.dumps(

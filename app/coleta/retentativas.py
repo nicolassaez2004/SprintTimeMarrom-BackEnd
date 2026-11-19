@@ -2,7 +2,11 @@
 
 from sqlalchemy.exc import DBAPIError, InterfaceError, OperationalError, TimeoutError
 
-from app.integrations.sptrans import SPTransConexaoError, SPTransHTTPError
+from app.integrations.sptrans import (
+    SPTransConexaoError,
+    SPTransHTTPError,
+    SPTransRespostaInvalidaError,
+)
 
 MAX_TENTATIVAS = 6  # inicial + cinco novas tentativas
 ESPERAS = (1, 2, 4, 8, 16)
@@ -11,7 +15,8 @@ ESPERAS = (1, 2, 4, 8, 16)
 def temporaria(erro):
     if isinstance(erro, DBAPIError) and erro.connection_invalidated:
         return True
-    if isinstance(erro, SPTransConexaoError):
+    # Página de manutenção/JSON truncado costuma ser passageiro na Olho Vivo.
+    if isinstance(erro, (SPTransConexaoError, SPTransRespostaInvalidaError)):
         return True
     if isinstance(erro, SPTransHTTPError):
         return erro.status_code in (408, 425, 429) or 500 <= erro.status_code <= 599

@@ -385,7 +385,10 @@ Consultar com o backend iniciado:
 
 O worker usa no máximo seis tentativas de consulta, espera crescente, checkpoint
 persistente e proteção contra duplicação. Alertas após 10 minutos e recuperação
-ficam na caixa interna compartilhada, com cópia local durante queda do banco.
+são enviados ao webhook de `ALERTA_WEBHOOK_URL` (Discord/Slack/Teams) e ficam
+na caixa interna compartilhada, com cópia local durante queda do banco.
+Executar o worker sob um supervisor que o reinicie (por exemplo systemd
+`Restart=always`).
 
 ```powershell
 python -m app.coleta.bus_collector

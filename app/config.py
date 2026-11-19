@@ -18,6 +18,8 @@ def validar_intervalo_coleta(valor):
 
 class Config:
     COLETA_STATE_DIR = os.getenv('COLETA_STATE_DIR') or None
+    # Webhook (Discord/Slack/Teams) dos alertas da coleta; vazio = caixa interna.
+    ALERTA_WEBHOOK_URL = os.getenv('ALERTA_WEBHOOK_URL') or None
     # Banco de dados
     SQLALCHEMY_DATABASE_URI = os.getenv("DATABASE_URL")
 
