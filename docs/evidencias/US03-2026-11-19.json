@@ -1,0 +1,148 @@
+{
+  "verificada_em": "2026-11-19T12:19:57.676907+00:00",
+  "base": "sptrans_dev",
+  "revisao": "0010_us03_programacao",
+  "versoes_gtfs": 1,
+  "linhas": 1366,
+  "paradas": 22263,
+  "trechos": 96808,
+  "brutos": 11479,
+  "tratados": 11479,
+  "brutos_preservados": true,
+  "brutos_sha256": "f7836fdf958c18215cad81cc95dc10b98e2e8bca51efc646f542bcadb658c2e2",
+  "payloads_equivalentes_fonte": true,
+  "normalizacoes_numericas_mysql": 2913,
+  "maior_delta_numerico": 7.105427357601002e-15,
+  "snapshot_original_preservado": true,
+  "endpoint_200": true,
+  "data_invalida_400": true,
+  "captura_sha256": "4257af6384b8e3c89f67d287f44077a14b3a7b1de19c7b50f0d8ea787971aed5",
+  "consulta_iniciada_em": "2026-11-19T11:40:10.460240+00:00",
+  "recebida_em": "2026-11-19T11:40:11.514644+00:00",
+  "execucao_id": 3,
+  "gtfs_id": "4939c8b4-deac-462e-a106-807d81dd893a",
+  "gtfs_sha256": "3141809bcbb8c1677244bd3e4499faa612857d9685d056317b137dc1d0195655",
+  "tabela_id": "6dd44fd1-177f-4cd5-bf33-71a3614b6c18",
+  "tabela_versao": "ov-gtfs-3141809bcbb8-4257af6384b8-circuitos-v2",
+  "recebidos": 11479,
+  "novos_persistidos": 11479,
+  "substitui_tabela_id": "7f7b929c-5910-4923-86f2-b406083c4d18",
+  "substitui_tabela_versao": "ov-gtfs-3141809bcbb8-4257af6384b8",
+  "tabela_anterior_preservada": true,
+  "cli_conferencia_validado": true,
+  "relatorio": {
+    "associadas": 11253,
+    "criterio_dia": "coletado_em em [00:00, 00:00 do dia seguinte)",
+    "data": "2026-11-19",
+    "denominador": 11304,
+    "fuso": "America/Sao_Paulo",
+    "invalidas": 174,
+    "limite_amostra": 100,
+    "meta_atingida": true,
+    "meta_pct": 98,
+    "nao_associadas_validas": 51,
+    "nao_processadas": 0,
+    "numerador": 11253,
+    "pendentes_validacao": 1,
+    "taxa_associacao_pct": 99.55,
+    "total_brutos": 11479,
+    "validas": 11304
+  },
+  "motivos": [
+    {
+      "estado": "INVALIDA",
+      "motivo": "DISTANCIA_MAIOR_100M",
+      "quantidade": 90
+    },
+    {
+      "estado": "INVALIDA",
+      "motivo": "FORA_MUNICIPIO",
+      "quantidade": 74
+    },
+    {
+      "estado": "INVALIDA",
+      "motivo": "GPS_MAIS_5_MIN",
+      "quantidade": 9
+    },
+    {
+      "estado": "INVALIDA",
+      "motivo": "GPS_POSTERIOR_COLETA",
+      "quantidade": 1
+    },
+    {
+      "estado": "PENDENTE",
+      "motivo": "SEM_TRACADO_CANDIDATO",
+      "quantidade": 1
+    },
+    {
+      "estado": "SEM_ASSOCIACAO",
+      "motivo": "VINCULO_NAO_RESOLVIDO",
+      "quantidade": 51
+    }
+  ],
+  "comparacao": {
+    "associadas_antes": 10666,
+    "associadas_depois": 11253,
+    "denominador_antes": 11304,
+    "denominador_depois": 11304,
+    "percentual_antes": 94.36,
+    "percentual_depois": 99.55,
+    "observacoes_recuperadas": 587
+  },
+  "circuitos_conferidos": 194,
+  "codigos_sentidos_resolvidos": 2131,
+  "codigos_sentidos_sem_vinculo": 23,
+  "validacao_circuitos": {
+    "cadastro_lc_true": true,
+    "letreiro_e_terminais_exatos": true,
+    "gtfs_direcao_unica": true,
+    "todos_shapes_completos_e_fechados_ate_m": 100,
+    "sem_subtrair_um_do_sentido": true,
+    "cadastro_sha256": "82ff5ba4e4a117e20a1fe787f7b12699cc5e420f9c0733b3865fd4f4df1d1167",
+    "csv_sha256": "8a1152f06053cf33481ea078b75ec490cc24e059d878d051f4b9f2b6e6d85dff"
+  },
+  "bases_migradas": {
+    "sptrans_dev": "0010_us03_programacao",
+    "sptrans_test": "0010_us03_programacao"
+  },
+  "main_integrada": "7b5955c",
+  "testes": {
+    "suite_passaram": 228,
+    "ignorados": 5,
+    "subtestes_passaram": 14,
+    "mysql_local_passaram": 4,
+    "upgrade_da_main_com_programacao_preservada": true
+  },
+  "criterios_tecnicos_atendidos": true,
+  "revisao_humana_pendente": false,
+  "commit_e_merge_pendentes": true,
+  "limites": [
+    "Amostra pontual de 19/11/2026; não representa cobertura contínua de um dia inteiro.",
+    "51 válidas sem associação e 1 pendente de traçado permanecem preservadas e visíveis.",
+    "Dados brutos não foram alterados no reprocessamento."
+  ],
+  "revisao_humana_dispensada_pelo_solicitante": true,
+  "revisao_tecnica": {
+    "revisor": "Codex",
+    "verificada_em": "2026-11-19T12:20:35.731014+00:00",
+    "status": "APROVADA_APOS_CORRECOES",
+    "pendencias_tecnicas_bloqueantes": [],
+    "correcoes": [
+      "Leitura corrente com lock dos tratados após reservar os brutos, inclusive em lotes, para snapshots concorrentes no MySQL REPEATABLE READ.",
+      "Rejeição de sequência duplicada/negativa em shapes e de projeções não finitas; distância não mensurável permanece pendente e fora da taxa.",
+      "Código da linha incluído nos grupos do relatório diário."
+    ],
+    "regressoes": "228 testes passaram; 5 ignorados; 14 subtestes passaram; 4 testes MySQL passaram.",
+    "concorrencia_mysql_validada": true,
+    "geometrias_reconferidas_com_fontes_reais": true,
+    "vinculos_reproduzidos_iguais_versao_publicada": true,
+    "dados_reais": {
+      "percentual": 99.55,
+      "numerador": 11253,
+      "denominador": 11304,
+      "brutos_preservados": true
+    },
+    "observacao": "Revisão técnica realizada pelo Codex a pedido do responsável; não houve aprovação de outro integrante.",
+    "distancia_nao_finita_persistida_como_null": true
+  }
+}

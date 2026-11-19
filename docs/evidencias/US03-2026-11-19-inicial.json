@@ -1,0 +1,106 @@
+{
+  "verificada_em": "2026-11-19T11:54:49.541347+00:00",
+  "base": "sptrans_dev",
+  "revisao": "0008",
+  "versoes_gtfs": 1,
+  "linhas": 1366,
+  "paradas": 22263,
+  "trechos": 96808,
+  "brutos": 11479,
+  "tratados": 11479,
+  "brutos_preservados": true,
+  "brutos_sha256": "f7836fdf958c18215cad81cc95dc10b98e2e8bca51efc646f542bcadb658c2e2",
+  "payloads_equivalentes_fonte": true,
+  "normalizacoes_numericas_mysql": 2913,
+  "maior_delta_numerico": 7.105427357601002e-15,
+  "snapshot_original_preservado": true,
+  "endpoint_200": true,
+  "data_invalida_400": true,
+  "captura_sha256": "4257af6384b8e3c89f67d287f44077a14b3a7b1de19c7b50f0d8ea787971aed5",
+  "consulta_iniciada_em": "2026-11-19T11:40:10.460240+00:00",
+  "recebida_em": "2026-11-19T11:40:11.514644+00:00",
+  "execucao_id": 3,
+  "gtfs_id": "4939c8b4-deac-462e-a106-807d81dd893a",
+  "gtfs_sha256": "3141809bcbb8c1677244bd3e4499faa612857d9685d056317b137dc1d0195655",
+  "tabela_id": "7f7b929c-5910-4923-86f2-b406083c4d18",
+  "tabela_versao": "ov-gtfs-3141809bcbb8-4257af6384b8",
+  "recebidos": 11479,
+  "novos_persistidos": 11479,
+  "relatorio": {
+    "associadas": 10666,
+    "criterio_dia": "coletado_em em [00:00, 00:00 do dia seguinte)",
+    "data": "2026-11-19",
+    "denominador": 11304,
+    "fuso": "America/Sao_Paulo",
+    "invalidas": 174,
+    "limite_amostra": 100,
+    "meta_atingida": false,
+    "meta_pct": 98,
+    "nao_associadas_validas": 638,
+    "nao_processadas": 0,
+    "numerador": 10666,
+    "pendentes_validacao": 1,
+    "taxa_associacao_pct": 94.36,
+    "total_brutos": 11479,
+    "validas": 11304
+  },
+  "motivos": [
+    {
+      "estado": "INVALIDA",
+      "motivo": "DISTANCIA_MAIOR_100M",
+      "quantidade": 90
+    },
+    {
+      "estado": "INVALIDA",
+      "motivo": "FORA_MUNICIPIO",
+      "quantidade": 74
+    },
+    {
+      "estado": "INVALIDA",
+      "motivo": "GPS_MAIS_5_MIN",
+      "quantidade": 9
+    },
+    {
+      "estado": "INVALIDA",
+      "motivo": "GPS_POSTERIOR_COLETA",
+      "quantidade": 1
+    },
+    {
+      "estado": "PENDENTE",
+      "motivo": "SEM_TRACADO_CANDIDATO",
+      "quantidade": 1
+    },
+    {
+      "estado": "SEM_ASSOCIACAO",
+      "motivo": "VINCULO_NAO_RESOLVIDO",
+      "quantidade": 638
+    }
+  ],
+  "diagnostico": {
+    "nao_associadas_validas": {
+      "circular": 617,
+      "nao_circular": 21
+    },
+    "codigos_sentidos_sem_vinculo": {
+      "circulares": 202,
+      "nao_circulares": 14,
+      "sem_cadastro": 1
+    }
+  },
+  "bases_migradas": {
+    "sptrans_dev": "0008",
+    "sptrans_test": "0008"
+  },
+  "testes": {
+    "suite_passaram": 168,
+    "ignorados": 4,
+    "subtestes_passaram": 14,
+    "mysql_local_passaram": 3
+  },
+  "limites_aceite": [
+    "Meta de 98% NÃO atingida na captura real; taxa 94,36%.",
+    "Captura única; não comprova cobertura diária contínua.",
+    "Correspondências sem destino GTFS único permanecem não resolvidas.",
+    "617 posições válidas sem vínculo pertencem a linhas circulares; 21 a não circulares."
+  ]
+}
