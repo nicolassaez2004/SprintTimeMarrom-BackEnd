@@ -15,6 +15,7 @@ from app.integrations.sptrans import (
     SPTransAutenticacaoError,
     SPTransClient,
     SPTransConexaoError,
+    SPTransConfiguracaoError,
     SPTransError,
     SPTransHTTPError,
     SPTransRespostaInvalidaError,
@@ -205,6 +206,18 @@ def test_todas_as_falhas_derivam_de_sptrans_error():
 def test_repr_nao_mostra_token(app):
     cliente, _ = criar_cliente(resposta(json=True))
     assert TOKEN_FALSO not in repr(cliente)
+
+
+@pytest.mark.parametrize('erro',[requests.exceptions.SSLError('certificado'),requests.exceptions.InvalidURL('url')])
+def test_tls_e_url_invalidos_sao_permanentes_e_nao_expoem_token(app,erro):
+    sessao=Mock();sessao.request.side_effect=erro
+    with pytest.raises(SPTransConfiguracaoError) as capturada:SPTransClient(session=sessao)
+    assert TOKEN_FALSO not in str(capturada.value)
+
+
+def test_cliente_fecha_recursos_da_sessao(app):
+    cliente,sessao=criar_cliente(resposta(json=True))
+    cliente.fechar();sessao.close.assert_called_once()
 
 
 @pytest.mark.skipif(

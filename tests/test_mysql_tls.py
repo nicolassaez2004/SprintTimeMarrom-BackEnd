@@ -10,6 +10,8 @@ def test_mysql_tls_verifica_certificado_e_hostname():
     options = app.config['SQLALCHEMY_ENGINE_OPTIONS']
     assert options['connect_args'] == {
         'connect_timeout': 7,
+        'read_timeout': 15,
+        'write_timeout': 15,
         'ssl_ca': 'ca.pem',
         'ssl_verify_cert': True,
         'ssl_verify_identity': True,

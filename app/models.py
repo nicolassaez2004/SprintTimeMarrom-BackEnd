@@ -117,6 +117,55 @@ class ExecucaoColeta(db.Model):
     recebidos = db.Column(db.Integer, nullable=True)
     novos_persistidos = db.Column(db.Integer, nullable=False, default=0)
     erro = db.Column(db.Text, nullable=True)
+    chave_logica = db.Column(db.String(36), nullable=True, unique=True)
+    lacuna_id = db.Column(db.String(36), db.ForeignKey('lacunas_coleta.id',
+        name='fk_execucao_coleta_lacuna', ondelete='RESTRICT'), nullable=True)
+    confirmada_em = db.Column(UTCDateTime, nullable=True)
+    duracao_gravacao_ms = db.Column(db.BigInteger, nullable=True)
+
+
+class LacunaColeta(db.Model):
+    """Intervalo sem cobertura; pode incluir vários ciclos ou processo parado."""
+
+    __tablename__ = "lacunas_coleta"
+    __table_args__ = (
+        CheckConstraint("fim IS NULL OR fim >= inicio", name="ck_lacuna_intervalo"),
+    )
+    id = db.Column(db.String(36), primary_key=True)
+    inicio = db.Column(UTCDateTime, nullable=False)
+    fim = db.Column(UTCDateTime, nullable=True)
+    causa = db.Column(db.String(128), nullable=False)
+    fonte = db.Column(db.String(32), nullable=False)
+    aberta_fonte = db.Column(db.String(32), nullable=True, unique=True)
+
+
+class EstadoColeta(db.Model):
+    """Posse técnica: token confere exclusão também na transação de gravação."""
+
+    __tablename__ = "estados_coleta"
+    fonte = db.Column(db.String(32), primary_key=True)
+    token = db.Column(db.String(36), nullable=False)
+
+
+class NotificacaoColeta(db.Model):
+    """Uma notificação lógica por incidente/tipo, entregue à caixa interna."""
+
+    __tablename__ = "notificacoes_coleta"
+    __table_args__ = (
+        UniqueConstraint("lacuna_id", "tipo", name="uq_notificacao_lacuna_tipo"),
+    )
+    id = db.Column(db.String(36), primary_key=True)
+    lacuna_id = db.Column(
+        db.String(36),
+        db.ForeignKey(
+            "lacunas_coleta.id", name="fk_notificacao_lacuna", ondelete="RESTRICT"
+        ),
+        nullable=True,
+    )
+    tipo = db.Column(db.String(16), nullable=False)
+    criada_em = db.Column(UTCDateTime, nullable=False)
+    enviada_em = db.Column(UTCDateTime, nullable=True)
+    canal = db.Column(db.String(32), nullable=False)
 
 
 class RegistroBrutoGPS(db.Model):
@@ -163,7 +212,8 @@ class RegistroBrutoGPS(db.Model):
     longitude = db.Column(Double, nullable=True)
     # Instante informado pela API para a posição (campo `ta`), em UTC.
     horario_gps = db.Column(UTCDateTime, nullable=True)
-    # Instante da captura pelo coletor (início do ciclo), em UTC.
+    # Início da consulta que produziu esta resposta, em UTC. Pode ser posterior
+    # ao início do ciclo quando houve retentativas; ExecucaoColeta guarda ambos.
     coletado_em = db.Column(UTCDateTime, nullable=False, default=agora_utc)
     payload = db.Column(db.JSON, nullable=True)
 

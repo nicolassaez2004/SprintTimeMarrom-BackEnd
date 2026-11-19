@@ -23,6 +23,10 @@ class SPTransConexaoError(SPTransError):
     """Falha de rede: timeout, DNS, conexão recusada etc."""
 
 
+class SPTransConfiguracaoError(SPTransError):
+    """TLS, URL ou redirecionamento inválido; não repetir automaticamente."""
+
+
 class SPTransAutenticacaoError(SPTransError):
     """A SPTrans recusou o token (`/Login/Autenticar` não devolveu `true`)."""
 
@@ -53,7 +57,13 @@ class SPTransClient:
         # A sessão guarda o cookie de autenticação e é reutilizada nas consultas.
         self.session = session or requests.Session()
 
-        self.autenticar()
+        try:self.autenticar()
+        except Exception:
+            if session is None:self.session.close()
+            raise
+
+    def fechar(self):
+        self.session.close()
 
     def __repr__(self):
         # Nunca exibe o token.
@@ -67,6 +77,10 @@ class SPTransClient:
                 params=params,
                 timeout=TIMEOUT_SEGUNDOS,
             )
+        except (requests.exceptions.SSLError, requests.exceptions.InvalidURL,
+                requests.exceptions.MissingSchema, requests.exceptions.InvalidSchema,
+                requests.exceptions.TooManyRedirects) as error:
+            raise SPTransConfiguracaoError(type(error).__name__) from None
         except requests.RequestException as error:
             # A exceção original contém a URL (com o token, na autenticação).
             raise SPTransConexaoError(

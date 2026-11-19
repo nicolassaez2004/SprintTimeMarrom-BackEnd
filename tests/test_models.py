@@ -1,3 +1,4 @@
+from coleta_suporte import criar_coletor_teste
 from datetime import datetime, timedelta, timezone
 from types import SimpleNamespace
 from unittest.mock import Mock, patch
@@ -166,7 +167,7 @@ def test_mesma_posicao_em_ciclos_seguidos_e_gravada_uma_vez(app):
         {"p": "5810", "py": -23.5, "px": -46.6, "ta": "2026-11-17T15:00:00Z"},
     )
     with patch.object(bus_collector, "SPTransClient", return_value=_cliente(resposta)):
-        coletor = bus_collector.BusCollector()
+        coletor = criar_coletor_teste()
         assert coletor.coletar_ciclo() == 1
         # A API devolve a mesma posição (mesmo `ta`) no ciclo seguinte.
         assert coletor.coletar_ciclo() == 0
@@ -180,7 +181,7 @@ def test_mesma_posicao_em_ciclos_seguidos_e_gravada_uma_vez(app):
 def test_sem_horario_em_ciclos_diferentes_todos_sao_preservados(app):
     resposta = _frota({"p": "5810", "py": -23.5, "px": -46.6})
     with patch.object(bus_collector, "SPTransClient", return_value=_cliente(resposta)):
-        coletor = bus_collector.BusCollector()
+        coletor = criar_coletor_teste()
         assert coletor.coletar_ciclo() == 1
         assert coletor.coletar_ciclo() == 1
 
@@ -199,7 +200,7 @@ def test_frota_inteira_e_gravada_e_veiculos_novos_sao_cadastrados(app):
         ]},
     ]}
     with patch.object(bus_collector, "SPTransClient", return_value=_cliente(resposta)):
-        assert bus_collector.BusCollector().coletar_ciclo() == 2
+        assert criar_coletor_teste().coletar_ciclo() == 2
 
     # 5810 já existia (selecionado); 9001 não estava selecionado nem cadastrado.
     assert sorted(v.prefixo for v in Veiculo.query.all()) == ["5810", "9001"]
@@ -226,7 +227,7 @@ def test_colisao_concorrente_reverte_lote_inteiro_sem_duplicar(app):
     with patch.object(bus_collector, "SPTransClient", return_value=_cliente(resposta)):
         # Simula consulta concorrente desatualizada: deixa o UNIQUE do banco decidir.
         with patch.object(bus_collector.BusCollector, "_descartar_duplicados", side_effect=lambda itens: itens):
-            coletor = bus_collector.BusCollector()
+            coletor = criar_coletor_teste()
             assert coletor.coletar_ciclo() == 0
 
     assert RegistroBrutoGPS.query.count() == 1
@@ -251,7 +252,7 @@ def test_registro_confirmado_permanece_apos_recriar_app(tmp_path):
             {"p": "5810", "py": -23.5, "px": -46.6, "ta": "2026-11-17T15:00:00Z"}
         )
         with patch.object(bus_collector, "SPTransClient", return_value=_cliente(resposta)):
-            assert bus_collector.BusCollector().coletar_ciclo() == 1
+            assert criar_coletor_teste().coletar_ciclo() == 1
         db.session.remove()
 
     segunda_app = create_app(config)
@@ -267,7 +268,7 @@ def test_registro_confirmado_permanece_apos_recriar_app(tmp_path):
 def test_desmarcar_onibus_preserva_historico_bruto(app):
     resposta = _frota({"p": "5810", "py": -23.5, "px": -46.6, "ta": "2026-11-17T15:00:00Z"})
     with patch.object(bus_collector, "SPTransClient", return_value=_cliente(resposta)):
-        bus_collector.BusCollector().coletar_ciclo()
+        criar_coletor_teste().coletar_ciclo()
 
     db.session.delete(db.session.get(OnibusSelecionado, "5810"))
     db.session.commit()

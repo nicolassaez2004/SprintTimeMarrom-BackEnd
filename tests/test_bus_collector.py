@@ -5,7 +5,9 @@ from datetime import datetime, timezone
 from types import SimpleNamespace
 from unittest.mock import Mock, patch
 
-from app import create_app
+from app import create_app, db
+from coleta_suporte import criar_coletor_teste
+from app.models import RegistroBrutoGPS
 from app.config import validar_intervalo_coleta
 from app.integrations.sptrans import SPTransConexaoError
 from app.models import ExecucaoColeta, Veiculo
@@ -23,32 +25,19 @@ class RelogioFalso:
         self.agora += segundos
 
 
-class SessaoFalsa:
-    def __init__(self):
-        self.added = []
-        self.add_all = Mock()
-        self.commit = Mock()
-        self.flush = Mock()
-        self.rollback = Mock()
-        self.remove = Mock()
-        # Consulta de posições já gravadas (deduplicação): nenhuma por padrão.
-        self.query = Mock()
-        self.query.return_value.filter.return_value.all.return_value = []
-
-    def add(self, objeto):
-        self.added.append(objeto)
-        if isinstance(objeto, ExecucaoColeta):
-            objeto.id = 77
-
-
 class TestGpsCollector(unittest.TestCase):
     def setUp(self):
-        self.session = SessaoFalsa()
-        self.db_patcher = patch.object(
-            bus_collector, "db", SimpleNamespace(session=self.session)
-        )
-        self.db_patcher.start()
-        self.addCleanup(self.db_patcher.stop)
+        self.app = create_app({"TESTING": True, "SQLALCHEMY_DATABASE_URI": "sqlite://"})
+        self.contexto = self.app.app_context()
+        self.contexto.push()
+        db.create_all()
+        self.session = db.session
+        self.addCleanup(self._fechar)
+
+    def _fechar(self):
+        db.session.remove()
+        db.engine.dispose()
+        self.contexto.pop()
 
     def test_intervalo_padrao_e_30_segundos(self):
         self.assertEqual(bus_collector.INTERVALO_COLETA_SEGUNDOS, 30)
@@ -84,24 +73,56 @@ class TestGpsCollector(unittest.TestCase):
     def _coletar(self, resposta):
         cliente = SimpleNamespace(buscar_todas_posicoes=Mock(return_value=resposta))
         with patch.object(bus_collector, "SPTransClient", return_value=cliente):
-            total = bus_collector.BusCollector().coletar_ciclo()
+            total = criar_coletor_teste().coletar_ciclo()
         return total, cliente
 
     def test_ciclo_le_toda_a_frota_em_multiplas_linhas_e_contabiliza_execucao(self):
         resposta = {
             "hr": "12:00",
             "l": [
-                {"c": "8000-10", "cl": 123, "sl": 1, "lt0": "A", "lt1": "B", "qv": 2,
-                 "vs": [
-                     {"p": "5810", "a": True, "py": -23.5, "px": -46.6,
-                      "ta": "2026-11-17T15:00:00Z"},
-                     {"p": 5811, "py": -23.3, "px": -46.4, "ta": "2026-11-17T15:00:05Z"},
-                 ]},
-                {"c": "8000-10", "cl": 32891, "sl": 2, "qv": 1,
-                 "vs": [{"p": "7001", "py": None, "px": -46.2}]},
-                {"c": "9999-10", "cl": 555, "qv": 1,  # sem `sl`
-                 "vs": [{"p": "7002", "py": -23.1, "px": -46.1,
-                         "ta": "2026-11-17T15:00:10Z"}]},
+                {
+                    "c": "8000-10",
+                    "cl": 123,
+                    "sl": 1,
+                    "lt0": "A",
+                    "lt1": "B",
+                    "qv": 2,
+                    "vs": [
+                        {
+                            "p": "5810",
+                            "a": True,
+                            "py": -23.5,
+                            "px": -46.6,
+                            "ta": "2026-11-17T15:00:00Z",
+                        },
+                        {
+                            "p": 5811,
+                            "py": -23.3,
+                            "px": -46.4,
+                            "ta": "2026-11-17T15:00:05Z",
+                        },
+                    ],
+                },
+                {
+                    "c": "8000-10",
+                    "cl": 32891,
+                    "sl": 2,
+                    "qv": 1,
+                    "vs": [{"p": "7001", "py": None, "px": -46.2}],
+                },
+                {
+                    "c": "9999-10",
+                    "cl": 555,
+                    "qv": 1,  # sem `sl`
+                    "vs": [
+                        {
+                            "p": "7002",
+                            "py": -23.1,
+                            "px": -46.1,
+                            "ta": "2026-11-17T15:00:10Z",
+                        }
+                    ],
+                },
                 {"c": "vazia", "cl": 1, "sl": 1, "qv": 0, "vs": []},
             ],
         }
@@ -109,23 +130,34 @@ class TestGpsCollector(unittest.TestCase):
 
         self.assertEqual(total, 4)
         cliente.buscar_todas_posicoes.assert_called_once_with()
-        self.session.add_all.assert_called_once()
+        self.assertEqual(RegistroBrutoGPS.query.count(), 4)
         # Um commit registra o início do ciclo; outro grava o resultado.
-        self.assertEqual(self.session.commit.call_count, 2)
-        execucoes = [obj for obj in self.session.added if isinstance(obj, ExecucaoColeta)]
+        self.assertIsNotNone(ExecucaoColeta.query.one().confirmada_em)
+        execucoes = ExecucaoColeta.query.all()
         self.assertEqual(len(execucoes), 1)
         self.assertEqual(execucoes[0].estado, "OK")
         self.assertIsNone(execucoes[0].erro)
         self.assertEqual(execucoes[0].recebidos, 4)
         self.assertEqual(execucoes[0].novos_persistidos, 4)
-        registros = self.session.add_all.call_args.args[0]
+        registros = RegistroBrutoGPS.query.order_by(RegistroBrutoGPS.id).all()
         self.assertEqual(
-            [(r.veiculo_prefixo, r.prefixo_origem, r.linha_origem, r.sentido_origem,
-              r.latitude, r.longitude) for r in registros],
-            [("5810", "5810", "123", "1", -23.5, -46.6),
-             ("5811", "5811", "123", "1", -23.3, -46.4),
-             ("7001", "7001", "32891", "2", None, -46.2),
-             ("7002", "7002", "555", None, -23.1, -46.1)],
+            [
+                (
+                    r.veiculo_prefixo,
+                    r.prefixo_origem,
+                    r.linha_origem,
+                    r.sentido_origem,
+                    r.latitude,
+                    r.longitude,
+                )
+                for r in registros
+            ],
+            [
+                ("5810", "5810", "123", "1", -23.5, -46.6),
+                ("5811", "5811", "123", "1", -23.3, -46.4),
+                ("7001", "7001", "32891", "2", None, -46.2),
+                ("7002", "7002", "555", None, -23.1, -46.1),
+            ],
         )
         self.assertEqual(
             registros[0].horario_gps, datetime(2026, 11, 17, 15, 0, tzinfo=timezone.utc)
@@ -135,48 +167,67 @@ class TestGpsCollector(unittest.TestCase):
         # O objeto original de cada veículo é preservado, inclusive campos inválidos.
         self.assertEqual(registros[1].payload["p"], 5811)
         self.assertEqual(registros[2].payload, {"p": "7001", "py": None, "px": -46.2})
-        self.assertTrue(all(r.execucao_id == 77 for r in registros))
+        self.assertTrue(all(r.execucao_id == execucoes[0].id for r in registros))
         # Prefixos ainda sem cadastro entram em `veiculos` (FK do bruto).
-        veiculos = sorted(obj.prefixo for obj in self.session.added if isinstance(obj, Veiculo))
+        veiculos = sorted(obj.prefixo for obj in Veiculo.query.all())
         self.assertEqual(veiculos, ["5810", "5811", "7001", "7002"])
 
     def test_sentido_so_e_preenchido_com_valor_documentado(self):
-        for valor, esperado in ((1, "1"), (2, "2"), ("2", "2"), (0, None), (3, None),
-                                (True, None), ("ida", None), (None, None)):
+        for valor, esperado in (
+            (1, "1"),
+            (2, "2"),
+            ("2", "2"),
+            (0, None),
+            (3, None),
+            (True, None),
+            ("ida", None),
+            (None, None),
+        ):
             with self.subTest(valor=valor):
                 self.assertEqual(bus_collector._ler_sentido(valor), esperado)
 
     def test_entradas_fora_do_formato_sao_ignoradas_sem_falhar(self):
-        resposta = {"hr": "12:00", "l": [
-            "nao-e-linha",
-            {"cl": 1, "sl": 1, "vs": None},
-            {"cl": 2, "sl": 1, "vs": ["nao-e-veiculo", {"py": -23.5, "px": -46.6}]},
-        ]}
+        resposta = {
+            "hr": "12:00",
+            "l": [
+                "nao-e-linha",
+                {"cl": 1, "sl": 1, "vs": None},
+                {"cl": 2, "sl": 1, "vs": ["nao-e-veiculo", {"py": -23.5, "px": -46.6}]},
+            ],
+        }
         total, _ = self._coletar(resposta)
 
         self.assertEqual(total, 1)
-        registro = self.session.add_all.call_args.args[0][0]
+        registro = RegistroBrutoGPS.query.order_by(RegistroBrutoGPS.id).all()[0]
         # Sem prefixo, o registro é preservado com NULL e sem vínculo a Veiculo.
         self.assertIsNone(registro.prefixo_origem)
         self.assertIsNone(registro.veiculo_prefixo)
-        self.assertEqual(self.session.added[0].estado, "OK")
+        self.assertEqual(
+            ExecucaoColeta.query.order_by(ExecucaoColeta.id.desc()).first().estado, "OK"
+        )
 
     def test_frota_vazia_e_ciclo_ok_sem_registros(self):
         total, cliente = self._coletar({"hr": "12:00", "l": []})
 
         self.assertEqual(total, 0)
         cliente.buscar_todas_posicoes.assert_called_once_with()
-        self.session.add_all.assert_not_called()
-        self.assertEqual(self.session.added[0].estado, "OK")
-        self.assertEqual(self.session.added[0].recebidos, 0)
+        self.assertEqual(RegistroBrutoGPS.query.count(), 0)
+        self.assertEqual(
+            ExecucaoColeta.query.order_by(ExecucaoColeta.id.desc()).first().estado, "OK"
+        )
+        self.assertEqual(
+            ExecucaoColeta.query.order_by(ExecucaoColeta.id.desc()).first().recebidos, 0
+        )
 
     def test_falha_no_meio_do_ciclo_fica_registrada_como_falha(self):
-        with patch.object(bus_collector, "SPTransClient", side_effect=RuntimeError("token")):
-            total = bus_collector.BusCollector().coletar_ciclo()
+        with patch.object(
+            bus_collector, "SPTransClient", side_effect=RuntimeError("token")
+        ):
+            total = criar_coletor_teste().coletar_ciclo()
 
         self.assertEqual(total, 0)
-        self.session.rollback.assert_called_once_with()
-        execucao = self.session.added[0]
+        self.assertEqual(RegistroBrutoGPS.query.count(), 0)
+        execucao = ExecucaoColeta.query.order_by(ExecucaoColeta.id.desc()).first()
         self.assertEqual(execucao.estado, "FALHA")
         self.assertEqual(execucao.erro, "RuntimeError")
         self.assertIsNotNone(execucao.finalizada_em)
@@ -186,23 +237,27 @@ class TestGpsCollector(unittest.TestCase):
             buscar_todas_posicoes=Mock(side_effect=SPTransConexaoError("timeout"))
         )
         with patch.object(bus_collector, "SPTransClient", return_value=cliente):
-            total = bus_collector.BusCollector().coletar_ciclo()
+            total = criar_coletor_teste().coletar_ciclo()
 
         self.assertEqual(total, 0)
-        execucao = self.session.added[0]
-        self.assertEqual((execucao.estado, execucao.erro), ("FALHA", "SPTransConexaoError"))
+        execucao = ExecucaoColeta.query.order_by(ExecucaoColeta.id.desc()).first()
+        self.assertEqual(
+            (execucao.estado, execucao.erro), ("FALHA", "SPTransConexaoError")
+        )
         self.assertEqual((execucao.recebidos, execucao.novos_persistidos), (0, 0))
 
     def test_cada_execucao_remove_sua_sessao_sql(self):
         relogio = RelogioFalso()
+        limpar = Mock()
         bus_collector.executar_coletor(
             15,
+            limpar_sessao=limpar,
             coletar=lambda _: setattr(relogio, "agora", relogio.agora + 0.1),
             relogio=relogio.monotonic,
             dormir=relogio.dormir,
             max_ciclos=3,
         )
-        self.assertEqual(self.session.remove.call_count, 3)
+        self.assertEqual(limpar.call_count, 3)
 
     def test_coletor_para_quando_o_lock_e_perdido(self):
         relogio = RelogioFalso()
@@ -221,42 +276,103 @@ class TestGpsCollector(unittest.TestCase):
 
     def test_posicao_ja_gravada_ou_repetida_no_ciclo_nao_e_duplicada(self):
         horario = datetime(2026, 11, 17, 15, 0, tzinfo=timezone.utc)
-        self.session.query.return_value.filter.return_value.all.return_value = [
-            ("5810", horario)
-        ]
-        resposta = {"hr": "12:00", "l": [
-            {"cl": 123, "sl": 1, "vs": [
-                {"p": "5810", "py": -23.5, "px": -46.6, "ta": "2026-11-17T15:00:00Z"},
-                {"p": "5811", "py": -23.3, "px": -46.4, "ta": "2026-11-17T15:00:05Z"},
-            ]},
-            # O mesmo veículo e horário em outra linha da resposta.
-            {"cl": 456, "sl": 2, "vs": [
-                {"p": "5811", "py": -23.3, "px": -46.4, "ta": "2026-11-17T15:00:05Z"},
-            ]},
-        ]}
+        anterior = ExecucaoColeta(estado="OK")
+        db.session.add(anterior)
+        db.session.flush()
+        db.session.add(Veiculo(prefixo="5810"))
+        db.session.flush()
+        db.session.add(
+            RegistroBrutoGPS(
+                execucao_id=anterior.id,
+                prefixo_origem="5810",
+                veiculo_prefixo="5810",
+                horario_gps=horario,
+                coletado_em=horario,
+            )
+        )
+        db.session.commit()
+        resposta = {
+            "hr": "12:00",
+            "l": [
+                {
+                    "cl": 123,
+                    "sl": 1,
+                    "vs": [
+                        {
+                            "p": "5810",
+                            "py": -23.5,
+                            "px": -46.6,
+                            "ta": "2026-11-17T15:00:00Z",
+                        },
+                        {
+                            "p": "5811",
+                            "py": -23.3,
+                            "px": -46.4,
+                            "ta": "2026-11-17T15:00:05Z",
+                        },
+                    ],
+                },
+                # O mesmo veículo e horário em outra linha da resposta.
+                {
+                    "cl": 456,
+                    "sl": 2,
+                    "vs": [
+                        {
+                            "p": "5811",
+                            "py": -23.3,
+                            "px": -46.4,
+                            "ta": "2026-11-17T15:00:05Z",
+                        },
+                    ],
+                },
+            ],
+        }
         total, _ = self._coletar(resposta)
 
         self.assertEqual(total, 1)
-        execucao = self.session.added[0]
+        execucao = ExecucaoColeta.query.order_by(ExecucaoColeta.id.desc()).first()
         self.assertEqual((execucao.recebidos, execucao.novos_persistidos), (3, 1))
-        novos = self.session.add_all.call_args.args[0]
-        self.assertEqual([r.prefixo_origem for r in novos], ["5811"])
+        novos = RegistroBrutoGPS.query.order_by(RegistroBrutoGPS.id).all()
+        self.assertEqual([r.prefixo_origem for r in novos], ["5810", "5811"])
 
     def test_sem_chave_completa_preserva_todos_os_registros_com_nulos(self):
-        resposta = {"hr": "12:00", "l": [{"cl": 123, "sl": 1, "vs": [
-            {"p": "5810", "py": -23.5, "px": -46.6},
-            {"p": "5810", "py": -23.5, "px": -46.6},  # repetido: mesmo objeto
-            {"p": "5810", "py": -23.6, "px": -46.6},  # diferente: preservado
-        ]}]}
+        resposta = {
+            "hr": "12:00",
+            "l": [
+                {
+                    "cl": 123,
+                    "sl": 1,
+                    "vs": [
+                        {"p": "5810", "py": -23.5, "px": -46.6},
+                        {
+                            "p": "5810",
+                            "py": -23.5,
+                            "px": -46.6,
+                        },  # repetido: mesmo objeto
+                        {
+                            "p": "5810",
+                            "py": -23.6,
+                            "px": -46.6,
+                        },  # diferente: preservado
+                    ],
+                }
+            ],
+        }
         total, _ = self._coletar(resposta)
 
         self.assertEqual(total, 3)
         # Sem horário não há consulta de duplicatas; só a do cadastro de veículos.
-        self.assertEqual(self.session.query.call_count, 1)
+        self.assertTrue(
+            all(r.horario_gps is None for r in RegistroBrutoGPS.query.all())
+        )
 
     def test_lock_singleton_usa_get_lock_no_mysql(self):
         conexao = Mock()
-        conexao.execute.return_value.scalar.side_effect = [1, 0, 1]  # adquire, recusa, libera
+        conexao.execute.return_value.scalar.side_effect = [
+            1,
+            0,
+            1,
+        ]  # adquire, recusa, libera
         engine = SimpleNamespace(
             dialect=SimpleNamespace(name="mysql"), connect=Mock(return_value=conexao)
         )
@@ -283,8 +399,13 @@ class TestGpsCollector(unittest.TestCase):
     def test_diagnostico_por_prefixo_imprime_posicao_sem_gravar(self):
         resposta = {
             "hr": "12:00",
-            "l": [{"c": "5810-10", "cl": 123,
-                   "vs": [{"p": 5810, "py": -23.5, "px": -46.6, "ta": "12:00:00Z"}]}],
+            "l": [
+                {
+                    "c": "5810-10",
+                    "cl": 123,
+                    "vs": [{"p": 5810, "py": -23.5, "px": -46.6, "ta": "12:00:00Z"}],
+                }
+            ],
         }
         cliente = SimpleNamespace(buscar_todas_posicoes=Mock(return_value=resposta))
         saida = io.StringIO()
@@ -293,14 +414,17 @@ class TestGpsCollector(unittest.TestCase):
                 bus_collector.imprimir_localizacao_atual("5810")
         self.assertIn("Latitude: -23.5", saida.getvalue())
         self.assertIn("Longitude: -46.6", saida.getvalue())
-        self.session.add_all.assert_not_called()
+        self.assertEqual(RegistroBrutoGPS.query.count(), 0)
 
     def test_diagnostico_por_linha_imprime_veiculos(self):
         cliente = SimpleNamespace(
             buscar_linhas=Mock(return_value=[{"cl": 123, "lt": "5810", "sl": 1}]),
-            buscar_posicoes=Mock(return_value={"hr": "12:00", "vs": [
-                {"p": "9999", "py": -23.5, "px": -46.6, "ta": "12:00:00Z"}
-            ]}),
+            buscar_posicoes=Mock(
+                return_value={
+                    "hr": "12:00",
+                    "vs": [{"p": "9999", "py": -23.5, "px": -46.6, "ta": "12:00:00Z"}],
+                }
+            ),
         )
         saida = io.StringIO()
         with patch.object(bus_collector, "SPTransClient", return_value=cliente):

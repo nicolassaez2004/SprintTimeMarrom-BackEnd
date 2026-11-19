@@ -1,0 +1,161 @@
+{
+  "historia": "US29",
+  "cartoes": [
+    "US29-T01",
+    "US29-T02",
+    "US29-T03",
+    "US29-T04"
+  ],
+  "branch": "US29",
+  "main_integrada": "731bd0a",
+  "bases": {
+    "sptrans_dev": "us29_0012",
+    "sptrans_test": "us29_0012"
+  },
+  "politica_api": {
+    "maximo_tentativas": 6,
+    "esperas_segundos": [
+      1,
+      2,
+      4,
+      8,
+      16
+    ],
+    "espera_e_contador_preservados_no_reinicio": true,
+    "falhas_permanentes_nao_repetidas_no_mesmo_ciclo": true
+  },
+  "protecoes": [
+    "FileLock local do checkpoint",
+    "GET_LOCK MySQL compatível com US01",
+    "Token de posse verificado em transação",
+    "Chave lógica única por ciclo",
+    "UNIQUE prefixo/horário GPS",
+    "Replay do mesmo ciclo após ACK perdido preserva inclusive GPS sem chave completa"
+  ],
+  "teste_controlado": {
+    "natureza": "SIMULACAO_COM_RELOGIO_CONTROLADO_NAO_MENSAL",
+    "inicio_virtual": "2026-11-19T15:00:00+00:00",
+    "fim_virtual": "2026-11-19T15:50:00+00:00",
+    "ciclos": 100,
+    "confirmados_ate_60s": 99,
+    "percentual": 99,
+    "meta_atingida": true,
+    "observacao_mensal_comprovada": false,
+    "cenarios": [
+      "timeout",
+      "seis tentativas",
+      "falha SQL",
+      "ACK perdido",
+      "reinício com resposta pendente",
+      "reinício respeita espera restante",
+      "GPS sem horário não duplica em replay",
+      "queda e retomada",
+      "limite 600s",
+      "deduplicação de alertas",
+      "falha curta sem spam",
+      "limite 60000ms inclusivo",
+      "ciclos ausentes não inflam taxa",
+      "troca de posse",
+      "caixa compartilhada sem arquivos locais"
+    ]
+  },
+  "amostra_real": {
+    "natureza": "AMOSTRA_REAL_CURTA_NAO_MENSAL",
+    "verificada_em": "2026-11-19T15:41:31.404017+00:00",
+    "base": "sptrans_dev",
+    "migracao": "us29_0012",
+    "relatorio": {
+      "inicio": "2026-11-19T15:40:35.487406+00:00",
+      "fim_exclusivo": "2026-11-19T15:41:35.487406+00:00",
+      "intervalo_segundos": 30,
+      "ciclos_observados": 2,
+      "ciclos_esperados": 2,
+      "sem_ciclo_registrado": 0,
+      "confirmados_ate_60s": 2,
+      "confirmacao_desconhecida": 0,
+      "falhas": 0,
+      "denominador": 2,
+      "percentual_ate_60s": 100.0,
+      "meta_percentual": 99,
+      "meta_atingida": true,
+      "observacao_mensal_comprovada": false,
+      "nota": "Janela informada; confirmação ausente e ciclos não registrados não contam como rápidos. Uma janela curta não comprova observação mensal."
+    },
+    "brutos_anteriores_preservados": true,
+    "limite_id_brutos_anteriores": 11934,
+    "hash_antes": "f7836fdf958c18215cad81cc95dc10b98e2e8bca51efc646f542bcadb658c2e2",
+    "hash_depois": "f7836fdf958c18215cad81cc95dc10b98e2e8bca51efc646f542bcadb658c2e2",
+    "ciclos": [
+      {
+        "id": 4,
+        "chave": "77062692-b851-4130-ac36-d6dd0d283865",
+        "estado": "OK",
+        "tentativas": 1,
+        "recebidos": 9893,
+        "novos": 9893,
+        "iniciada_em": "2026-11-19T15:40:35.487406+00:00",
+        "confirmada_em": "2026-11-19T15:40:54.425113+00:00",
+        "duracao_gravacao_ms": 18939
+      },
+      {
+        "id": 5,
+        "chave": "efcb02fc-a31e-48fe-b753-3d61bbd16fdf",
+        "estado": "OK",
+        "tentativas": 1,
+        "recebidos": 9896,
+        "novos": 6883,
+        "iniciada_em": "2026-11-19T15:41:05.492794+00:00",
+        "confirmada_em": "2026-11-19T15:41:21.515647+00:00",
+        "duracao_gravacao_ms": 16017
+      }
+    ],
+    "janela_encerrada_verificada_em": "2026-11-19T15:56:57.645719+00:00"
+  },
+  "canal": {
+    "tipo": "CAIXA_INTERNA",
+    "mensagem_teste_id": "5563ce10-80f5-4d14-899f-fbcfa1116468",
+    "envio_sql_registrado": true,
+    "recebimento_confirmado_pelo_usuario": true,
+    "comando": "python -m app.monitoramento alertas",
+    "forma_confirmacao": "Usuário forneceu a saída do comando com a mensagem TESTE nesta conversa.",
+    "leitura_compartilhada_via_mysql": true,
+    "copia_local_durante_falha_do_banco": true,
+    "email_ou_discord_configurado": false
+  },
+  "verificacoes": {
+    "suite_passaram": 280,
+    "ignorados": 6,
+    "subtestes_passaram": 14,
+    "integracao_mysql_local_passou": true,
+    "db_check_sem_divergencias": true,
+    "lint_F_I_B_passou": true,
+    "relogio_controlado_espera_sobrevive_reinicio": true,
+    "alertas_acessiveis_por_colega_sem_arquivos_locais": true
+  },
+  "limites": [
+    "A amostra real contém somente dois ciclos, não comprova 99% mensal.",
+    "Testes de falha e avanço de tempo são controlados, não incidentes reais na Aiven.",
+    "A coleta contínua exige manter o worker em execução; Flask não o inicia automaticamente.",
+    "Checkpoint e cópia local dos alertas exigem diretório persistente do worker."
+  ],
+  "revisao_tecnica": {
+    "revisor": "Codex",
+    "status": "APROVADA_TECNICAMENTE",
+    "checagens": [
+      "tentativas e espera persistentes",
+      "fencing e travas",
+      "commit com ACK perdido",
+      "retomada de ciclo e lacunas",
+      "alerta/recuperação sem duplicação",
+      "caixa SQL compartilhada e fallback local",
+      "confirmação após commit e limite 60s",
+      "cadência UTC ancorada em relógio monotônico",
+      "compatibilidade com main"
+    ],
+    "pendencias_tecnicas_bloqueantes": []
+  },
+  "criterios_tecnicos_implementados": true,
+  "trello_alterado": false,
+  "commit_e_push_pendentes": true,
+  "coleta_continua_deixada_executando": false
+}

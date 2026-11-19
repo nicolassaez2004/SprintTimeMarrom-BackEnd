@@ -88,8 +88,12 @@ def test_ausencia_da_fonte_encaminha_fallback_sem_fabricar_partidas(versao, moti
     resultado = importar_oficial(*CONTEXTO, cliente=cliente)
     assert resultado["estado"] == "FALLBACK_GTFS_NECESSARIO"
     assert resultado["oficial_disponivel"] is False and resultado["motivo"] == motivo
-    assert resultado["fallback"] == {"fonte": "GTFS", "estado": "PENDENTE_GERACAO",
-                                      "versao_gtfs_id": versao.id}
+    # A US04-T02 já tenta gerar o fallback. Esta fixture só registra os
+    # metadados do GTFS e não fornece um ZIP: deve falhar sem fabricar saídas.
+    assert resultado["fallback"]["fonte"] == "GTFS"
+    assert resultado["fallback"]["estado"] == "FALHA_GERACAO"
+    assert resultado["fallback"]["versao_gtfs_id"] == versao.id
+    assert "ZIP GTFS" in resultado["fallback"]["motivo"]
     assert resultado["partidas"] == [] and ImportacaoProgramacao.query.count() == 0
     assert motivo in caplog.text
 
@@ -101,12 +105,16 @@ def test_sem_versao_gtfs_o_fallback_expoe_precondicao_em_vez_de_escolher(app):
     assert resultado["fallback"]["estado"] == "SEM_VERSAO_GTFS"
 
 
-def test_erro_da_fonte_preserva_historico_sem_o_apresentar_como_consulta_atual(versao, fabrica_captura):
+def test_erro_da_fonte_prioriza_oficial_armazenada_sem_alterar_verificacao(versao, fabrica_captura):
     anterior = importar_oficial(*CONTEXTO, captura=fabrica_captura(), agora=AGORA)
     cliente = Mock()
     cliente.obter.side_effect = FonteOficialIndisponivel("HTTP_403")
     resultado = importar_oficial(*CONTEXTO, cliente=cliente)
-    assert resultado["oficial_disponivel"] is False and resultado["partidas"] == []
+    assert resultado["estado"] == "OFICIAL_PRIORITARIA"
+    assert resultado["oficial_disponivel"] is True
+    assert resultado["partidas"] == anterior["partidas"]
+    assert resultado["motivo"] == "HTTP_403"
+    assert resultado["procedencia"]["verificada_em"] == AGORA.isoformat()
     assert consultar_oficial(*CONTEXTO)["partidas"] == anterior["partidas"]
     assert ImportacaoProgramacao.query.one().verificada_em == AGORA
 
