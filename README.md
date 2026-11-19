@@ -73,7 +73,8 @@ O esquema é versionado com Flask-Migrate (Alembic), em `migrations/versions/`:
 A importação/consulta de partidas é explícita: `python -m app.programacao --help`.
 Consulte [US04-T01](docs/US04-T01.md) para fontes, normalização, testes e o
 encaminhamento de fallback quando a fonte oficial está indisponível. A geração
-de partidas GTFS depende da continuação da US04.
+por calendário GTFS e horários acima de 24h está documentada em
+[US04-T02A](docs/US04-T02A.md) e [US04-T02B](docs/US04-T02B.md).
 
 **Banco novo:** `flask --app app db upgrade`.
 
