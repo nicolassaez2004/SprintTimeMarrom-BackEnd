@@ -405,3 +405,20 @@ limitada, acrescentar `--ciclos 2`. O estado padrão fica em `instance/coleta/`;
 
 Na amostra real da Aiven, os dois ciclos gravaram em **18,939 s e 16,017 s**.
 É uma amostra curta, não uma observação mensal. [Evidência e critérios](docs/evidencias/US29-2026-11-19.json).
+
+## Conferência dos brutos e recuperação — US09-T03 / US32
+
+Publicação diária do dia anterior até 06:00 (São Paulo), decisão confirmada
+por Matheus em 20/11/2026. Conferir todos os campos/nulos e o recibo de publicação:
+
+```powershell
+python -m scripts.conferir_parquet --publicar
+python -m scripts.backup --destino "DIRETORIO_FORA_DO_REPOSITORIO"
+python -m scripts.restaurar --backup "DIRETORIO/backup-..." --destino-arquivos "DIRETORIO_NOVO"
+```
+
+Restauração exige `RESTORE_DATABASE_URL` local e base nova `marrom_restore_*`;
+recusa Aiven e bases existentes. O backup contém banco + originais, hashes e
+revisão Alembic. Os agendamentos executam fora do Flask e dependem da máquina
+ligada/sessão aberta. [Conferência Parquet](docs/US09-T03.md) ·
+[backup diário e ensaio semestral](docs/US32.md).

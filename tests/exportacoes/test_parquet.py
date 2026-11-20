@@ -1,4 +1,5 @@
 import json
+import os
 import stat
 from datetime import date, datetime, timedelta, timezone
 
@@ -71,7 +72,11 @@ def test_exporta_dia_de_sao_paulo_com_tipos_null_payload_e_metadados(app, tmp_pa
     assert metadados["source_url"].startswith("https://api.olhovivo.sptrans.com.br/")
     assert metadados["date"] == "2026-11-18"
     assert metadados["period_start_utc"] == INICIO.isoformat()
-    assert stat.S_IMODE(destino.stat().st_mode) == 0o644
+    # chmod no Windows controla apenas o atributo somente leitura (não ACL POSIX).
+    if os.name == "nt":
+        assert os.access(destino, os.R_OK)
+    else:
+        assert stat.S_IMODE(destino.stat().st_mode) == 0o644
 
 
 def test_varios_lotes_correspondem_ao_banco_e_nao_alteram_brutos(app, tmp_path):
