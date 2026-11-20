@@ -1,0 +1,253 @@
+{
+  "responsavel": "Matheus",
+  "criada_em": "2026-11-17",
+  "iniciada_em": "2026-11-20",
+  "branch": "US09US32",
+  "base_codigo": "62414c2",
+  "revisao_origem": [
+    "us29_0012"
+  ],
+  "origem_nao_alterada": true,
+  "restauracao_somente_em_mysql_local": true,
+  "backup": {
+    "diretorio": "C:\\Users\\mathe\\OneDrive\\Backups-SprintMarrom\\backup-20261120T173442Z-c9c297b1",
+    "formato": "time-marrom-mysql-jsonl-v2",
+    "iniciada_em": "2026-11-20T17:34:42.885446+00:00",
+    "concluida_em": "2026-11-20T17:36:53.527139+00:00",
+    "tabelas": 21,
+    "originais": 1,
+    "bytes_conjunto": 122298269,
+    "arquivos": {
+      "configuracao.json": {
+        "sha256": "7fb4411cb3932a4bbb594a5bc5f23f077627ba0492343c5b20bc38034e2a1043",
+        "bytes": 577
+      },
+      "esquema.json": {
+        "sha256": "a8c26e079210736d13043c8f6ddbe98ca9277b0bff51e3faa66eda450f67d093",
+        "bytes": 41128
+      },
+      "configuracao/municipio.geojson": {
+        "sha256": "f1bdf75deb96e3f7a990387b2e74cde752ddb8e87eebe448de006e36926bb718",
+        "bytes": 25322
+      },
+      "dados/alembic_version.jsonl": {
+        "sha256": "4ee885d585d21c9268c8f40fe95a62174ce26b4a7f53915434ec5d87fe340a03",
+        "bytes": 14
+      },
+      "dados/arquivos_armazenados.jsonl": {
+        "sha256": "6ff20dd85c38011dc0a257e49fa630294a5ceac063a5dc769d2f15c0e45c9a0b",
+        "bytes": 279
+      },
+      "dados/correspondencias_codigos.jsonl": {
+        "sha256": "4add122805568f69ec2e2643ff55667c22dac7e10cb2d65769868411b2582d1a",
+        "bytes": 653440
+      },
+      "dados/estados_coleta.jsonl": {
+        "sha256": "c52bea11ad56a215954263cc433ee457d9264e1c9646ca8ef2ea15e6a3fc316b",
+        "bytes": 53
+      },
+      "dados/execucoes_coleta.jsonl": {
+        "sha256": "8dbdec70ad4a831586098637d8a6e7c4bd500fdb561237b26b1429dfec8ac014",
+        "bytes": 7684
+      },
+      "dados/execucoes_processamento.jsonl": {
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "bytes": 0
+      },
+      "dados/importacoes_programacao.jsonl": {
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "bytes": 0
+      },
+      "dados/lacunas_coleta.jsonl": {
+        "sha256": "0bee4112f4c5ba6ec66cc3eb85af3b5f22a4a0bd090b3d76372aef9966f13f90",
+        "bytes": 399
+      },
+      "dados/linhas.jsonl": {
+        "sha256": "5efe4da39a8d35d1e66d2fb70e0c584e011acb073b421d1895bcc8619aa97791",
+        "bytes": 117247
+      },
+      "dados/notificacoes_coleta.jsonl": {
+        "sha256": "d79413cf2f2ab00e56750574e2b5178e725b963772326200deb2358f96ad7727",
+        "bytes": 626
+      },
+      "dados/observacoes_tratadas.jsonl": {
+        "sha256": "00e13f9a6a7ef4dad9ab2fd0c706a6abd715f982d76ed8b5667f12307020a86c",
+        "bytes": 6941127
+      },
+      "dados/onibus_selecionados.jsonl": {
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "bytes": 0
+      },
+      "dados/paradas.jsonl": {
+        "sha256": "c066c7018292f747e13088db16e5ef3593f815427a6588e915142b94249fc894",
+        "bytes": 3640469
+      },
+      "dados/partidas_programadas.jsonl": {
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "bytes": 0
+      },
+      "dados/registros_gps.jsonl": {
+        "sha256": "424c526404acbdd3d63fe24249f949e5e565cec86bbe92d5795c5081ccaf36bd",
+        "bytes": 52783098
+      },
+      "dados/resultados_reprocessamento.jsonl": {
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "bytes": 0
+      },
+      "dados/tabelas_correspondencia.jsonl": {
+        "sha256": "adc2223f4e575f04bddc3ddbc39e3d9dc2454de9743fdf541b327d5dd3706129",
+        "bytes": 863
+      },
+      "dados/trechos.jsonl": {
+        "sha256": "ff1283c728049f703f610e51661486c14f7ecf86134463089ae9f01d11d837e6",
+        "bytes": 43640296
+      },
+      "dados/veiculos.jsonl": {
+        "sha256": "3ee00f8910a3dcc8c6b6757cd1c12736169a4225575dfa355d5569f9f2255ad3",
+        "bytes": 119104
+      },
+      "dados/verificacoes_gtfs.jsonl": {
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "bytes": 0
+      },
+      "dados/versoes_gtfs.jsonl": {
+        "sha256": "503ae53e36bf0c5cd1a473f500d8ffcb1e170ffc92f9c94fd96a607ed6b19dc0",
+        "bytes": 246
+      },
+      "originais/gtfs/3141809bcbb8c1677244bd3e4499faa612857d9685d056317b137dc1d0195655.zip": {
+        "sha256": "3141809bcbb8c1677244bd3e4499faa612857d9685d056317b137dc1d0195655",
+        "bytes": 14326297
+      }
+    },
+    "contagens": {
+      "alembic_version": 1,
+      "arquivos_armazenados": 1,
+      "correspondencias_codigos": 4308,
+      "estados_coleta": 1,
+      "execucoes_coleta": 25,
+      "execucoes_processamento": 0,
+      "importacoes_programacao": 0,
+      "lacunas_coleta": 2,
+      "linhas": 1366,
+      "notificacoes_coleta": 3,
+      "observacoes_tratadas": 11479,
+      "onibus_selecionados": 0,
+      "paradas": 22263,
+      "partidas_programadas": 0,
+      "registros_gps": 170648,
+      "resultados_reprocessamento": 0,
+      "tabelas_correspondencia": 2,
+      "trechos": 96808,
+      "veiculos": 11911,
+      "verificacoes_gtfs": 0,
+      "versoes_gtfs": 1
+    },
+    "inclui_limite_municipal": true,
+    "segredos_incluidos": false,
+    "sincronizacao_onedrive_confirmada": false
+  },
+  "us09": {
+    "periodicidade": "DIARIA",
+    "aceita_por": "Matheus",
+    "confirmada_em": "2026-11-20",
+    "regra": "Dia D ate 06:00 de D+1, America/Sao_Paulo; semanal/mensal sao recortes de consulta.",
+    "conteudo_real_confere": true,
+    "registros": 170648,
+    "prazo_real_atendido": false,
+    "publicado_em": "2026-11-20T17:27:39.160022+00:00",
+    "limites_06h_testados_com_relogio_controlado": true,
+    "pendencia": "Confirmar uma publicacao real futura ate 06:00; nao retroagir a publicacao inicial."
+  },
+  "us32": {
+    "backup_restaurado": true,
+    "duracao_segundos": 40.5,
+    "ate_24_horas": true,
+    "chaves_estrangeiras_conferidas": 27,
+    "ensaio_semestral_futuro_ja_ocorreu": false,
+    "proxima_verificacao": "2027-05-20",
+    "responsavel_proximo_ensaio": "Matheus",
+    "outro_integrante_reproduziu": false,
+    "pendencia_aceite": "Outro integrante reproduzir os passos da US32-T02 conforme o cartao.",
+    "implementacao_revisada_tecnicamente": true,
+    "base_mantida_para_inspecao": "marrom_restore_20261120_173739_008bfe",
+    "migracoes_posteriores_validadas_so_no_ensaio": true
+  },
+  "testes": {
+    "suite_completa_passaram": 482,
+    "novo_teste_regressao_ddl_passou": true,
+    "ignorados_na_suite": 9,
+    "subtestes": 14,
+    "integracao_mysql_local_ansi_passaram": 3,
+    "lint_F_I_B_passou": true,
+    "cenarios": [
+      "snapshot sob INSERT concorrente",
+      "preservacao de JSON/null/binario/decimal/geometry/TIME",
+      "DDL completo em modo ANSI",
+      "rejeicao de base existente/remota",
+      "recusa de backup corrompido/parcial",
+      "recusa de referencia orfa",
+      "falha nao publicada como sucesso",
+      "06:00 e 06:00+1 microssegundo"
+    ],
+    "payload_textual_literal_conferido": true,
+    "parametros_url_nao_podem_desviar_restauracao_local": true
+  },
+  "operacao": {
+    "modo_disparo_da_validacao": "Disparo manual das mesmas tarefas cadastradas no Agendador do Windows",
+    "backup": "02:00 diario",
+    "parquet": "00:15, repetindo a cada 15 min na madrugada",
+    "ensaio": "20/05 e 20/11, 10:00, inicio em 20/05/2027",
+    "fuso": "America/Sao_Paulo",
+    "condicoes": [
+      "Computador ligado e sessao aberta",
+      "Aiven Running e rede acessivel",
+      "MySQL local disponivel para o ensaio semestral"
+    ],
+    "logs": "instance/operacao/logs",
+    "coletor_iniciado_por_este_trabalho": false
+  },
+  "revisao_tecnica": "Codex: testes, falhas reais corrigidas, ensaio completo MySQL 8.4.11 -> 8.0.46.",
+  "trello_alterado": false,
+  "commit_realizado": false,
+  "tentativas_iniciais": [
+    "Pacotes v1 mantidos em .diagnostico-*, fora da selecao de backups validos.",
+    "Formato v2 preserva SQL mode e DDL completo; divergencia de charset redundante normalizada."
+  ],
+  "bases_diagnostico_removidas": [
+    "marrom_restore_20261120_172806_7e1f30",
+    "marrom_restore_20261120_173157_8f2be6",
+    "marrom_restore_diagnostico_f50046e7"
+  ],
+  "pronto_para_commit_e_review": true,
+  "cartoes_implementados": [
+    "US09-T03",
+    "US32-T01",
+    "US32-T02",
+    "US32-T03"
+  ],
+  "etapa_entrega": "IMPLEMENTACAO_CONCLUIDA_PARA_REVIEW",
+  "aceite_operacional_integral_ja_ocorreu": false,
+  "migracoes_isoladas": {
+    "banco_isolado": "marrom_restore_20261120_173739_008bfe",
+    "revisao_backup": [
+      "us29_0012"
+    ],
+    "revisao_apos_upgrade": [
+      "us05_0014"
+    ],
+    "db_check_sem_divergencias": true,
+    "todas_linhas_originais_com_mesmo_hash_apos_upgrade": true,
+    "chaves_estrangeiras_apos_upgrade": 28,
+    "health_http": 200,
+    "aiven_nao_migrada": true
+  },
+  "revisao_final": {
+    "data": "2026-11-20T17:49:11.459987+00:00",
+    "resultado": "APROVADA_PARA_COMMIT_E_REVIEW",
+    "documento": "docs/reviews/US09-US32-review.md",
+    "main_conferida": "62414c2",
+    "commits_divergentes_da_main": 0,
+    "conflitos_com_main_atual": false,
+    "limite": "Novos commits da equipe podem exigir sincronizacao posterior."
+  }
+}

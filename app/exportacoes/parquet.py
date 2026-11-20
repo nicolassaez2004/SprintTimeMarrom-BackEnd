@@ -19,6 +19,8 @@ from flask import current_app
 
 from app import db
 from app.models import ExecucaoColeta, RegistroBrutoGPS
+from app.operacao.arquivos import gravar_json
+from app.storage import hash_arquivo
 
 
 FONTE = "SPTrans Olho Vivo (registros brutos coletados pela aplicação)"
@@ -159,7 +161,8 @@ def gerar_parquet_diario(dia: date, destino, *, tamanho_lote: int = 5000, relogi
                     ultimo = (lote[-1]["coletado_em"], lote[-1]["id"])
                 writer.close()
                 writer = None
-                with open(temp_path, "rb") as arquivo:
+                # Windows exige descritor de escrita para _commit/fsync.
+                with open(temp_path, "r+b") as arquivo:
                     os.fsync(arquivo.fileno())
         # NamedTemporaryFile cria 0600; o arquivo publicado é de leitura pública.
         os.chmod(temp_path, 0o644)
@@ -269,6 +272,13 @@ def _gravado_apos(dia, gerado_em):
 def _exportar(diretorio, dia, relogio, motivo):
     resultado = gerar_parquet_diario(dia, diretorio / nome_arquivo(dia), relogio=relogio)
     publicado_em = relogio().astimezone(timezone.utc)
+    caminho = diretorio / nome_arquivo(dia)
+    digest, tamanho = hash_arquivo(caminho)
+    gravar_json(caminho.with_suffix(".publicacao.json"), {
+        "data": dia.isoformat(), "publicado_em": publicado_em.isoformat(),
+        "sha256": digest, "tamanho_bytes": tamanho,
+        "registros": resultado["registros"], "motivo": motivo,
+    })
     no_prazo = publicado_em <= prazo_publicacao(dia)
     logger.log(logging.INFO if no_prazo else logging.ERROR, json.dumps({
         "evento": "brutos_parquet_publicado" if no_prazo else "brutos_parquet_prazo_excedido",

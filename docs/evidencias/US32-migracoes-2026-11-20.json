@@ -1,0 +1,14 @@
+{
+  "banco_isolado": "marrom_restore_20261120_173739_008bfe",
+  "revisao_backup": [
+    "us29_0012"
+  ],
+  "revisao_apos_upgrade": [
+    "us05_0014"
+  ],
+  "db_check_sem_divergencias": true,
+  "todas_linhas_originais_com_mesmo_hash_apos_upgrade": true,
+  "chaves_estrangeiras_apos_upgrade": 28,
+  "health_http": 200,
+  "aiven_nao_migrada": true
+}

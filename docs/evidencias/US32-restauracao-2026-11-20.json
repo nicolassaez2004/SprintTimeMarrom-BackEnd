@@ -1,0 +1,108 @@
+{
+  "estado": "CONCLUIDO",
+  "iniciada_em": "2026-11-20T17:37:39.429917+00:00",
+  "finalizada_em": "2026-11-20T17:38:19.922808+00:00",
+  "duracao_segundos": 40.5,
+  "ate_24_horas": true,
+  "banco_isolado": "marrom_restore_20261120_173739_008bfe",
+  "origem_mysql": "8.4.11",
+  "destino_mysql": "8.0.46",
+  "tabelas": {
+    "alembic_version": {
+      "registros": 1,
+      "sha256_linhas": "4ee885d585d21c9268c8f40fe95a62174ce26b4a7f53915434ec5d87fe340a03"
+    },
+    "arquivos_armazenados": {
+      "registros": 1,
+      "sha256_linhas": "6ff20dd85c38011dc0a257e49fa630294a5ceac063a5dc769d2f15c0e45c9a0b"
+    },
+    "correspondencias_codigos": {
+      "registros": 4308,
+      "sha256_linhas": "4add122805568f69ec2e2643ff55667c22dac7e10cb2d65769868411b2582d1a"
+    },
+    "estados_coleta": {
+      "registros": 1,
+      "sha256_linhas": "c52bea11ad56a215954263cc433ee457d9264e1c9646ca8ef2ea15e6a3fc316b"
+    },
+    "execucoes_coleta": {
+      "registros": 25,
+      "sha256_linhas": "8dbdec70ad4a831586098637d8a6e7c4bd500fdb561237b26b1429dfec8ac014"
+    },
+    "execucoes_processamento": {
+      "registros": 0,
+      "sha256_linhas": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "importacoes_programacao": {
+      "registros": 0,
+      "sha256_linhas": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "lacunas_coleta": {
+      "registros": 2,
+      "sha256_linhas": "0bee4112f4c5ba6ec66cc3eb85af3b5f22a4a0bd090b3d76372aef9966f13f90"
+    },
+    "linhas": {
+      "registros": 1366,
+      "sha256_linhas": "5efe4da39a8d35d1e66d2fb70e0c584e011acb073b421d1895bcc8619aa97791"
+    },
+    "notificacoes_coleta": {
+      "registros": 3,
+      "sha256_linhas": "d79413cf2f2ab00e56750574e2b5178e725b963772326200deb2358f96ad7727"
+    },
+    "observacoes_tratadas": {
+      "registros": 11479,
+      "sha256_linhas": "00e13f9a6a7ef4dad9ab2fd0c706a6abd715f982d76ed8b5667f12307020a86c"
+    },
+    "onibus_selecionados": {
+      "registros": 0,
+      "sha256_linhas": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "paradas": {
+      "registros": 22263,
+      "sha256_linhas": "c066c7018292f747e13088db16e5ef3593f815427a6588e915142b94249fc894"
+    },
+    "partidas_programadas": {
+      "registros": 0,
+      "sha256_linhas": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "registros_gps": {
+      "registros": 170648,
+      "sha256_linhas": "424c526404acbdd3d63fe24249f949e5e565cec86bbe92d5795c5081ccaf36bd"
+    },
+    "resultados_reprocessamento": {
+      "registros": 0,
+      "sha256_linhas": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "tabelas_correspondencia": {
+      "registros": 2,
+      "sha256_linhas": "adc2223f4e575f04bddc3ddbc39e3d9dc2454de9743fdf541b327d5dd3706129"
+    },
+    "trechos": {
+      "registros": 96808,
+      "sha256_linhas": "ff1283c728049f703f610e51661486c14f7ecf86134463089ae9f01d11d837e6"
+    },
+    "veiculos": {
+      "registros": 11911,
+      "sha256_linhas": "3ee00f8910a3dcc8c6b6757cd1c12736169a4225575dfa355d5569f9f2255ad3"
+    },
+    "verificacoes_gtfs": {
+      "registros": 0,
+      "sha256_linhas": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "versoes_gtfs": {
+      "registros": 1,
+      "sha256_linhas": "503ae53e36bf0c5cd1a473f500d8ffcb1e170ffc92f9c94fd96a607ed6b19dc0"
+    }
+  },
+  "chaves_estrangeiras_conferidas": 27,
+  "arquivos_originais": 1,
+  "hashes_conferidos": true,
+  "conexao_aplicacao": true,
+  "revisoes_alembic": [
+    "us29_0012"
+  ],
+  "responsavel_ensaio": "Matheus (execução assistida pelo Codex)",
+  "outro_integrante_reproduziu": false,
+  "proxima_verificacao": "2027-05-20",
+  "periodicidade_ensaio": "SEMESTRAL",
+  "backup_testado": "backup-20261120T173442Z-c9c297b1"
+}
