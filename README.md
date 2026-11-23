@@ -1,5 +1,12 @@
 # SprintTimeMarrom-BackEnd
 
+## API pública — US11
+
+`GET /indicadores` e `GET /series`: [contrato da T01](docs/US11-T01.md) e
+[limite compartilhado de 60 consultas/minuto por IP](docs/US11-T02.md).
+O limitador exige a migração `us11_0016`; o banco e a lista de proxies
+confiáveis devem seguir as instruções de operação do documento.
+
 ## Como iniciar
 
 Requer Python 3.10+ e MySQL 8.0.16+ (para as restrições `CHECK`).

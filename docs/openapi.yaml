@@ -8,6 +8,11 @@ info:
     uma página vazia. Valores devem declarar unidade, janela, versão do conjunto
     e qualidade; os serviços produtores das dependências US14-T03B e US23-T01
     são responsáveis por gravar os valores calculados.
+    GET e HEAD de /indicadores e /series compartilham 60 chamadas por IP por
+    minuto UTC (janela fixa). A 61ª chamada retorna 429 com Retry-After em
+    segundos. Parâmetros inválidos também consomem a cota; OPTIONS não consome.
+    O IP vem da conexão; X-Forwarded-For só é considerado atrás de proxies
+    explicitamente confiáveis. Falha no armazenamento do limite retorna 503.
 servers:
   - url: http://localhost:5000
 paths:
@@ -26,6 +31,10 @@ paths:
       responses:
         '200':
           description: Página de indicadores publicados.
+          headers:
+            X-RateLimit-Limit: { $ref: '#/components/headers/Limite' }
+            X-RateLimit-Remaining: { $ref: '#/components/headers/Restantes' }
+            X-RateLimit-Reset: { $ref: '#/components/headers/Reinicio' }
           content:
             application/json:
               schema:
@@ -42,6 +51,7 @@ paths:
                     qualidade: { cobertura: 0.98, observacoes: 1250 }
                 paginacao: { page: 1, page_size: 100, total: 1 }
         '400': { $ref: '#/components/responses/ParametroInvalido' }
+        '429': { $ref: '#/components/responses/LimiteExcedido' }
         '503': { $ref: '#/components/responses/Indisponivel' }
   /series:
     get:
@@ -59,6 +69,10 @@ paths:
       responses:
         '200':
           description: Página de pontos da série publicada.
+          headers:
+            X-RateLimit-Limit: { $ref: '#/components/headers/Limite' }
+            X-RateLimit-Remaining: { $ref: '#/components/headers/Restantes' }
+            X-RateLimit-Reset: { $ref: '#/components/headers/Reinicio' }
           content:
             application/json:
               schema:
@@ -74,8 +88,19 @@ paths:
                     qualidade: { cobertura: 0.98, observacoes: 1250 }
                 paginacao: { page: 1, page_size: 100, total: 1 }
         '400': { $ref: '#/components/responses/ParametroInvalido' }
+        '429': { $ref: '#/components/responses/LimiteExcedido' }
         '503': { $ref: '#/components/responses/Indisponivel' }
 components:
+  headers:
+    Limite:
+      description: Cota conjunta de /indicadores e /series por IP e janela.
+      schema: { type: integer, enum: [60] }
+    Restantes:
+      description: Chamadas restantes na janela atual, após este pedido.
+      schema: { type: integer, minimum: 0, maximum: 59 }
+    Reinicio:
+      description: Fim da janela em segundos desde Unix epoch, UTC.
+      schema: { type: integer, format: int64 }
   parameters:
     linha:
       name: linha
@@ -174,7 +199,25 @@ components:
             codigo: { type: string }
             mensagem: { type: string }
             campo: { type: string }
+            tentar_em_segundos: { type: integer, minimum: 1 }
   responses:
+    LimiteExcedido:
+      description: Orçamento de 60 chamadas por minuto por IP esgotado; respeitar Retry-After.
+      headers:
+        Retry-After:
+          description: Segundos a aguardar antes de tentar novamente.
+          schema: { type: integer, minimum: 1 }
+        X-RateLimit-Limit: { $ref: '#/components/headers/Limite' }
+        X-RateLimit-Remaining: { $ref: '#/components/headers/Restantes' }
+        X-RateLimit-Reset: { $ref: '#/components/headers/Reinicio' }
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Erro' }
+          example:
+            erro:
+              codigo: LIMITE_EXCEDIDO
+              mensagem: Limite de 60 consultas por minuto por IP atingido. Aguarde e tente novamente.
+              tentar_em_segundos: 30
     ParametroInvalido:
       description: Filtro desconhecido, repetido ou inválido.
       content:
@@ -183,7 +226,7 @@ components:
           example:
             erro: { codigo: PARAMETRO_INVALIDO, mensagem: 'Informe um valor entre 1 e 100.', campo: page_size }
     Indisponivel:
-      description: Consulta temporariamente indisponível por falha de persistência.
+      description: Consulta ou armazenamento compartilhado do limite indisponível. Sem liberar cota local substituta.
       content:
         application/json:
           schema: { $ref: '#/components/schemas/Erro' }
