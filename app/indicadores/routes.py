@@ -7,8 +7,9 @@ como se fossem indicadores calculados.
 
 import re
 from datetime import datetime
+from pathlib import Path
 
-from flask import Blueprint, current_app, g, request
+from flask import Blueprint, current_app, g, request, send_file
 from sqlalchemy.exc import SQLAlchemyError
 
 from app import db
@@ -140,3 +141,27 @@ def indicadores():
 def series():
     """Consulta séries temporais de indicadores publicados."""
     return _responder(serie=True)
+
+
+_DOCUMENTACAO = Path(__file__).resolve().parents[2] / "docs"
+
+
+@indicadores_bp.get("/docs/indicadores")
+def documentacao_publica():
+    """Guia público; não consome o orçamento das consultas de indicadores."""
+    return send_file(_DOCUMENTACAO / "indicadores.html", mimetype="text/html", max_age=0)
+
+
+@indicadores_bp.get("/docs/indicadores/openapi.yaml")
+def contrato_publico():
+    resposta = send_file(_DOCUMENTACAO / "openapi.yaml", mimetype="application/yaml", max_age=0)
+    resposta.headers["X-Content-Type-Options"] = "nosniff"
+    return resposta
+
+
+@indicadores_bp.get("/docs/indicadores/ensaio.json")
+def evidencia_publica():
+    resposta = send_file(_DOCUMENTACAO / "evidencias/US11-T03-desempenho.json",
+                         mimetype="application/json", max_age=0)
+    resposta.headers["X-Content-Type-Options"] = "nosniff"
+    return resposta

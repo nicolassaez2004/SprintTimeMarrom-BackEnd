@@ -1,0 +1,940 @@
+{
+  "tarefa": "US11-T03",
+  "iniciado_em": "2026-11-23T14:05:24.354604+00:00",
+  "finalizado_em": "2026-11-23T14:06:00.291951+00:00",
+  "dados": {
+    "origem": "SINTETICA",
+    "registros": 100000,
+    "linhas": 2,
+    "indicadores": [
+      "pontualidade",
+      "espera_media"
+    ],
+    "versao": "ensaio-us11-v1"
+  },
+  "ambiente": {
+    "sistema": "Windows-11-10.0.26200-SP0",
+    "processador": "Intel64 Family 6 Model 154 Stepping 3, GenuineIntel",
+    "cpus_logicas": 16,
+    "python": "3.13.9",
+    "flask": "3.1.3",
+    "werkzeug": "3.1.9",
+    "sqlalchemy": "2.1.9",
+    "sqlite": "3.50.4",
+    "journal": "WAL",
+    "http": "Werkzeug WSGI threaded, debug desativado",
+    "processos": 2,
+    "concorrencia_clientes": 4,
+    "ips_reais_loopback": [
+      "127.0.0.2",
+      "127.0.0.3",
+      "127.0.0.4",
+      "127.0.0.5"
+    ],
+    "proxy": "ausente; conexão direta aos workers alternados",
+    "tls": false
+  },
+  "metodo": {
+    "percentil": "nearest-rank: ordenado[ceil(0.95*N)-1]",
+    "amostras": 100,
+    "intervalo": "conexão TCP até corpo completo, incluindo fila no servidor; parsing JSON não cronometrado",
+    "aquecimento_http": 0,
+    "falhas_excluidas": 0,
+    "funcionais_separados": "61 chamadas de cota, outro IP e nova janela, fora da amostra de latência"
+  },
+  "resumo": {
+    "status": {
+      "200": 100
+    },
+    "min_ms": 11.5819,
+    "mediana_ms": 36.9921,
+    "p95_ms": 61.4098,
+    "max_ms": 132.1829,
+    "alvo_p95_ms": 2000,
+    "meta_atendida_no_ensaio": true
+  },
+  "por_consulta": [
+    {
+      "url": "/indicadores?page_size=100",
+      "amostras": 25,
+      "p95_ms": 64.428,
+      "status": {
+        "200": 25
+      }
+    },
+    {
+      "url": "/indicadores?linha=8000&indicador=pontualidade&page_size=20",
+      "amostras": 25,
+      "p95_ms": 37.2675,
+      "status": {
+        "200": 25
+      }
+    },
+    {
+      "url": "/series?linha=9000&indicador=espera_media&inicio=2026-11-23T00:00:00Z&fim=2026-11-24T00:00:00Z&page_size=100",
+      "amostras": 25,
+      "p95_ms": 44.156,
+      "status": {
+        "200": 25
+      }
+    },
+    {
+      "url": "/series?page=10&page_size=100",
+      "amostras": 25,
+      "p95_ms": 61.4098,
+      "status": {
+        "200": 25
+      }
+    }
+  ],
+  "limite_http": {
+    "primeiras_60_status": {
+      "200": 60
+    },
+    "61_status": 429,
+    "retry_after": "31",
+    "resposta_429": {
+      "erro": {
+        "codigo": "LIMITE_EXCEDIDO",
+        "mensagem": "Limite de 60 consultas por minuto por IP atingido. Aguarde e tente novamente.",
+        "tentar_em_segundos": 31
+      }
+    },
+    "outro_ip_status": 200,
+    "nova_janela_status": 200,
+    "nova_janela_saldo": "59",
+    "mesma_cota_entre_workers": true,
+    "xff_arbitrario_ignorado": true
+  },
+  "medicoes": [
+    {
+      "amostra": 1,
+      "worker": 1,
+      "url": "/indicadores?page_size=100",
+      "status": 200,
+      "ms": 109.4621,
+      "bytes": 22816
+    },
+    {
+      "amostra": 2,
+      "worker": 2,
+      "url": "/indicadores?linha=8000&indicador=pontualidade&page_size=20",
+      "status": 200,
+      "ms": 74.5122,
+      "bytes": 4604
+    },
+    {
+      "amostra": 3,
+      "worker": 1,
+      "url": "/series?linha=9000&indicador=espera_media&inicio=2026-11-23T00:00:00Z&fim=2026-11-24T00:00:00Z&page_size=100",
+      "status": 200,
+      "ms": 54.4623,
+      "bytes": 19665
+    },
+    {
+      "amostra": 4,
+      "worker": 2,
+      "url": "/series?page=10&page_size=100",
+      "status": 200,
+      "ms": 132.1829,
+      "bytes": 19617
+    },
+    {
+      "amostra": 5,
+      "worker": 2,
+      "url": "/indicadores?page_size=100",
+      "status": 200,
+      "ms": 62.7855,
+      "bytes": 22816
+    },
+    {
+      "amostra": 6,
+      "worker": 1,
+      "url": "/indicadores?linha=8000&indicador=pontualidade&page_size=20",
+      "status": 200,
+      "ms": 37.2675,
+      "bytes": 4604
+    },
+    {
+      "amostra": 7,
+      "worker": 2,
+      "url": "/series?linha=9000&indicador=espera_media&inicio=2026-11-23T00:00:00Z&fim=2026-11-24T00:00:00Z&page_size=100",
+      "status": 200,
+      "ms": 21.1806,
+      "bytes": 19665
+    },
+    {
+      "amostra": 8,
+      "worker": 1,
+      "url": "/series?page=10&page_size=100",
+      "status": 200,
+      "ms": 35.6277,
+      "bytes": 19617
+    },
+    {
+      "amostra": 9,
+      "worker": 1,
+      "url": "/indicadores?page_size=100",
+      "status": 200,
+      "ms": 42.1937,
+      "bytes": 22816
+    },
+    {
+      "amostra": 10,
+      "worker": 2,
+      "url": "/indicadores?linha=8000&indicador=pontualidade&page_size=20",
+      "status": 200,
+      "ms": 20.7882,
+      "bytes": 4604
+    },
+    {
+      "amostra": 11,
+      "worker": 1,
+      "url": "/series?linha=9000&indicador=espera_media&inicio=2026-11-23T00:00:00Z&fim=2026-11-24T00:00:00Z&page_size=100",
+      "status": 200,
+      "ms": 40.7997,
+      "bytes": 19665
+    },
+    {
+      "amostra": 12,
+      "worker": 2,
+      "url": "/series?page=10&page_size=100",
+      "status": 200,
+      "ms": 54.7609,
+      "bytes": 19617
+    },
+    {
+      "amostra": 13,
+      "worker": 2,
+      "url": "/indicadores?page_size=100",
+      "status": 200,
+      "ms": 43.6084,
+      "bytes": 22816
+    },
+    {
+      "amostra": 14,
+      "worker": 1,
+      "url": "/indicadores?linha=8000&indicador=pontualidade&page_size=20",
+      "status": 200,
+      "ms": 24.2432,
+      "bytes": 4604
+    },
+    {
+      "amostra": 15,
+      "worker": 2,
+      "url": "/series?linha=9000&indicador=espera_media&inicio=2026-11-23T00:00:00Z&fim=2026-11-24T00:00:00Z&page_size=100",
+      "status": 200,
+      "ms": 37.2576,
+      "bytes": 19665
+    },
+    {
+      "amostra": 16,
+      "worker": 1,
+      "url": "/series?page=10&page_size=100",
+      "status": 200,
+      "ms": 38.9908,
+      "bytes": 19617
+    },
+    {
+      "amostra": 17,
+      "worker": 1,
+      "url": "/indicadores?page_size=100",
+      "status": 200,
+      "ms": 40.0407,
+      "bytes": 22816
+    },
+    {
+      "amostra": 18,
+      "worker": 2,
+      "url": "/indicadores?linha=8000&indicador=pontualidade&page_size=20",
+      "status": 200,
+      "ms": 37.242,
+      "bytes": 4604
+    },
+    {
+      "amostra": 19,
+      "worker": 1,
+      "url": "/series?linha=9000&indicador=espera_media&inicio=2026-11-23T00:00:00Z&fim=2026-11-24T00:00:00Z&page_size=100",
+      "status": 200,
+      "ms": 30.6404,
+      "bytes": 19665
+    },
+    {
+      "amostra": 20,
+      "worker": 2,
+      "url": "/series?page=10&page_size=100",
+      "status": 200,
+      "ms": 35.1554,
+      "bytes": 19617
+    },
+    {
+      "amostra": 21,
+      "worker": 2,
+      "url": "/indicadores?page_size=100",
+      "status": 200,
+      "ms": 41.2908,
+      "bytes": 22816
+    },
+    {
+      "amostra": 22,
+      "worker": 1,
+      "url": "/indicadores?linha=8000&indicador=pontualidade&page_size=20",
+      "status": 200,
+      "ms": 34.9861,
+      "bytes": 4604
+    },
+    {
+      "amostra": 23,
+      "worker": 2,
+      "url": "/series?linha=9000&indicador=espera_media&inicio=2026-11-23T00:00:00Z&fim=2026-11-24T00:00:00Z&page_size=100",
+      "status": 200,
+      "ms": 36.4094,
+      "bytes": 19665
+    },
+    {
+      "amostra": 24,
+      "worker": 1,
+      "url": "/series?page=10&page_size=100",
+      "status": 200,
+      "ms": 47.4622,
+      "bytes": 19617
+    },
+    {
+      "amostra": 25,
+      "worker": 1,
+      "url": "/indicadores?page_size=100",
+      "status": 200,
+      "ms": 36.9596,
+      "bytes": 22816
+    },
+    {
+      "amostra": 26,
+      "worker": 2,
+      "url": "/indicadores?linha=8000&indicador=pontualidade&page_size=20",
+      "status": 200,
+      "ms": 28.6709,
+      "bytes": 4604
+    },
+    {
+      "amostra": 27,
+      "worker": 1,
+      "url": "/series?linha=9000&indicador=espera_media&inicio=2026-11-23T00:00:00Z&fim=2026-11-24T00:00:00Z&page_size=100",
+      "status": 200,
+      "ms": 30.7152,
+      "bytes": 19665
+    },
+    {
+      "amostra": 28,
+      "worker": 2,
+      "url": "/series?page=10&page_size=100",
+      "status": 200,
+      "ms": 36.913,
+      "bytes": 19617
+    },
+    {
+      "amostra": 29,
+      "worker": 2,
+      "url": "/indicadores?page_size=100",
+      "status": 200,
+      "ms": 38.8076,
+      "bytes": 22816
+    },
+    {
+      "amostra": 30,
+      "worker": 1,
+      "url": "/indicadores?linha=8000&indicador=pontualidade&page_size=20",
+      "status": 200,
+      "ms": 28.8361,
+      "bytes": 4604
+    },
+    {
+      "amostra": 31,
+      "worker": 2,
+      "url": "/series?linha=9000&indicador=espera_media&inicio=2026-11-23T00:00:00Z&fim=2026-11-24T00:00:00Z&page_size=100",
+      "status": 200,
+      "ms": 28.2053,
+      "bytes": 19665
+    },
+    {
+      "amostra": 32,
+      "worker": 1,
+      "url": "/series?page=10&page_size=100",
+      "status": 200,
+      "ms": 37.762,
+      "bytes": 19617
+    },
+    {
+      "amostra": 33,
+      "worker": 1,
+      "url": "/indicadores?page_size=100",
+      "status": 200,
+      "ms": 38.3877,
+      "bytes": 22816
+    },
+    {
+      "amostra": 34,
+      "worker": 2,
+      "url": "/indicadores?linha=8000&indicador=pontualidade&page_size=20",
+      "status": 200,
+      "ms": 25.086,
+      "bytes": 4604
+    },
+    {
+      "amostra": 35,
+      "worker": 1,
+      "url": "/series?linha=9000&indicador=espera_media&inicio=2026-11-23T00:00:00Z&fim=2026-11-24T00:00:00Z&page_size=100",
+      "status": 200,
+      "ms": 16.092,
+      "bytes": 19665
+    },
+    {
+      "amostra": 36,
+      "worker": 2,
+      "url": "/series?page=10&page_size=100",
+      "status": 200,
+      "ms": 32.4417,
+      "bytes": 19617
+    },
+    {
+      "amostra": 37,
+      "worker": 2,
+      "url": "/indicadores?page_size=100",
+      "status": 200,
+      "ms": 64.428,
+      "bytes": 22816
+    },
+    {
+      "amostra": 38,
+      "worker": 1,
+      "url": "/indicadores?linha=8000&indicador=pontualidade&page_size=20",
+      "status": 200,
+      "ms": 25.0679,
+      "bytes": 4604
+    },
+    {
+      "amostra": 39,
+      "worker": 2,
+      "url": "/series?linha=9000&indicador=espera_media&inicio=2026-11-23T00:00:00Z&fim=2026-11-24T00:00:00Z&page_size=100",
+      "status": 200,
+      "ms": 31.656,
+      "bytes": 19665
+    },
+    {
+      "amostra": 40,
+      "worker": 1,
+      "url": "/series?page=10&page_size=100",
+      "status": 200,
+      "ms": 50.4927,
+      "bytes": 19617
+    },
+    {
+      "amostra": 41,
+      "worker": 1,
+      "url": "/indicadores?page_size=100",
+      "status": 200,
+      "ms": 49.4895,
+      "bytes": 22816
+    },
+    {
+      "amostra": 42,
+      "worker": 2,
+      "url": "/indicadores?linha=8000&indicador=pontualidade&page_size=20",
+      "status": 200,
+      "ms": 27.2588,
+      "bytes": 4604
+    },
+    {
+      "amostra": 43,
+      "worker": 1,
+      "url": "/series?linha=9000&indicador=espera_media&inicio=2026-11-23T00:00:00Z&fim=2026-11-24T00:00:00Z&page_size=100",
+      "status": 200,
+      "ms": 20.8039,
+      "bytes": 19665
+    },
+    {
+      "amostra": 44,
+      "worker": 2,
+      "url": "/series?page=10&page_size=100",
+      "status": 200,
+      "ms": 43.3708,
+      "bytes": 19617
+    },
+    {
+      "amostra": 45,
+      "worker": 2,
+      "url": "/indicadores?page_size=100",
+      "status": 200,
+      "ms": 38.9654,
+      "bytes": 22816
+    },
+    {
+      "amostra": 46,
+      "worker": 1,
+      "url": "/indicadores?linha=8000&indicador=pontualidade&page_size=20",
+      "status": 200,
+      "ms": 26.6021,
+      "bytes": 4604
+    },
+    {
+      "amostra": 47,
+      "worker": 2,
+      "url": "/series?linha=9000&indicador=espera_media&inicio=2026-11-23T00:00:00Z&fim=2026-11-24T00:00:00Z&page_size=100",
+      "status": 200,
+      "ms": 26.5996,
+      "bytes": 19665
+    },
+    {
+      "amostra": 48,
+      "worker": 1,
+      "url": "/series?page=10&page_size=100",
+      "status": 200,
+      "ms": 48.1758,
+      "bytes": 19617
+    },
+    {
+      "amostra": 49,
+      "worker": 1,
+      "url": "/indicadores?page_size=100",
+      "status": 200,
+      "ms": 51.269,
+      "bytes": 22816
+    },
+    {
+      "amostra": 50,
+      "worker": 2,
+      "url": "/indicadores?linha=8000&indicador=pontualidade&page_size=20",
+      "status": 200,
+      "ms": 23.41,
+      "bytes": 4604
+    },
+    {
+      "amostra": 51,
+      "worker": 1,
+      "url": "/series?linha=9000&indicador=espera_media&inicio=2026-11-23T00:00:00Z&fim=2026-11-24T00:00:00Z&page_size=100",
+      "status": 200,
+      "ms": 36.9921,
+      "bytes": 19665
+    },
+    {
+      "amostra": 52,
+      "worker": 2,
+      "url": "/series?page=10&page_size=100",
+      "status": 200,
+      "ms": 44.3715,
+      "bytes": 19617
+    },
+    {
+      "amostra": 53,
+      "worker": 2,
+      "url": "/indicadores?page_size=100",
+      "status": 200,
+      "ms": 46.2445,
+      "bytes": 22816
+    },
+    {
+      "amostra": 54,
+      "worker": 1,
+      "url": "/indicadores?linha=8000&indicador=pontualidade&page_size=20",
+      "status": 200,
+      "ms": 34.6586,
+      "bytes": 4604
+    },
+    {
+      "amostra": 55,
+      "worker": 2,
+      "url": "/series?linha=9000&indicador=espera_media&inicio=2026-11-23T00:00:00Z&fim=2026-11-24T00:00:00Z&page_size=100",
+      "status": 200,
+      "ms": 37.673,
+      "bytes": 19665
+    },
+    {
+      "amostra": 56,
+      "worker": 1,
+      "url": "/series?page=10&page_size=100",
+      "status": 200,
+      "ms": 61.4098,
+      "bytes": 19617
+    },
+    {
+      "amostra": 57,
+      "worker": 1,
+      "url": "/indicadores?page_size=100",
+      "status": 200,
+      "ms": 58.3243,
+      "bytes": 22816
+    },
+    {
+      "amostra": 58,
+      "worker": 2,
+      "url": "/indicadores?linha=8000&indicador=pontualidade&page_size=20",
+      "status": 200,
+      "ms": 20.1868,
+      "bytes": 4604
+    },
+    {
+      "amostra": 59,
+      "worker": 1,
+      "url": "/series?linha=9000&indicador=espera_media&inicio=2026-11-23T00:00:00Z&fim=2026-11-24T00:00:00Z&page_size=100",
+      "status": 200,
+      "ms": 33.3085,
+      "bytes": 19665
+    },
+    {
+      "amostra": 60,
+      "worker": 2,
+      "url": "/series?page=10&page_size=100",
+      "status": 200,
+      "ms": 47.8975,
+      "bytes": 19617
+    },
+    {
+      "amostra": 61,
+      "worker": 2,
+      "url": "/indicadores?page_size=100",
+      "status": 200,
+      "ms": 36.9001,
+      "bytes": 22816
+    },
+    {
+      "amostra": 62,
+      "worker": 1,
+      "url": "/indicadores?linha=8000&indicador=pontualidade&page_size=20",
+      "status": 200,
+      "ms": 31.6667,
+      "bytes": 4604
+    },
+    {
+      "amostra": 63,
+      "worker": 2,
+      "url": "/series?linha=9000&indicador=espera_media&inicio=2026-11-23T00:00:00Z&fim=2026-11-24T00:00:00Z&page_size=100",
+      "status": 200,
+      "ms": 24.6525,
+      "bytes": 19665
+    },
+    {
+      "amostra": 64,
+      "worker": 1,
+      "url": "/series?page=10&page_size=100",
+      "status": 200,
+      "ms": 46.4517,
+      "bytes": 19617
+    },
+    {
+      "amostra": 65,
+      "worker": 1,
+      "url": "/indicadores?page_size=100",
+      "status": 200,
+      "ms": 52.5921,
+      "bytes": 22816
+    },
+    {
+      "amostra": 66,
+      "worker": 2,
+      "url": "/indicadores?linha=8000&indicador=pontualidade&page_size=20",
+      "status": 200,
+      "ms": 34.6259,
+      "bytes": 4604
+    },
+    {
+      "amostra": 67,
+      "worker": 1,
+      "url": "/series?linha=9000&indicador=espera_media&inicio=2026-11-23T00:00:00Z&fim=2026-11-24T00:00:00Z&page_size=100",
+      "status": 200,
+      "ms": 32.6164,
+      "bytes": 19665
+    },
+    {
+      "amostra": 68,
+      "worker": 2,
+      "url": "/series?page=10&page_size=100",
+      "status": 200,
+      "ms": 42.7089,
+      "bytes": 19617
+    },
+    {
+      "amostra": 69,
+      "worker": 2,
+      "url": "/indicadores?page_size=100",
+      "status": 200,
+      "ms": 39.048,
+      "bytes": 22816
+    },
+    {
+      "amostra": 70,
+      "worker": 1,
+      "url": "/indicadores?linha=8000&indicador=pontualidade&page_size=20",
+      "status": 200,
+      "ms": 23.9153,
+      "bytes": 4604
+    },
+    {
+      "amostra": 71,
+      "worker": 2,
+      "url": "/series?linha=9000&indicador=espera_media&inicio=2026-11-23T00:00:00Z&fim=2026-11-24T00:00:00Z&page_size=100",
+      "status": 200,
+      "ms": 17.8898,
+      "bytes": 19665
+    },
+    {
+      "amostra": 72,
+      "worker": 1,
+      "url": "/series?page=10&page_size=100",
+      "status": 200,
+      "ms": 40.9444,
+      "bytes": 19617
+    },
+    {
+      "amostra": 73,
+      "worker": 1,
+      "url": "/indicadores?page_size=100",
+      "status": 200,
+      "ms": 39.8142,
+      "bytes": 22816
+    },
+    {
+      "amostra": 74,
+      "worker": 2,
+      "url": "/indicadores?linha=8000&indicador=pontualidade&page_size=20",
+      "status": 200,
+      "ms": 12.4587,
+      "bytes": 4604
+    },
+    {
+      "amostra": 75,
+      "worker": 1,
+      "url": "/series?linha=9000&indicador=espera_media&inicio=2026-11-23T00:00:00Z&fim=2026-11-24T00:00:00Z&page_size=100",
+      "status": 200,
+      "ms": 32.4087,
+      "bytes": 19665
+    },
+    {
+      "amostra": 76,
+      "worker": 2,
+      "url": "/series?page=10&page_size=100",
+      "status": 200,
+      "ms": 51.3009,
+      "bytes": 19617
+    },
+    {
+      "amostra": 77,
+      "worker": 2,
+      "url": "/indicadores?page_size=100",
+      "status": 200,
+      "ms": 34.8846,
+      "bytes": 22816
+    },
+    {
+      "amostra": 78,
+      "worker": 1,
+      "url": "/indicadores?linha=8000&indicador=pontualidade&page_size=20",
+      "status": 200,
+      "ms": 24.692,
+      "bytes": 4604
+    },
+    {
+      "amostra": 79,
+      "worker": 2,
+      "url": "/series?linha=9000&indicador=espera_media&inicio=2026-11-23T00:00:00Z&fim=2026-11-24T00:00:00Z&page_size=100",
+      "status": 200,
+      "ms": 25.1584,
+      "bytes": 19665
+    },
+    {
+      "amostra": 80,
+      "worker": 1,
+      "url": "/series?page=10&page_size=100",
+      "status": 200,
+      "ms": 46.3686,
+      "bytes": 19617
+    },
+    {
+      "amostra": 81,
+      "worker": 1,
+      "url": "/indicadores?page_size=100",
+      "status": 200,
+      "ms": 53.1358,
+      "bytes": 22816
+    },
+    {
+      "amostra": 82,
+      "worker": 2,
+      "url": "/indicadores?linha=8000&indicador=pontualidade&page_size=20",
+      "status": 200,
+      "ms": 22.1312,
+      "bytes": 4604
+    },
+    {
+      "amostra": 83,
+      "worker": 1,
+      "url": "/series?linha=9000&indicador=espera_media&inicio=2026-11-23T00:00:00Z&fim=2026-11-24T00:00:00Z&page_size=100",
+      "status": 200,
+      "ms": 33.5807,
+      "bytes": 19665
+    },
+    {
+      "amostra": 84,
+      "worker": 2,
+      "url": "/series?page=10&page_size=100",
+      "status": 200,
+      "ms": 47.9809,
+      "bytes": 19617
+    },
+    {
+      "amostra": 85,
+      "worker": 2,
+      "url": "/indicadores?page_size=100",
+      "status": 200,
+      "ms": 36.5224,
+      "bytes": 22816
+    },
+    {
+      "amostra": 86,
+      "worker": 1,
+      "url": "/indicadores?linha=8000&indicador=pontualidade&page_size=20",
+      "status": 200,
+      "ms": 22.6099,
+      "bytes": 4604
+    },
+    {
+      "amostra": 87,
+      "worker": 2,
+      "url": "/series?linha=9000&indicador=espera_media&inicio=2026-11-23T00:00:00Z&fim=2026-11-24T00:00:00Z&page_size=100",
+      "status": 200,
+      "ms": 28.4218,
+      "bytes": 19665
+    },
+    {
+      "amostra": 88,
+      "worker": 1,
+      "url": "/series?page=10&page_size=100",
+      "status": 200,
+      "ms": 45.6548,
+      "bytes": 19617
+    },
+    {
+      "amostra": 89,
+      "worker": 1,
+      "url": "/indicadores?page_size=100",
+      "status": 200,
+      "ms": 46.403,
+      "bytes": 22816
+    },
+    {
+      "amostra": 90,
+      "worker": 2,
+      "url": "/indicadores?linha=8000&indicador=pontualidade&page_size=20",
+      "status": 200,
+      "ms": 12.6311,
+      "bytes": 4604
+    },
+    {
+      "amostra": 91,
+      "worker": 1,
+      "url": "/series?linha=9000&indicador=espera_media&inicio=2026-11-23T00:00:00Z&fim=2026-11-24T00:00:00Z&page_size=100",
+      "status": 200,
+      "ms": 16.9956,
+      "bytes": 19665
+    },
+    {
+      "amostra": 92,
+      "worker": 2,
+      "url": "/series?page=10&page_size=100",
+      "status": 200,
+      "ms": 48.5514,
+      "bytes": 19617
+    },
+    {
+      "amostra": 93,
+      "worker": 2,
+      "url": "/indicadores?page_size=100",
+      "status": 200,
+      "ms": 47.9662,
+      "bytes": 22816
+    },
+    {
+      "amostra": 94,
+      "worker": 1,
+      "url": "/indicadores?linha=8000&indicador=pontualidade&page_size=20",
+      "status": 200,
+      "ms": 11.5819,
+      "bytes": 4604
+    },
+    {
+      "amostra": 95,
+      "worker": 2,
+      "url": "/series?linha=9000&indicador=espera_media&inicio=2026-11-23T00:00:00Z&fim=2026-11-24T00:00:00Z&page_size=100",
+      "status": 200,
+      "ms": 44.156,
+      "bytes": 19665
+    },
+    {
+      "amostra": 96,
+      "worker": 1,
+      "url": "/series?page=10&page_size=100",
+      "status": 200,
+      "ms": 43.5031,
+      "bytes": 19617
+    },
+    {
+      "amostra": 97,
+      "worker": 1,
+      "url": "/indicadores?page_size=100",
+      "status": 200,
+      "ms": 52.6046,
+      "bytes": 22816
+    },
+    {
+      "amostra": 98,
+      "worker": 2,
+      "url": "/indicadores?linha=8000&indicador=pontualidade&page_size=20",
+      "status": 200,
+      "ms": 18.8427,
+      "bytes": 4604
+    },
+    {
+      "amostra": 99,
+      "worker": 1,
+      "url": "/series?linha=9000&indicador=espera_media&inicio=2026-11-23T00:00:00Z&fim=2026-11-24T00:00:00Z&page_size=100",
+      "status": 200,
+      "ms": 17.9762,
+      "bytes": 19665
+    },
+    {
+      "amostra": 100,
+      "worker": 2,
+      "url": "/series?page=10&page_size=100",
+      "status": 200,
+      "ms": 39.2241,
+      "bytes": 19617
+    }
+  ],
+  "exemplo_200": {
+    "dados": [
+      {
+        "fim": "2026-11-23T00:01:00+00:00",
+        "indicador": "pontualidade",
+        "inicio": "2026-11-23T00:00:00+00:00",
+        "linha": "8000",
+        "qualidade": {
+          "cobertura": 0.98,
+          "observacoes": 1250
+        },
+        "unidade": "%",
+        "valor": 80.0,
+        "versao_conjunto": "ensaio-us11-v1"
+      }
+    ],
+    "paginacao": {
+      "page": 1,
+      "page_size": 1,
+      "total": 50000
+    }
+  },
+  "limites": [
+    "ensaio local com SQLite; não é medição da Aiven/MySQL ou da produção",
+    "sem TLS, proxy, internet ou falhas injetadas na amostra de latência",
+    "dados sintéticos e cache de SO não esvaziado após preparação da base",
+    "não mede capacidade máxima nem garante o mesmo percentil com volumes/cargas diferentes"
+  ],
+  "aceite": "PENDENTE_REVISAO"
+}

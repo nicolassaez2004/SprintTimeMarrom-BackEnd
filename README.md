@@ -7,6 +7,11 @@
 O limitador exige a migração `us11_0016`; o banco e a lista de proxies
 confiáveis devem seguir as instruções de operação do documento.
 
+Guia público em **`/docs/indicadores`**, com OpenAPI, exemplos curl/JavaScript/
+Python, tratamento de 429 e evidência HTTP. No [ensaio local da US11-T03](docs/US11-T03.md),
+100 consultas sobre 100 mil valores sintéticos tiveram p95 de **61,41 ms**;
+o documento registra o ambiente e os limites dessa medição, sem afirmar SLA da Aiven.
+
 ## Como iniciar
 
 Requer Python 3.10+ e MySQL 8.0.16+ (para as restrições `CHECK`).

@@ -1,0 +1,28 @@
+{
+  "tarefa": "US11-T03",
+  "executado_em": "2026-11-23T14:12:25.548Z",
+  "servidor": "HTTP real Werkzeug",
+  "rotas": [
+    {
+      "url": "/docs/indicadores",
+      "status": 200,
+      "tipo": "text/html; charset=utf-8"
+    },
+    {
+      "url": "/docs/indicadores/openapi.yaml",
+      "status": 200,
+      "tipo": "application/yaml"
+    },
+    {
+      "url": "/docs/indicadores/ensaio.json",
+      "status": 200,
+      "tipo": "application/json"
+    }
+  ],
+  "navegador": "Chrome headless",
+  "desktop": "1280x900",
+  "mobile": "390x844 sem overflow da página",
+  "exemplos_estaticos_sem_consultar_api": true,
+  "erros_javascript": [],
+  "aceite": "PENDENTE_REVISAO"
+}

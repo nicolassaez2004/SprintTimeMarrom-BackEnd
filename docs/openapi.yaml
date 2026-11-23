@@ -1,7 +1,7 @@
 openapi: 3.0.3
 info:
   title: API pública de indicadores — Auditoria Cidadã dos Ônibus de São Paulo
-  version: 1.0.0
+  version: 1.1.0
   description: >-
     Contrato para consulta pública, sem autenticação, de indicadores operacionais
     publicados e suas séries temporais. Sem valores publicados, as rotas retornam
@@ -13,9 +13,43 @@ info:
     segundos. Parâmetros inválidos também consomem a cota; OPTIONS não consome.
     O IP vem da conexão; X-Forwarded-For só é considerado atrás de proxies
     explicitamente confiáveis. Falha no armazenamento do limite retorna 503.
+    Guia público com exemplos e evidência de desempenho em /docs/indicadores.
 servers:
   - url: http://localhost:5000
 paths:
+  /docs/indicadores:
+    get:
+      operationId: lerGuiaPublicoIndicadores
+      summary: Guia público, exemplos de consumo e limites do ensaio HTTP.
+      security: []
+      responses:
+        '200':
+          description: Documentação HTML; não consome a cota de consultas.
+          content:
+            text/html:
+              schema: { type: string }
+  /docs/indicadores/openapi.yaml:
+    get:
+      operationId: baixarContratoIndicadores
+      summary: Contrato OpenAPI versionado desta API.
+      security: []
+      responses:
+        '200':
+          description: Arquivo YAML; não consome a cota de consultas.
+          content:
+            application/yaml:
+              schema: { type: string }
+  /docs/indicadores/ensaio.json:
+    get:
+      operationId: lerEnsaioHTTPIndicadores
+      summary: Amostra e ambiente do ensaio HTTP local com dados sintéticos.
+      security: []
+      responses:
+        '200':
+          description: Evidência estática versionada, não uma medição em tempo real da produção.
+          content:
+            application/json:
+              schema: { type: object, additionalProperties: true }
   /indicadores:
     get:
       operationId: listarIndicadores
