@@ -50,11 +50,14 @@ def create_app(config_extra=None):
 
     # Registra os modelos no metadata do SQLAlchemy para criação/migração.
     from app import models  # noqa: F401
+    from app.core.limites import configurar_limites
+    configurar_limites(app)
 
     # Permite requisicoes do frontend local
     origens_frontend = ["http://localhost:5173", "http://127.0.0.1:5173"]
     CORS(
         app,
+        expose_headers=["Retry-After", "X-RateLimit-Limit", "X-RateLimit-Remaining", "X-RateLimit-Reset"],
         resources={
             r"/api/*": {
                 "origins": origens_frontend

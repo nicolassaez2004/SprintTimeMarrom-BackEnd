@@ -758,6 +758,21 @@ class ResultadoReprocessamento(db.Model):
     versao_gtfs = db.relationship("VersaoGTFS")
 
 
+class LimiteConsultaIP(db.Model):
+    """Um contador por IP normalizado (hash), compartilhado pelos workers US11."""
+
+    __tablename__ = "limites_consultas_ip"
+    __table_args__ = (
+        CheckConstraint("janela >= 0", name="ck_limites_ip_janela"),
+        CheckConstraint("tentativas BETWEEN 1 AND 61", name="ck_limites_ip_tentativas"),
+        Index("ix_limites_ip_janela", "janela"),
+        {"mysql_engine": "InnoDB"},
+    )
+    chave_ip = db.Column(db.String(64), primary_key=True)
+    janela = db.Column(db.BigInteger, nullable=False)
+    tentativas = db.Column(db.Integer, nullable=False)
+
+
 class IndicadorOperacional(db.Model):
     """Valor publicado e versionado para a API pública (US11/US14).
 

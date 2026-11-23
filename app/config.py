@@ -17,6 +17,8 @@ def validar_intervalo_coleta(valor):
 
 
 class Config:
+    # Sem lista explícita, cabeçalhos de IP são ignorados. Separar CIDRs por vírgula.
+    INDICADORES_TRUSTED_PROXY_CIDRS = os.getenv("INDICADORES_TRUSTED_PROXY_CIDRS") or ""
     COLETA_STATE_DIR = os.getenv('COLETA_STATE_DIR') or None
     # Webhook (Discord/Slack/Teams) dos alertas da coleta; vazio = caixa interna.
     ALERTA_WEBHOOK_URL = os.getenv('ALERTA_WEBHOOK_URL') or None

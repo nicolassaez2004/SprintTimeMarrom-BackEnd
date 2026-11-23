@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Como consultar indicadores públicos, filtrar séries e tratar o limite de requisições.">
+  <title>API pública de indicadores · Observa SP</title>
+  <style>
+    :root{color-scheme:light;font:16px/1.6 system-ui,sans-serif;color:#28352f;background:#f7f8fa}*{box-sizing:border-box}body{margin:0}main{max-width:980px;margin:auto;padding:38px 24px 55px}header{padding-bottom:24px;border-bottom:1px solid #dedfd7}h1{font-size:clamp(27px,5vw,38px);line-height:1.2;margin:8px 0 15px}h2{margin:32px 0 12px;font-size:23px}h3{font-size:17px;margin-top:24px}.eyebrow{color:#765440;font-size:12px;font-weight:700;letter-spacing:.12em}a{color:#765440;text-underline-offset:3px}nav{display:flex;gap:18px;flex-wrap:wrap}pre{padding:18px;overflow:auto;background:#eef0eb;border:1px solid #dedfd7;border-radius:7px;font-size:13px;line-height:1.7}code{font-family:ui-monospace,Consolas,monospace;font-size:.9em}table{width:100%;border-collapse:collapse;font-size:14px}td,th{padding:12px;border:1px solid #dedfd7;text-align:left;vertical-align:top}th{background:#eef0eb}.scroll{overflow:auto}.nota{padding:16px;border-left:4px solid #765440;background:#f2ece4}small{color:#607065}li{margin:8px 0}footer{margin-top:38px;padding-top:20px;border-top:1px solid #dedfd7;font-size:13px}:focus-visible{outline:3px solid #765440;outline-offset:4px}
+  </style>
+</head>
+<body>
+<main>
+  <header><span class="eyebrow">OBSERVA SP · DOCUMENTAÇÃO PÚBLICA</span><h1>API de indicadores</h1><p>Consulte valores operacionais publicados e suas séries temporais. Acesso público, sem login ou chave de API.</p><nav aria-label="Conteúdo"><a href="#consultas">Consultas e filtros</a><a href="#limite">Limite e nova tentativa</a><a href="#exemplos">Exemplos de consumo</a><a href="#desempenho">Ensaio de desempenho</a><a href="/docs/indicadores/openapi.yaml">OpenAPI YAML</a></nav></header>
+  <section id="consultas"><h2>Consultas e filtros</h2><ul><li><code>GET /indicadores</code>: indicadores com unidade, período, versão do conjunto e qualidade.</li><li><code>GET /series</code>: pontos temporais com os mesmos metadados e o instante de início da janela.</li></ul><p>O GET lê valores publicados; não calcula indicadores a partir do GPS bruto. Sem valores publicados, a resposta é <code>200</code> com <code>dados: []</code>.</p>
+    <div class="scroll"><table><thead><tr><th>Filtro</th><th>Formato e efeito</th></tr></thead><tbody><tr><td><code>linha</code></td><td>Código numérico da linha, até 16 dígitos. Opcional.</td></tr><tr><td><code>indicador</code></td><td>Nome de até 64 letras, números ou <code>_ . : -</code>, sensível a maiúsculas. Opcional.</td></tr><tr><td><code>inicio</code> e <code>fim</code></td><td>ISO 8601 com fuso; selecionam janelas que cruzem o período. <code>fim</code> deve ser igual ou posterior a <code>inicio</code>.</td></tr><tr><td><code>page</code> e <code>page_size</code></td><td>Página a partir de 1; tamanho padrão 100, máximo 100. O total de correspondências aparece em <code>paginacao.total</code>.</td></tr></tbody></table></div>
+    <p>Exemplo de URL (substitua o endereço pelo da instalação):</p><pre><code>http://localhost:5000/indicadores?linha=8000&amp;indicador=pontualidade&amp;page=1&amp;page_size=20</code></pre>
+    <p>Exemplo <strong>ilustrativo</strong> de resposta publicada; os números não representam uma medição operacional:</p><pre><code>{
+  "dados": [{
+    "linha": "8000", "indicador": "pontualidade", "valor": 87.5,
+    "unidade": "%", "inicio": "2026-11-23T00:00:00+00:00",
+    "fim": "2026-11-24T00:00:00+00:00", "versao_conjunto": "exemplo-v1",
+    "qualidade": {"cobertura": 0.98, "observacoes": 1250}
+  }],
+  "paginacao": {"page": 1, "page_size": 20, "total": 1}
+}</code></pre><p>A unidade acompanha cada valor: não presumir que todo indicador é percentual. Parâmetros desconhecidos, repetidos ou inválidos recebem <code>400 PARAMETRO_INVALIDO</code>.</p>
+  </section>
+  <section id="limite"><h2>60 chamadas por minuto por IP</h2><p><code>/indicadores</code> e <code>/series</code> compartilham um orçamento por IP em cada minuto UTC. GET, HEAD e filtros inválidos consomem a cota. A 61ª chamada recebe <code>429</code>; outra rota ou processo não fornece uma cota adicional. Esta documentação não consome a cota.</p><p>O IP é o da conexão. Cabeçalhos enviados pelo consumidor não trocam sua identidade; apenas proxies configurados como confiáveis podem encaminhá-la. Uma rede com vários consumidores no mesmo IP público compartilha o orçamento.</p><pre><code>HTTP/1.1 429 Too Many Requests
+Retry-After: 30
+X-RateLimit-Limit: 60
+X-RateLimit-Remaining: 0
+
+{"erro":{"codigo":"LIMITE_EXCEDIDO","mensagem":"Limite de 60 consultas por minuto por IP atingido. Aguarde e tente novamente.","tentar_em_segundos":30}}</code></pre><p>Leia <code>Retry-After</code> em segundos, aguarde e limite as novas tentativas. <code>X-RateLimit-Reset</code> informa o fim da janela em segundos Unix UTC. Não tente contornar o limite trocando cabeçalhos de IP. Falha de consulta ou de armazenamento da cota recebe <code>503</code>, e não uma lista vazia.</p><p class="nota">A janela é fixa: uma cota pode ser usada no fim de um minuto e outra no começo do seguinte. O resultado não é uma garantia de 60 chamadas em toda janela deslizante de 60 segundos.</p></section>
+  <section id="exemplos"><h2>Exemplos de consumo</h2><h3>curl</h3><pre><code>curl -i --get 'http://localhost:5000/series' \
+  --data-urlencode 'linha=8000' \
+  --data-urlencode 'indicador=pontualidade' \
+  --data-urlencode 'inicio=2026-11-23T00:00:00Z' \
+  --data-urlencode 'fim=2026-11-24T00:00:00Z' \
+  --data-urlencode 'page_size=20'</code></pre><p><small>No Windows PowerShell, pode usar <code>curl.exe</code> em uma linha, sem as barras de continuação do shell Unix.</small></p>
+    <h3>JavaScript — tratamento limitado de 429</h3><pre><code>async function consultarIndicadores(base, filtros) {
+  const url = new URL('/indicadores', base);
+  url.search = new URLSearchParams(filtros);
+  for (let tentativa = 0; tentativa &lt; 3; tentativa++) {
+    const r = await fetch(url, { credentials: 'omit' });
+    if (r.status === 429 &amp;&amp; tentativa &lt; 2) {
+      const segundos = Number(r.headers.get('Retry-After'));
+      if (!Number.isFinite(segundos) || segundos &lt; 1) {
+        throw new Error('Retry-After ausente ou inválido');
+      }
+      await new Promise(resolve =&gt; setTimeout(resolve, segundos * 1000));
+      continue;
+    }
+    if (!r.ok) throw new Error(`HTTP ${r.status}`);
+    return await r.json();
+  }
+}
+
+// Exemplo: não é executado automaticamente por esta página.
+consultarIndicadores('http://localhost:5000', {
+  linha: '8000', indicador: 'pontualidade', page_size: '20'
+});</code></pre>
+    <h3>Python — somente biblioteca padrão</h3><pre><code>import json, time
+from urllib.error import HTTPError
+from urllib.parse import urlencode
+from urllib.request import urlopen
+
+def consultar(base, filtros):
+    url = base.rstrip('/') + '/indicadores?' + urlencode(filtros)
+    for tentativa in range(3):
+        try:
+            with urlopen(url, timeout=10) as resposta:
+                return json.load(resposta)
+        except HTTPError as erro:
+            if erro.code != 429 or tentativa == 2:
+                raise
+            segundos = int(erro.headers['Retry-After'])
+            if segundos &lt; 1:
+                raise ValueError('Retry-After inválido')
+            time.sleep(segundos)
+
+dados = consultar('http://localhost:5000', {
+    'linha': '8000', 'indicador': 'pontualidade', 'page_size': 20
+})</code></pre>
+  </section>
+  <section id="desempenho"><h2>Ensaio HTTP e seus limites</h2><p>O <a href="/docs/indicadores/ensaio.json">registro completo do ensaio</a> inclui cada amostra, ambiente, códigos HTTP e percentil 95, calculado pelo método nearest-rank. O alvo é <strong>p95 ≤ 2.000 ms</strong> para a amostra medida.</p><p><strong>Resultado local: p95 de 61,41 ms</strong>, mediana de 36,99 ms e máximo de 132,18 ms. As 100 consultas responderam HTTP 200.</p><p>Ensaio local de 23/11/2026: 100 consultas HTTP, quatro clientes concorrentes e dois processos WSGI, sobre 100.000 indicadores sintéticos em SQLite. A medição inclui a conexão TCP e a recepção completa do corpo. A cota foi mantida ativa; os clientes usam IPs reais de loopback, sem forjar identidade.</p><p class="nota">Este ensaio não mede a Aiven/MySQL nem comprova o mesmo percentil em produção. Não inclui TLS, proxy, internet, falhas ou capacidade máxima. O cache do sistema operacional não foi esvaziado após preparar a base. A aprovação depende da revisão da equipe e de repetir o perfil na implantação real.</p></section>
+  <footer>Observa SP · Time Marrom · API pública de indicadores · <a href="/docs/indicadores/openapi.yaml">Contrato OpenAPI</a></footer>
+</main>
+</body>
+</html>

@@ -7,14 +7,48 @@ como se fossem indicadores calculados.
 
 import re
 from datetime import datetime
+from pathlib import Path
 
-from flask import Blueprint, current_app, request
+from flask import Blueprint, current_app, g, request, send_file
 from sqlalchemy.exc import SQLAlchemyError
 
 from app import db
+from app.core.limites import IdentidadeIPInvalida, consumir_limite, identificar_ip
 from app.indicadores.service import consultar_indicadores
 
 indicadores_bp = Blueprint("indicadores", __name__)
+
+
+@indicadores_bp.before_request
+def limitar_consulta_publica():
+    if request.method not in ("GET", "HEAD") or request.endpoint not in (
+        "indicadores.indicadores", "indicadores.series",
+    ):
+        return None
+    try:
+        consumo = consumir_limite(identificar_ip(request))
+    except IdentidadeIPInvalida:
+        return _erro("IP_NAO_IDENTIFICADO", "Não foi possível identificar o IP da conexão ou do proxy.", 400)
+    except SQLAlchemyError as erro:
+        current_app.logger.error("Limitador de indicadores indisponível (%s)", type(erro).__name__)
+        resposta, status = _erro("LIMITE_INDISPONIVEL", "Não foi possível verificar o limite. Tente novamente em instantes.", 503)
+        return resposta, status, {"Retry-After": "5", "Cache-Control": "no-store"}
+    g.limite_indicadores = consumo
+    if not consumo.permitido:
+        return {"erro": {"codigo": "LIMITE_EXCEDIDO",
+            "mensagem": "Limite de 60 consultas por minuto por IP atingido. Aguarde e tente novamente.",
+            "tentar_em_segundos": consumo.tentar_em}}, 429, {
+                "Retry-After": str(consumo.tentar_em), "Cache-Control": "no-store"}
+    return None
+
+
+@indicadores_bp.after_request
+def informar_limite(resposta):
+    consumo = g.get("limite_indicadores")
+    if consumo is not None:
+        resposta.headers.update(consumo.cabecalhos())
+        resposta.headers["Cache-Control"] = "no-store"
+    return resposta
 
 _PARAMETROS = {"linha", "indicador", "inicio", "fim", "page", "page_size"}
 _INSTANTE = re.compile(r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})$")
@@ -107,3 +141,27 @@ def indicadores():
 def series():
     """Consulta séries temporais de indicadores publicados."""
     return _responder(serie=True)
+
+
+_DOCUMENTACAO = Path(__file__).resolve().parents[2] / "docs"
+
+
+@indicadores_bp.get("/docs/indicadores")
+def documentacao_publica():
+    """Guia público; não consome o orçamento das consultas de indicadores."""
+    return send_file(_DOCUMENTACAO / "indicadores.html", mimetype="text/html", max_age=0)
+
+
+@indicadores_bp.get("/docs/indicadores/openapi.yaml")
+def contrato_publico():
+    resposta = send_file(_DOCUMENTACAO / "openapi.yaml", mimetype="application/yaml", max_age=0)
+    resposta.headers["X-Content-Type-Options"] = "nosniff"
+    return resposta
+
+
+@indicadores_bp.get("/docs/indicadores/ensaio.json")
+def evidencia_publica():
+    resposta = send_file(_DOCUMENTACAO / "evidencias/US11-T03-desempenho.json",
+                         mimetype="application/json", max_age=0)
+    resposta.headers["X-Content-Type-Options"] = "nosniff"
+    return resposta
