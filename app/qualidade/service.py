@@ -158,6 +158,18 @@ def _lacuna_publica(lacuna):
             "estado": "ABERTA" if lacuna["fim"] is None else "ENCERRADA"}
 
 
+def _lacuna_no_dia(lacuna, inicio_dia, fim_dia, observado_ate):
+    """Recorte diário sem perder início/fim reais nem encerrar lacuna aberta."""
+    fim_observado = min(lacuna["fim"] or observado_ate, fim_dia, observado_ate)
+    return {
+        **_lacuna_publica(lacuna),
+        "inicio_no_dia": _iso(max(lacuna["inicio"], inicio_dia)),
+        "fim_no_dia": _iso(fim_observado),
+        "continua_do_dia_anterior": lacuna["inicio"] < inicio_dia,
+        "continua_no_dia_seguinte": (lacuna["fim"] or observado_ate) > fim_dia,
+    }
+
+
 def consolidar_qualidade(inicio, fim, *, agora=None, intervalo=None, incluir_janelas=False):
     """Qualidade da coleta de cada dia em [inicio, fim] (datas de São Paulo)."""
     for valor in (inicio, fim):
@@ -218,7 +230,7 @@ def consolidar_qualidade(inicio, fim, *, agora=None, intervalo=None, incluir_jan
                               "PENDENTE" if situacoes == {"PENDENTE"} else "FORA_DO_MONITORAMENTO")
         item = {
             "data": dia.isoformat(), **resumo, "gtfs": _gtfs_do_dia(dia),
-            "lacunas": [_lacuna_publica(l) for l in lacunas
+            "lacunas": [_lacuna_no_dia(l, d0, d1, observado_ate) for l in lacunas
                         if l["inicio"] < d1 and (l["fim"] or agora) > d0],
         }
         if incluir_janelas:
