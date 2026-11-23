@@ -758,6 +758,36 @@ class ResultadoReprocessamento(db.Model):
     versao_gtfs = db.relationship("VersaoGTFS")
 
 
+class IndicadorOperacional(db.Model):
+    """Valor publicado e versionado para a API pública (US11/US14).
+
+    O conjunto é produzido pelo IndicatorService; a API só consulta valores
+    publicados e não deriva métricas de posições GPS brutas.
+    """
+
+    __tablename__ = "indicadores_operacionais"
+    __table_args__ = (
+        UniqueConstraint(
+            "linha_codigo", "indicador", "periodo_inicio", "periodo_fim",
+            "versao_conjunto", name="uq_indicador_publicado_periodo_versao",
+        ),
+        CheckConstraint("periodo_fim > periodo_inicio", name="ck_indicador_periodo"),
+        Index("ix_indicadores_linha_indicador_inicio", "linha_codigo", "indicador", "periodo_inicio"),
+        Index("ix_indicadores_versao", "versao_conjunto"),
+    )
+
+    id = db.Column(db.String(36), primary_key=True, default=lambda: str(uuid4()))
+    linha_codigo = db.Column(db.String(64), nullable=False)
+    indicador = db.Column(db.String(64), nullable=False)
+    valor = db.Column(Double, nullable=False)
+    unidade = db.Column(db.String(32), nullable=False)
+    periodo_inicio = db.Column(UTCDateTime, nullable=False)
+    periodo_fim = db.Column(UTCDateTime, nullable=False)
+    versao_conjunto = db.Column(db.String(128), nullable=False)
+    qualidade = db.Column(db.JSON, nullable=False, default=dict)
+    publicado_em = db.Column(UTCDateTime, nullable=False, default=agora_utc)
+
+
 # US05: documento novo catalogado em até 30 dias após a descoberta.
 PRAZO_CATALOGACAO = timedelta(days=30)
 
