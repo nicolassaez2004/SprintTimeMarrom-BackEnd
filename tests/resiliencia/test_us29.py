@@ -710,28 +710,34 @@ def test_worker_continuo_retoma_apos_erro_inesperado_e_de_banco(contexto, monkey
     assert "KeyError" in lacuna.causa and lacuna.fim is None
 
 
-def test_segundo_processo_nao_usa_o_mesmo_checkpoint(contexto):
+def test_segundo_processo_nao_usa_o_mesmo_checkpoint(contexto, tmp_path):
     import subprocess
     import sys
+    import time
 
     from app.coleta.resiliencia import diretorio_journal, executar_worker
 
     pasta = diretorio_journal()
     pasta.mkdir(parents=True, exist_ok=True)
+    prontidao = tmp_path / "worker-ready.txt"
     outro = subprocess.Popen(
         [
             sys.executable,
             "-c",
             "import sys, time; from filelock import FileLock;"
-            "l = FileLock(sys.argv[1]); l.acquire(); print('ok', flush=True);"
+            "l = FileLock(sys.argv[1]); l.acquire();"
+            "open(sys.argv[2], 'w', encoding='utf-8').write('ok');"
             "time.sleep(30)",
             str(pasta / "worker.lock"),
+            str(prontidao),
         ],
-        stdout=subprocess.PIPE,
-        text=True,
     )
     try:
-        assert outro.stdout.readline().strip() == "ok"
+        limite = time.monotonic() + 5
+        while not prontidao.exists() and time.monotonic() < limite:
+            assert outro.poll() is None
+            time.sleep(0.05)
+        assert prontidao.read_text(encoding="utf-8") == "ok"
         assert executar_worker(max_ciclos=1) == 1
         assert ExecucaoColeta.query.count() == 0
     finally:
