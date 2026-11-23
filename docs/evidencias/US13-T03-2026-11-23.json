@@ -1,0 +1,142 @@
+{
+  "cartao": "US13-T03",
+  "criada_em": "2026-11-17",
+  "iniciada_em": "2026-11-23",
+  "revisao_tecnica": "Codex",
+  "resultado": "PRONTO_PARA_COMMIT_E_REVIEW",
+  "dados": "SINTETICOS, SQLite em memoria",
+  "aiven_acessada_ou_modificada": false,
+  "trello_modificado": false,
+  "commit_realizado": false,
+  "branch_backend": "US13-T03",
+  "branch_frontend": "US13-T03",
+  "base_backend": "6aa07c1",
+  "base_frontend": "f45e3cc",
+  "backend": {
+    "suite_passaram": 486,
+    "ignorados_opt_in": 9,
+    "subtestes_passaram": 14,
+    "testes_qualidade_passaram": 22,
+    "python": "3.14.7"
+  },
+  "frontend": {
+    "testes_passaram": 8,
+    "execucao": "node --test tests/qualidade.test.mjs",
+    "dependencias_npm_necessarias": false
+  },
+  "cenarios": [
+    {
+      "data": "2026-11-17",
+      "situacao": "FORA_DO_MONITORAMENTO",
+      "falhas": null,
+      "gtfs": "SEM_VERSAO_VIGENTE",
+      "versao": null,
+      "lacunas": []
+    },
+    {
+      "data": "2026-11-18",
+      "situacao": "INCOMPLETA",
+      "falhas": 95.24,
+      "gtfs": "VIGENTE",
+      "versao": "gtfs-a",
+      "lacunas": [
+        {
+          "causa": "SPTRANS_HTTP_503",
+          "continua_do_dia_anterior": false,
+          "continua_no_dia_seguinte": true,
+          "estado": "ENCERRADA",
+          "fim": "2026-11-19T03:20:00+00:00",
+          "fim_no_dia": "2026-11-19T03:00:00+00:00",
+          "id": "falha-meia-noite",
+          "inicio": "2026-11-19T02:50:00+00:00",
+          "inicio_no_dia": "2026-11-19T02:50:00+00:00",
+          "origem": "REGISTRADA"
+        }
+      ]
+    },
+    {
+      "data": "2026-11-19",
+      "situacao": "INCOMPLETA",
+      "falhas": 99.93,
+      "gtfs": "VIGENTE",
+      "versao": "gtfs-b",
+      "lacunas": [
+        {
+          "causa": "SPTRANS_HTTP_503",
+          "continua_do_dia_anterior": true,
+          "continua_no_dia_seguinte": false,
+          "estado": "ENCERRADA",
+          "fim": "2026-11-19T03:20:00+00:00",
+          "fim_no_dia": "2026-11-19T03:20:00+00:00",
+          "id": "falha-meia-noite",
+          "inicio": "2026-11-19T02:50:00+00:00",
+          "inicio_no_dia": "2026-11-19T03:00:00+00:00",
+          "origem": "REGISTRADA"
+        },
+        {
+          "causa": "SEM_CICLO_REGISTRADO",
+          "continua_do_dia_anterior": false,
+          "continua_no_dia_seguinte": true,
+          "estado": "ABERTA",
+          "fim": null,
+          "fim_no_dia": "2026-11-20T03:00:00+00:00",
+          "id": "inferida:2026-11-19T03:21:00+00:00",
+          "inicio": "2026-11-19T03:21:00+00:00",
+          "inicio_no_dia": "2026-11-19T03:21:00+00:00",
+          "origem": "INFERIDA"
+        }
+      ]
+    },
+    {
+      "data": "2026-11-20",
+      "situacao": "SEM_DADOS",
+      "falhas": 100.0,
+      "gtfs": "AMBIGUA",
+      "versao": null,
+      "lacunas": [
+        {
+          "causa": "SEM_CICLO_REGISTRADO",
+          "continua_do_dia_anterior": true,
+          "continua_no_dia_seguinte": false,
+          "estado": "ABERTA",
+          "fim": null,
+          "fim_no_dia": "2026-11-21T03:00:00+00:00",
+          "id": "inferida:2026-11-19T03:21:00+00:00",
+          "inicio": "2026-11-19T03:21:00+00:00",
+          "inicio_no_dia": "2026-11-20T03:00:00+00:00",
+          "origem": "INFERIDA"
+        }
+      ]
+    }
+  ],
+  "navegador": {
+    "desktop": {
+      "largura": 1280,
+      "altura": 900
+    },
+    "movel": {
+      "largura_configurada": 390,
+      "altura": 844,
+      "largura_util": 375,
+      "scroll_horizontal": false,
+      "largura_bloco_15min_px": 36.54
+    },
+    "meia_noite_e_troca_gtfs_conferidas": true,
+    "dia_inteiro_sem_ciclos_visivel": true,
+    "gtfs_ambiguo_sem_escolha_automatica": true,
+    "percentual_desconhecido_nao_virou_zero": true,
+    "navegacao_teclado_conferida": true,
+    "erro_api_oculta_relatorio": true,
+    "tentar_novamente_recupera_relatorio": true,
+    "simulacao_identificada_na_tela": true
+  },
+  "capturas_frontend": [
+    "docs/evidencias/qualidade-desktop.jpg",
+    "docs/evidencias/qualidade-mobile.jpg",
+    "docs/evidencias/qualidade-indisponivel.jpg"
+  ],
+  "api": "GET /api/qualidade?inicio=2026-11-17&fim=2026-11-20&janelas=true",
+  "mudanca_compativel": "Recorte diario aditivo em dias[].lacunas[]; campos originais preservados.",
+  "diagramas": "Classes e Componentes e Servicos, revisao 18/11/2026, PDFs do usuario conferidos.",
+  "validado_em": "2026-11-23T12:16:22.601381+00:00"
+}
