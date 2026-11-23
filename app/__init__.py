@@ -64,6 +64,8 @@ def create_app(config_extra=None):
             r"/qualidade": {"origins": origens_frontend},
             r"/documentos": {"origins": origens_frontend},
             r"/downloads": {"origins": origens_frontend},
+            r"/indicadores": {"origins": origens_frontend},
+            r"/series": {"origins": origens_frontend},
         }
     )
 
@@ -81,6 +83,9 @@ def create_app(config_extra=None):
     from app.api.routes import api_bp
 
     app.register_blueprint(api_bp)
+    from app.indicadores.routes import indicadores_bp
+
+    app.register_blueprint(indicadores_bp)
     from app.correspondencia.routes import qualidade_bp
 
     app.register_blueprint(qualidade_bp)
