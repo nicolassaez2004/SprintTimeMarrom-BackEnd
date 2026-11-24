@@ -41,8 +41,8 @@
     {
       "id": "C04", "titulo": "Lacuna acima do limite nao cria passagem", "escala": "janela", "parada": "B", "sentido": "0",
       "dias": [{"viagens": [{"inicio": 540, "passo": 1, "n": 1, "gps": [[0, 20, true], [121, 180, true]], "passagem_alvo_seg": null, "rejeicao": "lacuna_temporal"}]}],
-      "manual": "121 s > limite de ensaio 120 s: nenhuma interpolacao. Com coleta completa e processamento executado: 0/0,25 = 0/h.",
-      "esperado": [{"observada": {"n": 0, "taxa": "0", "horas": "1/4", "situacao": "ZERO_OBSERVADO"}, "programada": {"n": null, "taxa": null, "horas": "0", "situacao": "DADOS_AUSENTES"}}]
+      "manual": "121 s > limite de ensaio 120 s: nenhuma interpolacao. A viagem passou por B sem evidencia GPS: nao se afirma 0/h; valor nulo com motivo sem_evidencia_gps (revisao 24/11).",
+      "esperado": [{"observada": {"n": null, "taxa": null, "horas": "1/4", "situacao": "DADOS_AUSENTES", "parcial": 0, "motivo": "sem_evidencia_gps"}, "programada": {"n": null, "taxa": null, "horas": "0", "situacao": "DADOS_AUSENTES"}}]
     },
     {
       "id": "C05", "titulo": "Origem: observada e programada distintas", "escala": "janela", "parada": "A", "sentido": "0",
@@ -65,8 +65,8 @@
     {
       "id": "C08", "titulo": "Posicao invalida interrompe interpolacao", "escala": "faixa", "parada": "B", "sentido": "0", "faixa": ["06:00", "09:00"],
       "dias": [{"grade": {"inicio": 360, "passo": 15, "n": 1}, "coleta": {"inicio": 360, "minutos": 180}, "viagens": [{"inicio": 370, "passo": 1, "n": 1, "gps": [[0, 80, true], [30, 100, false], [80, 160, true]], "passagem_alvo_seg": null, "rejeicao": "posicao_invalida"}]}],
-      "manual": "Ha GPS invalido entre os validos: os dois pares consecutivos sao rejeitados. 0/3 = 0/h, sem pular o ponto invalido.",
-      "esperado": [{"observada": {"n": 0, "taxa": "0", "horas": "3", "situacao": "ZERO_OBSERVADO"}, "programada": {"n": null, "taxa": null, "horas": "0", "situacao": "DADOS_AUSENTES"}}]
+      "manual": "Ha GPS invalido entre os validos: os dois pares consecutivos sao rejeitados, sem pular o ponto invalido. A viagem passou por B sem evidencia: valor nulo com motivo sem_evidencia_gps, nao 0/h (revisao 24/11).",
+      "esperado": [{"observada": {"n": null, "taxa": null, "horas": "3", "situacao": "COBERTURA_PARCIAL", "parcial": 0, "motivo": "sem_evidencia_gps"}, "programada": {"n": null, "taxa": null, "horas": "0", "situacao": "DADOS_AUSENTES"}}]
     },
     {
       "id": "C09", "titulo": "Faixa nao soma ida e volta", "escala": "faixa", "parada": "B", "sentido": "0", "faixa": ["08:00", "09:00"],

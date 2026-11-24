@@ -24,7 +24,7 @@ from sqlalchemy import event, insert, select
 from app import create_app, db
 from app.indicadores.frequencia import OBSERVADA, calcular_frequencias
 from app.models import (
-    ArquivoArmazenado, ExecucaoColeta, ImportacaoProgramacao, IndicadorOperacional,
+    ArquivoArmazenado, EstimativaPassagemViagem, ExecucaoColeta, ImportacaoProgramacao, IndicadorOperacional,
     Linha, ObservacaoTratada, Parada, PartidaProgramada, PassagemEstimada,
     RegistroBrutoGPS, Trecho, VersaoGTFS, ViagemObservada,
 )
@@ -213,6 +213,10 @@ def _estimar(caderno, caso, contexto):
             parada_codigo=original.parada_codigo, instante=original.instante, metodo=original.metodo,
             versao_estimativa=original.versao_estimativa, posicao_anterior_id=original.posicao_anterior_id,
             posicao_posterior_id=original.posicao_posterior_id))
+        execucao_original = db.session.get(EstimativaPassagemViagem, (viagem.id, original.versao_estimativa))
+        db.session.add(EstimativaPassagemViagem(viagem_observada_id=duplicada.id,
+            versao_estimativa=original.versao_estimativa, lacuna_maxima_seg=execucao_original.lacuna_maxima_seg,
+            executada_em=execucao_original.executada_em, sem_evidencia=execucao_original.sem_evidencia))
         db.session.commit()
     return referencias, originais
 
@@ -231,7 +235,8 @@ def conferir(caderno, caso):
             for dia, sentido, recon in sorted(contexto["contextos"]):
                 campos = calcular_frequencias(linha=LINHA, sentido=sentido, data_operacao=date.fromisoformat(dia),
                     versao_gtfs_id=contexto["versao"].id, versao_correspondencia=MATCH,
-                    versao_reconstrucao=recon, agora=AGORA, intervalo=60)
+                    versao_reconstrucao=recon, agora=AGORA, intervalo=60,
+                    lacuna_maxima=timedelta(seconds=caderno["lacuna_maxima_segundos_somente_ensaio"]))
                 for campo in campos:
                     if caso.get("omitir_observada") and campo["indicador"] == OBSERVADA and campo["parada_codigo"] == caso["parada"] and campo["periodo_inicio"] == datetime.fromisoformat(caso["omitir_observada"]):
                         continue  # interrupção de publicação CONTROLADA, prevista no caderno

@@ -12,6 +12,9 @@ Regras (docs/US15-T02.md):
   frequência programada. Paradas intermediárias não têm horário previsto.
 - Confiabilidade: situação das janelas de 15 min da US13. COMPLETA/COM_FALHAS
   permitem afirmar zero; as demais tornam o valor NULL, com motivo.
+- Evidência: zero só é afirmado se a estimativa da US15-T01 rodou para as
+  viagens da data (``EstimativaPassagemViagem``) e a parada não ficou sem
+  evidência GPS naquela janela; sem lacuna máxima configurada, NULL.
 - Sem mínimo de passagens: a regra de três passagens é da US17/US18.
 """
 
@@ -22,11 +25,13 @@ import json
 from app import db
 from app.indicadores.cumprimento import gravar_indicador
 from app.indicadores.service import consulta_base, filtrar_periodo
-from app.models import IndicadorOperacional, ImportacaoProgramacao, PartidaProgramada, PassagemEstimada, ViagemObservada
+from app.models import (
+    EstimativaPassagemViagem, IndicadorOperacional, ImportacaoProgramacao, PartidaProgramada,
+    PassagemEstimada, ViagemObservada,
+)
 from app.qualidade.service import FUSO, JANELA, consolidar_qualidade
 from app.repositories.programacao import consultar_por_dia
-from app.viagens.passagens import VERSAO as VERSAO_ESTIMATIVA
-from app.viagens.passagens import Percurso
+from app.viagens.passagens import Percurso, lacuna_configurada, versao_estimativa
 
 VERSAO_CALCULO = "frequencia-1.0"
 UNIDADE = "passagens/h"
@@ -43,7 +48,7 @@ class CalculoFrequencia:
 
     def __init__(self, *, linha, sentido, data_operacao, versao_gtfs_id,
                  versao_correspondencia, versao_reconstrucao, janela_minutos=15,
-                 agora=None, intervalo=None):
+                 agora=None, intervalo=None, lacuna_maxima=None):
         if sentido not in ("0", "1"):
             raise ValueError("sentido deve ser '0' (ida) ou '1' (volta)")
         if not (linha and versao_gtfs_id and versao_correspondencia and versao_reconstrucao):
@@ -53,9 +58,10 @@ class CalculoFrequencia:
             raise ValueError(f"janela deve ser múltiplo de {base} min que divida o dia")
         self.linha, self.sentido, self.data = linha, sentido, data_operacao
         self.versao_gtfs_id = versao_gtfs_id
+        lacuna_maxima = lacuna_maxima or lacuna_configurada()
         self.versoes = {"versao_correspondencia": versao_correspondencia,
                         "versao_reconstrucao": versao_reconstrucao,
-                        "versao_estimativa": VERSAO_ESTIMATIVA}
+                        "versao_estimativa": versao_estimativa(lacuna_maxima) if lacuna_maxima else None}
         self.janela = timedelta(minutes=janela_minutos)
         self.agora, self.intervalo = agora, intervalo
 
@@ -79,7 +85,7 @@ class CalculoFrequencia:
             .join(Pt, Pt.id == V.partida_programada_id)
             .join(I, I.id == Pt.importacao_id)
             .filter(P.versao_gtfs_id == self.versao_gtfs_id,
-                    P.versao_estimativa == VERSAO_ESTIMATIVA,
+                    P.versao_estimativa == self.versoes["versao_estimativa"],
                     V.versao_reconstrucao == self.versoes["versao_reconstrucao"],
                     V.versao_correspondencia == self.versoes["versao_correspondencia"],
                     I.versao_gtfs_id == self.versao_gtfs_id, I.linha_codigo == self.linha,
@@ -92,16 +98,51 @@ class CalculoFrequencia:
             por_parada.setdefault(parada, []).append(instante)
         return por_parada
 
+    def _pendencias(self):
+        """{parada | None: [(início, fim | None, motivo)]} em que zero não pode ser afirmado.
+
+        ``None`` vale para todas as paradas: viagem da data sem a estimativa da
+        US15-T01 executada nesta versão. Para paradas sem evidência GPS, o
+        intervalo vem do registro da estimativa (limites ausentes = da viagem).
+        """
+        V, Pt, I, E = ViagemObservada, PartidaProgramada, ImportacaoProgramacao, EstimativaPassagemViagem
+        linhas = (
+            db.session.query(V.saida_observada, V.fim_observado, E.sem_evidencia, E.viagem_observada_id)
+            .join(Pt, Pt.id == V.partida_programada_id)
+            .join(I, I.id == Pt.importacao_id)
+            .outerjoin(E, (E.viagem_observada_id == V.id)
+                       & (E.versao_estimativa == self.versoes["versao_estimativa"]))
+            .filter(V.versao_reconstrucao == self.versoes["versao_reconstrucao"],
+                    V.versao_correspondencia == self.versoes["versao_correspondencia"],
+                    I.versao_gtfs_id == self.versao_gtfs_id, I.linha_codigo == self.linha,
+                    I.sentido == self.sentido, I.data_operacao == self.data)
+            .all()
+        )
+        pendencias = {}
+        for saida, fim, sem_evidencia, estimada in linhas:
+            if estimada is None:
+                pendencias.setdefault(None, []).append((saida, fim, "estimativa_nao_executada"))
+                continue
+            for item in sem_evidencia or ():
+                inicio = datetime.fromisoformat(item["inicio"]) if item.get("inicio") else saida
+                termino = datetime.fromisoformat(item["fim"]) if item.get("fim") else fim
+                pendencias.setdefault(item["parada"], []).append((inicio, termino, "sem_evidencia_gps"))
+        return pendencias
+
     def _janelas(self, instantes):
-        inicio = datetime.combine(self.data, time(), FUSO).astimezone(timezone.utc)
-        ultimo = max([inicio + timedelta(days=1) - timedelta(microseconds=1), *instantes])
+        meia_noite = datetime.combine(self.data, time(), FUSO).astimezone(timezone.utc)
+        ultimo = max([meia_noite + timedelta(days=1) - timedelta(microseconds=1), *instantes])
+        # Passagem antes da meia-noite de uma partida da data também é contada.
+        antes = -((meia_noite - min([meia_noite, *instantes])) // -self.janela)
+        inicio = meia_noite - antes * self.janela
         quantidade = (ultimo - inicio) // self.janela + 1
         return [(inicio + i * self.janela, inicio + (i + 1) * self.janela) for i in range(quantidade)]
 
     def _coleta(self, janelas):
         """Situação US13 das janelas de 15 min, pelo início em UTC."""
+        primeiro_dia = janelas[0][0].astimezone(FUSO).date()
         ultimo_dia = (janelas[-1][1] - timedelta(microseconds=1)).astimezone(FUSO).date()
-        relatorio = consolidar_qualidade(self.data, ultimo_dia, agora=self.agora,
+        relatorio = consolidar_qualidade(primeiro_dia, ultimo_dia, agora=self.agora,
                                          intervalo=self.intervalo, incluir_janelas=True)
         return {j["inicio"]: j for dia in relatorio["dias"] for j in dia["janelas"]}
 
@@ -114,7 +155,8 @@ class CalculoFrequencia:
             raise ValueError(f"paradas da linha/sentido indisponíveis: {motivo}")
         paradas = list(dict.fromkeys(codigo for codigo, _ in percurso.paradas))
         captura, partidas, motivo_programacao = self._programacao()
-        passagens = self._passagens()
+        passagens = self._passagens() if self.versoes["versao_estimativa"] else {}
+        pendencias = self._pendencias() if self.versoes["versao_estimativa"] else {}
         janelas = self._janelas(partidas + [t for ts in passagens.values() for t in ts])
         coleta = self._coleta(janelas)
         contexto = {"linha": self.linha, "sentido": self.sentido, "data_operacao": self.data.isoformat(),
@@ -137,6 +179,12 @@ class CalculoFrequencia:
             for parada in paradas:
                 n = sum(inicio <= t < fim for t in passagens.get(parada, ()))
                 motivo_obs = "coleta_" + "_".join(ruins).lower() if ruins else None
+                if not self.versoes["versao_estimativa"]:
+                    motivo_obs = motivo_obs or "lacuna_maxima_indefinida"
+                else:
+                    sem_prova = sorted({m for a, b, m in [*pendencias.get(None, ()), *pendencias.get(parada, ())]
+                                        if a < fim and (b is None or b >= inicio)})
+                    motivo_obs = motivo_obs or ("_".join(sem_prova) if sem_prova else None)
                 campos.append(self._campos(OBSERVADA, parada, inicio, fim, n, motivo_obs, {
                     "coleta": qualidade_coleta, "passagens_identificadas": n,
                     "dedupe": "parada + posições GPS anterior/posterior"}))
@@ -334,9 +382,28 @@ class PublicacaoFrequencia:
             },
         }
 
+    def _recortar_apos_24h(self, esperado, registros):
+        """Faixa após a meia-noite: a US15-T02 só publica janelas da data D depois
+        de 24h quando há partida ou passagem de D ali; sem elas, a operação de D
+        terminou à meia-noite e esse trecho não é lacuna de D."""
+        if not self.faixa[0]:
+            return esperado
+        recortado = []
+        for a, b in esperado:
+            data = a.astimezone(FUSO).date()
+            meia_noite = datetime.combine(data + timedelta(days=1), time(), FUSO).astimezone(timezone.utc)
+            if b > meia_noite:
+                publicado = max((r.periodo_fim for r in registros
+                                 if (r.qualidade or {}).get("data_operacao") == data.isoformat()),
+                                default=meia_noite)
+                b = min(b, max(meia_noite, publicado))
+            recortado.append((a, b))
+        return tuple(recortado)
+
     def _item(self, chave, registros):
         linha, sentido, parada, gtfs, correspondencia, calculo, reconstrucao, estimativa, _, balde = chave
         referencia, esperado = balde
+        esperado = self._recortar_apos_24h(esperado, registros)
         obs = [r for r in registros if r.indicador == OBSERVADA]
         prog = [r for r in registros if r.indicador == PROGRAMADA]
         observada = self._lado(obs, esperado, "ZERO_OBSERVADO", "observada_nao_publicada")

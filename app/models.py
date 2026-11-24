@@ -988,6 +988,29 @@ class PassagemEstimada(db.Model):
     posicao_posterior = db.relationship("RegistroBrutoGPS", foreign_keys=[posicao_posterior_id])
 
 
+class EstimativaPassagemViagem(db.Model):
+    """Execução da US15-T01 para uma viagem: detalhamento de ``PassagemEstimada``.
+
+    Registra que a estimativa rodou (com qual lacuna máxima) e, para cada parada
+    do percurso sem passagem, o intervalo em que ela poderia ter ocorrido. Sem
+    este registro a US15-T02 não afirma zero observado.
+    """
+
+    __tablename__ = "estimativas_passagem_viagem"
+    __table_args__ = ({"mysql_engine": "InnoDB"},)
+
+    viagem_observada_id = db.Column(
+        db.String(36), db.ForeignKey("viagens_observadas.id",
+                                     name="fk_estimativas_passagem_viagem", ondelete="RESTRICT"),
+        primary_key=True,
+    )
+    versao_estimativa = db.Column(db.String(128), primary_key=True)
+    lacuna_maxima_seg = db.Column(Double, nullable=False)
+    executada_em = db.Column(UTCDateTime, nullable=False)
+    # [{"parada": código, "inicio": ISO|None, "fim": ISO|None}]
+    sem_evidencia = db.Column(db.JSON, nullable=False, default=list)
+
+
 class IndicadorOperacional(db.Model):
     """Valor publicado e versionado para a API pública (US11/US14).
 
