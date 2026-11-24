@@ -56,3 +56,11 @@ def test_percentil_e_evidencia_preservam_todas_as_amostras_sem_ocultar_falhas():
     assert registro["limite_http"]["61_status"] == 429
     assert registro["limite_http"]["nova_janela_status"] == 200
     assert registro["aceite"] == "PENDENTE_REVISAO"
+
+
+def test_contrato_openapi_e_yaml_valido():
+    yaml = pytest.importorskip("yaml")  # PyYAML não é dependência do produto
+
+    arquivo = Path(__file__).resolve().parents[2] / "docs/openapi.yaml"
+    contrato = yaml.safe_load(arquivo.read_text(encoding="utf-8"))
+    assert {"Indicador", "LadoEspera", "PaginaSeries"} <= set(contrato["components"]["schemas"])

@@ -96,8 +96,10 @@ class CalculoRegularidade(CalculoFrequencia):
                 motivos.add(motivo)
         return motivos
 
-    def calcular(self):
-        """Campos de ``IndicadorOperacional`` por janela e parada, sem gravar."""
+    def janelas_com_intervalos(self, indicador=REGULARIDADE, versao_calculo=VERSAO_CALCULO):
+        """(início, fim, parada, intervalos [(anterior, posterior, s)], bloqueios) por janela.
+
+        Base compartilhada com a US18 (espera), que reaproveita os mesmos intervalos."""
         percurso, motivo = Percurso.da_rede(self.versao_gtfs_id, self.linha, self.sentido)
         if percurso is None:
             raise ValueError(f"paradas da linha/sentido indisponíveis: {motivo}")
@@ -109,14 +111,14 @@ class CalculoRegularidade(CalculoFrequencia):
         janelas = self._janelas(partidas + [t for ts in passagens.values() for t in ts])
         coleta = self._coleta(janelas)
         sem_frequencia = not motivo_programacao and OFERTA not in self._oferta()
-        contexto = {"indicador": REGULARIDADE, "linha": self.linha, "sentido": self.sentido,
+        self.captura = captura
+        contexto = {"indicador": indicador, "linha": self.linha, "sentido": self.sentido,
                     "data_operacao": self.data.isoformat(), "versao_gtfs_id": self.versao_gtfs_id,
-                    "versao_calculo": VERSAO_CALCULO, "janela_minutos": int(self.janela.total_seconds() // 60),
+                    "versao_calculo": versao_calculo, "janela_minutos": int(self.janela.total_seconds() // 60),
                     **self.versoes, "captura_programacao": captura}
         self.versao_conjunto = _hash(contexto)[:32]
         intervalos = {p: intervalos_sucessivos(passagens.get(p, ())) for p in paradas}
 
-        campos = []
         for inicio, fim in janelas:
             for parada in paradas:
                 da_janela = [i for i in intervalos[parada] if inicio <= i[1] < fim]
@@ -127,9 +129,12 @@ class CalculoRegularidade(CalculoFrequencia):
                     self._motivos_trecho(min([inicio, *(a for a, _, _ in da_janela)]),
                                          fim - timedelta(microseconds=1), parada, coleta, pendencias)
                 )
-                campos.append(self._campos(parada, inicio, fim, [s for _, _, s in da_janela],
-                                           sorted(bloqueio), captura))
-        return campos
+                yield inicio, fim, parada, da_janela, sorted(bloqueio)
+
+    def calcular(self):
+        """Campos de ``IndicadorOperacional`` por janela e parada, sem gravar."""
+        return [self._campos(parada, inicio, fim, [s for _, _, s in da_janela], bloqueio, self.captura)
+                for inicio, fim, parada, da_janela, bloqueio in self.janelas_com_intervalos()]
 
     def _campos(self, parada, inicio, fim, intervalos_seg, bloqueio, captura):
         if bloqueio:
