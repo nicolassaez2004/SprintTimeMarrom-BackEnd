@@ -42,6 +42,14 @@ def _linha_gtfs(observacao, linha):
     }
 
 
+def versao_posicoes():
+    """Último ciclo OK: os brutos só mudam quando um ciclo é concluído (ETag)."""
+    return (
+        db.session.query(func.max(ExecucaoColeta.id))
+        .filter(ExecucaoColeta.estado == "OK").scalar() or 0
+    )
+
+
 def ultimas_posicoes(*, linha=None, linha_gtfs=None, agora=None):
     """`linha` = código Olho Vivo (`cl`); `linha_gtfs` = `route_id` ligado na US03."""
     agora = agora or agora_utc()

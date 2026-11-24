@@ -32,6 +32,9 @@ flask --app app db upgrade   # aplica as migrações em migrations/versions/
 python app.py
 ```
 
+Coletor contínuo (processo separado): [docs/COLETOR.md](docs/COLETOR.md). Migrações
+pendentes na Aiven: [docs/AIVEN-MIGRACOES-MVP.md](docs/AIVEN-MIGRACOES-MVP.md).
+
 O servidor inicia em `http://127.0.0.1:5000`. Verifique com `GET /health`, que
 responde `{"status": "ok"}`. O Flask não cria `/docs` automaticamente.
 

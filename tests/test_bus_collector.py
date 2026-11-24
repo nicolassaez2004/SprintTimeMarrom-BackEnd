@@ -335,6 +335,33 @@ class TestGpsCollector(unittest.TestCase):
         novos = RegistroBrutoGPS.query.order_by(RegistroBrutoGPS.id).all()
         self.assertEqual([r.prefixo_origem for r in novos], ["5810", "5811"])
 
+    def test_deduplicacao_usa_pares_exatos_em_lotes(self):
+        from datetime import timedelta
+        from app.coleta import qualidade
+
+        base = datetime(2026, 11, 24, 10, 0, tzinfo=timezone.utc)
+        anterior = ExecucaoColeta(estado="OK")
+        db.session.add_all([anterior, Veiculo(prefixo="A"), Veiculo(prefixo="B")])
+        db.session.flush()
+        # (A, t0) e (B, t1) existem; (A, t1) e (B, t0) cruzam as chaves e são novos.
+        for prefixo, minutos in (("A", 0), ("B", 1)):
+            db.session.add(RegistroBrutoGPS(
+                execucao_id=anterior.id, prefixo_origem=prefixo, veiculo_prefixo=prefixo,
+                horario_gps=base + timedelta(minutes=minutos), coletado_em=base,
+            ))
+        db.session.commit()
+
+        def novo(prefixo, minutos):
+            return RegistroBrutoGPS(prefixo_origem=prefixo,
+                                    horario_gps=base + timedelta(minutes=minutos))
+
+        lote = [novo("A", 0), novo("A", 1), novo("B", 0), novo("B", 1)]
+        with patch.object(qualidade, "LOTE_CONSULTA_CHAVES", 1):
+            novos = qualidade.validar_unicidade_chave(lote)
+        self.assertEqual(
+            [(r.prefixo_origem, r.horario_gps.minute) for r in novos], [("A", 1), ("B", 0)]
+        )
+
     def test_sem_chave_completa_preserva_todos_os_registros_com_nulos(self):
         resposta = {
             "hr": "12:00",
