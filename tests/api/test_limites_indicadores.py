@@ -17,7 +17,7 @@ from werkzeug.middleware.proxy_fix import ProxyFix
 from app import create_app, db
 from app.core.limites import comando_consumo
 from app.indicadores import routes
-from app.models import IndicadorOperacional, LimiteConsultaIP
+from app.models import ExecucaoColeta, IndicadorOperacional, LimiteConsultaIP
 
 
 @pytest.fixture
@@ -26,7 +26,7 @@ def contexto(tmp_path):
     app = create_app({"TESTING": True, "SQLALCHEMY_DATABASE_URI": f"sqlite:///{(tmp_path / 'limites.sqlite').as_posix()}",
         "MYSQL_SSL_CA": None, "INDICADORES_TRUSTED_PROXY_CIDRS": "", "LIMITES_RELOGIO": lambda: relogio[0]})
     with app.app_context():
-        db.metadata.create_all(db.engine, tables=[IndicadorOperacional.__table__, LimiteConsultaIP.__table__])
+        db.metadata.create_all(db.engine, tables=[IndicadorOperacional.__table__, LimiteConsultaIP.__table__, ExecucaoColeta.__table__])
     yield app, relogio
     with app.app_context():
         db.session.remove()

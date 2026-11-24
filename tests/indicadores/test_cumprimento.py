@@ -95,3 +95,20 @@ def test_cobertura_exatamente_80_porcento_e_contada():
 def test_denominador_zero_preserva_valor_null():
     resultado = calcular_cumprimento([], [])
     assert (resultado.cumpridas, resultado.programadas, resultado.percentual) == (0, 0, None)
+
+
+def test_partidas_simultaneas_usam_a_proxima_partida_com_horario_diferente():
+    """06:00, 06:00 e 06:20: as duas simultâneas têm intervalo 20 min (±10 min)."""
+    grade = [
+        partida(minuto=0, ordem=1, tipo="FIXA", intervalo=None),
+        partida(minuto=0, ordem=2, tipo="FIXA", intervalo=None),
+        partida(minuto=20, ordem=3, tipo="FIXA", intervalo=None),
+    ]
+    for simultanea in grade[:2]:
+        assert viagem_cumprida(simultanea, viagem(segundos=600, partida_prevista=simultanea), grade)
+        assert not viagem_cumprida(simultanea, viagem(segundos=601, partida_prevista=simultanea), grade)
+
+
+def test_grade_so_com_partidas_simultaneas_nao_infere_intervalo():
+    grade = [partida(minuto=0, ordem=n, tipo="FIXA", intervalo=None) for n in (1, 2)]
+    assert not viagem_cumprida(grade[0], viagem(partida_prevista=grade[0]), grade)

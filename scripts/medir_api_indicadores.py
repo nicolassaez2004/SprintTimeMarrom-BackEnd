@@ -38,12 +38,12 @@ def percentil(valores, percentual):
 
 def _preparar_base(caminho, quantidade):
     from app import create_app, db
-    from app.models import IndicadorOperacional, LimiteConsultaIP
+    from app.models import ExecucaoColeta, IndicadorOperacional, LimiteConsultaIP
 
     app = create_app({"SQLALCHEMY_DATABASE_URI": "sqlite:///" + caminho.as_posix(), "MYSQL_SSL_CA": None})
     inicio = datetime(2026, 11, 23, tzinfo=timezone.utc)
     with app.app_context():
-        db.metadata.create_all(db.engine, tables=[IndicadorOperacional.__table__, LimiteConsultaIP.__table__])
+        db.metadata.create_all(db.engine, tables=[IndicadorOperacional.__table__, LimiteConsultaIP.__table__, ExecucaoColeta.__table__])
         with db.engine.connect() as conexao:
             conexao.exec_driver_sql("PRAGMA journal_mode=WAL")
             conexao.commit()
@@ -53,6 +53,7 @@ def _preparar_base(caminho, quantidade):
                 for n in range(posicao, min(posicao + 5000, quantidade)):
                     instante = inicio + timedelta(seconds=n)
                     lote.append({"id": f"ensaio-{n:08d}", "linha_codigo": "8000" if n % 2 == 0 else "9000",
+                        "versao_gtfs_id": "00000000-0000-0000-0000-000000000001", "sentido": "0",
                         "indicador": "pontualidade" if n % 2 == 0 else "espera_media",
                         "valor": 80 + n % 200 / 10 if n % 2 == 0 else 5 + n % 50 / 10,
                         "unidade": "%" if n % 2 == 0 else "min", "periodo_inicio": instante,
