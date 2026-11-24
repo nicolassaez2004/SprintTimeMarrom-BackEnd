@@ -237,3 +237,42 @@ def test_base_sem_tabela_de_indicadores_e_inconclusiva(app):
     assert relatorio["veredito"] == "INCONCLUSIVO"
     assert relatorio["completude"]["motivos"] == ["TABELA_AUSENTE:indicadores_operacionais"]
     assert relatorio["aceite_integral"] is False
+
+
+def test_rejeita_regra_divergente_tolera_arredondamento_e_detecta_programacao_substituida(mes_sintetico):
+    with pytest.raises(ValueError, match="versão de regra"):
+        ReproducaoIndicadores("2026-02", **{**VERSOES, "versao_regra": "cumprimento-9.9"})
+    assert ReproducaoIndicadores("2026-02", **VERSOES, tolerancia_valor=0.01)._valor_igual(
+        66.68, 66.67) == "IGUAL_COM_TOLERANCIA"
+
+    # Nova captura da mesma grade: a programação usada na publicação foi substituída.
+    linha = Linha.query.one()
+    antiga = ImportacaoProgramacao.query.one()
+    nova = ImportacaoProgramacao(
+        versao_gtfs_id=antiga.versao_gtfs_id, linha=linha, data_operacao=DIA, sentido="0",
+        tipo_dia="UTIL", fonte="OFICIAL", versao_fonte="captura-2",
+        fonte_url=antiga.fonte_url, capturada_em=SAIDA + timedelta(days=1),
+        verificada_em=SAIDA + timedelta(days=1), arquivo=antiga.arquivo,
+    )
+    db.session.add_all([nova, *(PartidaProgramada(
+        importacao=nova, ordem=i + 1, saida_prevista=SAIDA + timedelta(minutes=15 * i),
+        tipo_oferta="FIXA") for i in range(3))])
+    db.session.commit()
+    substituida = verificar()
+    assert {i["status"] for i in substituida["itens"]} == {"VERSAO_INCOMPATIVEL"}
+    assert all("programação substituída" in i["detalhe"] for i in substituida["itens"])
+
+
+def test_janela_na_virada_do_mes_deixa_relatorio_inconclusivo(mes_sintetico):
+    # Janela na virada fev→mar não pode sumir em silêncio.
+    db.session.add(IndicadorOperacional(
+        versao_gtfs_id=mes_sintetico["versao_gtfs_id"], linha_codigo="SINT-01", sentido="0",
+        indicador="CUMPRIMENTO_VIAGENS", unidade="%", valor=None,
+        periodo_inicio=datetime(2026, 3, 1, 2, tzinfo=UTC),
+        periodo_fim=datetime(2026, 3, 1, 4, tzinfo=UTC),
+        contagem_numerador=0, contagem_denominador=0, versao_conjunto="virada",
+    ))
+    db.session.commit()
+    virada = verificar()
+    assert virada["veredito"] == "INCONCLUSIVO"
+    assert any("virada do mês" in m for m in virada["completude"]["motivos"])
