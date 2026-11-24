@@ -13,13 +13,15 @@ from zoneinfo import ZoneInfo
 import pytest
 
 from app.indicadores.pontualidade import (
+    DiferencaSaida,
+    ReferenciaProgramacao,
     ResultadoPontualidade,
     SaidaObservada,
     calcular_diferencas,
     calcular_percentual_pontualidade,
     publicar_pontualidade,
 )
-from app.models import ImportacaoProgramacao, PartidaProgramada
+from app.models import ImportacaoProgramacao, IndicadorOperacional, PartidaProgramada
 from app.viagens.separacao import ViagemObservada
 
 SP = ZoneInfo("America/Sao_Paulo")
@@ -140,6 +142,8 @@ def test_20_casos_comparam_calculo_manual_e_resultado_do_sistema(
 
 
 def test_virada_de_dia_e_mes_usa_horario_de_sao_paulo_e_dia_operacional():
+    # Inclui o antigo test_data_operacional_preserva_dia_e_mes_na_virada_de_calendario
+    # da main, agora com horários de São Paulo.
     item = executar_caso("11", "W3", 5, 600)
     assert item.saida_observada.astimezone(SP) == sp((2, 1), 0, 0)
     assert item.saida_observada == datetime(2026, 2, 1, 3, 0, tzinfo=timezone.utc)
@@ -218,3 +222,83 @@ def test_janelas_faixa_dia_e_mes_agregam_por_contagens(app, programacao):
     assert (total.pontuais, total.realizadas, total.percentual) == (7, 11, Decimal("63.64"))
     assert total.excluidas == {"frequencia": 2, "sem_pareamento": 6, "saida_nao_confirmada": 1}
     assert total.classificadas == 20
+
+
+def test_agregacao_dos_20_casos_publicada_em_um_registro(app, programacao):
+    versao, linha, _, _ = programacao
+    itens = [executar_caso(caso[0], caso[1], caso[2], caso[3], versao.id) for caso in CASOS]
+
+    # Verifica que percentuais combinados vêm das contagens: 1/1 e 1/3
+    # resultam em 2/4 = 50%, não na média simples de 66,67%.
+    particionais = ResultadoPontualidade(tuple(
+        DiferencaSaida(
+            f"v-{indice}", date(2026, 1, 31), "CALCULADA", "FIXA_PAREADA",
+            sp((1, 31), 23, 50), None, delta,
+        )
+        for indice, delta in enumerate((0, 301, 301, 0), start=1)
+    ))
+    ponderado = calcular_percentual_pontualidade(particionais)
+    assert (ponderado.pontuais, ponderado.realizadas, ponderado.percentual) == (
+        2, 4, Decimal("50.00"),
+    )
+
+    # Um único registro com os 20 casos (30/jan 00:00 a 02/fev 00:00, SP).
+    inicio, fim = sp((1, 30), 0, 0), sp((2, 2), 0, 0)
+    registro = _publicar(itens, inicio, fim, versao.id)
+    assert registro.periodo_inicio == inicio
+    assert registro.periodo_fim == fim
+    assert (registro.contagem_numerador, registro.contagem_denominador) == (7, 11)
+    assert registro.valor == pytest.approx(63.64)
+    assert registro.qualidade["excluidas"] == {
+        "frequencia": 2, "sem_pareamento": 6, "saida_nao_confirmada": 1,
+    }
+    assert IndicadorOperacional.query.filter_by(id=registro.id).count() == 1
+
+
+def _calculada(viagem_id, prevista_sp, delta, versao_id):
+    """Viagem fixa pareada do dia operacional 31/jan, com programação de referência."""
+    ref = ReferenciaProgramacao(
+        partida_id=f"p-{viagem_id}", importacao_id="import-virada", linha_codigo=LINHA,
+        sentido_gtfs="0", data_operacao=date(2026, 1, 31), versao_gtfs_id=versao_id,
+        tipo_oferta="FIXA", fonte="OFICIAL", versao_fonte="captura-sintetica-v1",
+        fonte_url="https://example.invalid/grade", saida_prevista=prevista_sp,
+    )
+    return DiferencaSaida(
+        viagem_id, date(2026, 1, 31), "CALCULADA", "FIXA_PAREADA",
+        prevista_sp + timedelta(seconds=delta), ref, delta,
+    )
+
+
+def test_janelas_de_15_minutos_e_agregacao_por_contagens_no_limite_do_mes(app, programacao):
+    versao, _, _, _ = programacao
+    inicio_janela_1, fim_janela_1 = sp((1, 31), 23, 45), sp((2, 1), 0, 0)
+    inicio_janela_2, fim_janela_2 = fim_janela_1, sp((2, 1), 0, 15)
+    assert fim_janela_1 - inicio_janela_1 == timedelta(minutes=15)
+    assert fim_janela_2 - inicio_janela_2 == timedelta(minutes=15)
+
+    # Operação de 31/jan pode ter saída após a meia-noite civil.
+    primeira_janela = ResultadoPontualidade((
+        _calculada("j1-v1", sp((1, 31), 23, 50), 0, versao.id),
+        _calculada("j1-v2", sp((1, 31), 23, 55), 301, versao.id),
+    ))
+    segunda_janela = ResultadoPontualidade((
+        _calculada("j2-v1", sp((2, 1), 0, 5), 0, versao.id),
+    ))
+    registro_janela_1 = _publicar(primeira_janela.viagens, inicio_janela_1, fim_janela_1, versao.id)
+    registro_janela_2 = _publicar(segunda_janela.viagens, inicio_janela_2, fim_janela_2, versao.id)
+    assert (registro_janela_1.contagem_numerador,
+            registro_janela_1.contagem_denominador, registro_janela_1.valor) == (1, 2, 50.0)
+    assert (registro_janela_2.contagem_numerador,
+            registro_janela_2.contagem_denominador, registro_janela_2.valor) == (1, 1, 100.0)
+    assert registro_janela_1.periodo_fim == registro_janela_2.periodo_inicio
+
+    # 2/3 = 66,67%, e não a média simples de 75%.
+    agregado_dia_operacional = calcular_percentual_pontualidade(
+        primeira_janela.viagens + segunda_janela.viagens,
+    )
+    assert (agregado_dia_operacional.pontuais,
+            agregado_dia_operacional.realizadas,
+            agregado_dia_operacional.percentual) == (2, 3, Decimal("66.67"))
+    assert {item.data_operacao for item in primeira_janela.viagens + segunda_janela.viagens} == {
+        date(2026, 1, 31),
+    }
