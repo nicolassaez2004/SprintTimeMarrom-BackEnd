@@ -1,0 +1,109 @@
+{
+  "simulado": true,
+  "banco": "SQLite em memória (sem Aiven)",
+  "cenario": "linha 3762-10 sentido 0, data operacional 2026-11-24; ciclos de 60 s de 12:00 a 13:00 UTC; 1 passagem em B às 12:05 UTC",
+  "com_passagem": {
+    "indicador": "FREQUENCIA_OBSERVADA",
+    "linha": "3762-10",
+    "sentido": "0",
+    "parada": "B",
+    "inicio": "2026-11-24T12:00:00+00:00",
+    "fim": "2026-11-24T12:15:00+00:00",
+    "valor": 4.0,
+    "unidade": "passagens/h",
+    "contagem_numerador": 1,
+    "situacao": "CALCULADA",
+    "motivo": null,
+    "coleta": {
+      "situacoes_15min": [
+        "COMPLETA"
+      ],
+      "percentual_falhas": [
+        0.0
+      ],
+      "confiavel": true
+    },
+    "data_operacao": "2026-11-24",
+    "versao_gtfs_id": "<uuid sintético>",
+    "versao_correspondencia": "match-sint",
+    "versao_reconstrucao": "recon-sint",
+    "versao_estimativa": "us15-t01-v1",
+    "versao_calculo": "frequencia-1.0"
+  },
+  "zero_observado": {
+    "indicador": "FREQUENCIA_OBSERVADA",
+    "linha": "3762-10",
+    "sentido": "0",
+    "parada": "B",
+    "inicio": "2026-11-24T12:15:00+00:00",
+    "fim": "2026-11-24T12:30:00+00:00",
+    "valor": 0.0,
+    "unidade": "passagens/h",
+    "contagem_numerador": 0,
+    "situacao": "ZERO_OBSERVADO",
+    "motivo": null,
+    "coleta": {
+      "situacoes_15min": [
+        "COMPLETA"
+      ],
+      "percentual_falhas": [
+        0.0
+      ],
+      "confiavel": true
+    },
+    "data_operacao": "2026-11-24",
+    "versao_gtfs_id": "<uuid sintético>",
+    "versao_correspondencia": "match-sint",
+    "versao_reconstrucao": "recon-sint",
+    "versao_estimativa": "us15-t01-v1",
+    "versao_calculo": "frequencia-1.0"
+  },
+  "sem_coleta": {
+    "indicador": "FREQUENCIA_OBSERVADA",
+    "linha": "3762-10",
+    "sentido": "0",
+    "parada": "B",
+    "inicio": "2026-11-24T13:00:00+00:00",
+    "fim": "2026-11-24T13:15:00+00:00",
+    "valor": null,
+    "unidade": "passagens/h",
+    "contagem_numerador": null,
+    "situacao": "DADOS_AUSENTES",
+    "motivo": "coleta_sem_dados",
+    "coleta": {
+      "situacoes_15min": [
+        "SEM_DADOS"
+      ],
+      "percentual_falhas": [
+        100.0
+      ],
+      "confiavel": false
+    },
+    "data_operacao": "2026-11-24",
+    "versao_gtfs_id": "<uuid sintético>",
+    "versao_correspondencia": "match-sint",
+    "versao_reconstrucao": "recon-sint",
+    "versao_estimativa": "us15-t01-v1",
+    "versao_calculo": "frequencia-1.0"
+  },
+  "programada_origem": {
+    "indicador": "FREQUENCIA_PROGRAMADA",
+    "linha": "3762-10",
+    "sentido": "0",
+    "parada": "A",
+    "inicio": "2026-11-24T12:00:00+00:00",
+    "fim": "2026-11-24T12:15:00+00:00",
+    "valor": 4.0,
+    "unidade": "passagens/h",
+    "contagem_numerador": 1,
+    "situacao": "CALCULADA",
+    "motivo": null,
+    "coleta": null,
+    "data_operacao": "2026-11-24",
+    "versao_gtfs_id": "<uuid sintético>",
+    "versao_correspondencia": "match-sint",
+    "versao_reconstrucao": "recon-sint",
+    "versao_estimativa": "us15-t01-v1",
+    "versao_calculo": "frequencia-1.0"
+  }
+}

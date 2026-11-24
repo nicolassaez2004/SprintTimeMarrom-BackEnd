@@ -1,0 +1,22 @@
+{
+  "tarefa": "US12-T04",
+  "mes": "2026-11",
+  "versoes": {
+    "base": "alembic:us29_0012",
+    "codigo": "git:6d4dd9103b556977b3934b2577664cf82f2e4057-dirty",
+    "regra": "cumprimento-1.1+pontualidade-1.0"
+  },
+  "quantidade_indicadores": 0,
+  "veredito": "INCONCLUSIVO",
+  "aceite_integral": false,
+  "completude": {
+    "completo": false,
+    "motivos": [
+      "TABELA_AUSENTE:viagens_observadas",
+      "TABELA_AUSENTE:indicadores_operacionais"
+    ]
+  },
+  "limitacoes": [
+    "Base sem as tabelas necessárias (migrações pendentes)."
+  ]
+}

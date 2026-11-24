@@ -178,12 +178,16 @@ def _chave_publicacao(*, linha, sentido, inicio, fim, versao_gtfs_id,
     return sha256(json.dumps(identidade, sort_keys=True, separators=(",", ":")).encode()).hexdigest()
 
 
-def calcular_e_publicar_cumprimento(
+def calcular_indicador_cumprimento(
     *, linha, sentido, inicio, fim, versao_gtfs_id,
     versao_correspondencia, versao_reconstrucao,
     versao_calculo=VERSAO_ALGORITMO,
 ):
-    """Calculate for one line/direction/window and persist the versioned result."""
+    """Calculate one line/direction/window without writing to the database.
+
+    Returns the columns of ``IndicadorOperacional`` (including ``chave_resultado``);
+    ``calcular_e_publicar_cumprimento`` persists them and US12-T04 compares them.
+    """
     if not versao_correspondencia or not versao_reconstrucao:
         raise ValueError("versões de correspondência e reconstrução são obrigatórias")
     grade, programadas, versoes_programacao = programacao_da_janela(
@@ -200,37 +204,58 @@ def calcular_e_publicar_cumprimento(
         versao_reconstrucao=versao_reconstrucao, versao_calculo=versao_calculo,
         versoes_programacao=versoes_programacao,
     )
-    registro = IndicadorOperacional.query.filter_by(chave_resultado=chave).one_or_none()
-    if registro is None:
-        registro = IndicadorOperacional(chave_resultado=chave)
-        db.session.add(registro)
-    registro.versao_gtfs_id = versao_gtfs_id
-    registro.linha_codigo = linha
-    registro.sentido = sentido
-    registro.parada_codigo = None
-    registro.trecho_id = None
-    registro.indicador = "CUMPRIMENTO_VIAGENS"
-    registro.valor = float(resultado.percentual) if resultado.percentual is not None else None
-    registro.unidade = "%"
-    registro.periodo_inicio = inicio
-    registro.periodo_fim = fim
-    registro.contagem_numerador = resultado.cumpridas
-    registro.contagem_denominador = resultado.programadas
-    registro.versao_conjunto = chave[:32]
-    registro.versao_correspondencia = versao_correspondencia
-    registro.versao_calculo = versao_calculo
-    registro.qualidade = {
-        "observacoes_viagem": len(observadas),
-        "partidas_programadas": resultado.programadas,
-        "cobertura_tracado_minima": COBERTURA_MINIMA,
-        "tolerancia_saida_maxima_segundos": TOLERANCIA_MAXIMA_SEGUNDOS,
-        "intervalo_horario_fixo": (
-            "menor intervalo positivo até a partida vizinha na grade completa do dia "
-            "operacional (independe da janela); uma vizinha nas extremidades"
-        ),
-        "origem_programacao": "OFICIAL preferencial, inclusive captura vazia; GTFS como fallback",
-        "capturas_programacao": versoes_programacao,
-        "versao_reconstrucao": versao_reconstrucao,
+    return {
+        "chave_resultado": chave,
+        "versao_gtfs_id": versao_gtfs_id,
+        "linha_codigo": linha,
+        "sentido": sentido,
+        "parada_codigo": None,
+        "trecho_id": None,
+        "indicador": "CUMPRIMENTO_VIAGENS",
+        "valor": float(resultado.percentual) if resultado.percentual is not None else None,
+        "unidade": "%",
+        "periodo_inicio": inicio,
+        "periodo_fim": fim,
+        "contagem_numerador": resultado.cumpridas,
+        "contagem_denominador": resultado.programadas,
+        "versao_conjunto": chave[:32],
+        "versao_correspondencia": versao_correspondencia,
+        "versao_calculo": versao_calculo,
+        "qualidade": {
+            "observacoes_viagem": len(observadas),
+            "partidas_programadas": resultado.programadas,
+            "cobertura_tracado_minima": COBERTURA_MINIMA,
+            "tolerancia_saida_maxima_segundos": TOLERANCIA_MAXIMA_SEGUNDOS,
+            "intervalo_horario_fixo": (
+                "menor intervalo positivo até a partida vizinha na grade completa do dia "
+                "operacional (independe da janela); uma vizinha nas extremidades"
+            ),
+            "origem_programacao": "OFICIAL preferencial, inclusive captura vazia; GTFS como fallback",
+            "capturas_programacao": versoes_programacao,
+            "versao_reconstrucao": versao_reconstrucao,
+        },
     }
-    db.session.commit()
+
+
+def gravar_indicador(campos, *, commit=True):
+    """Upsert idempotente pela ``chave_resultado`` e commit (publicação).
+
+    ``commit=False`` deixa a transação com quem publica um conjunto inteiro.
+    """
+    registro = IndicadorOperacional.query.filter_by(
+        chave_resultado=campos["chave_resultado"]).one_or_none()
+    if registro is None:
+        registro = IndicadorOperacional(chave_resultado=campos["chave_resultado"])
+        db.session.add(registro)
+    for nome, valor in campos.items():
+        setattr(registro, nome, valor)
+    if commit:
+        db.session.commit()
+    else:
+        db.session.flush()
     return registro
+
+
+def calcular_e_publicar_cumprimento(**parametros):
+    """Calculate for one line/direction/window and persist the versioned result."""
+    return gravar_indicador(calcular_indicador_cumprimento(**parametros))

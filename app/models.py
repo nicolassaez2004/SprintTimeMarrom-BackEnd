@@ -418,6 +418,137 @@ class Trecho(db.Model):
     )
 
 
+class VersaoTerritorial(db.Model):
+    """Fonte versionada dos limites de distritos e subprefeituras."""
+
+    __tablename__ = "versoes_territoriais"
+    __table_args__ = (
+        UniqueConstraint("sha256", name="uq_versao_territorial_sha256"),
+        CheckConstraint("crs_origem <> ''", name="ck_versao_territorial_crs"),
+    )
+
+    id = db.Column(db.String(36), primary_key=True, default=lambda: str(uuid4()))
+    fonte = db.Column(db.String(255), nullable=False)
+    url_fonte = db.Column(db.String(1024), nullable=False)
+    versao_fonte = db.Column(db.String(64), nullable=False)
+    sha256 = db.Column(db.String(64), nullable=False)
+    crs_origem = db.Column(db.String(32), nullable=False)
+    capturada_em = db.Column(UTCDateTime, nullable=False, default=agora_utc)
+    metadados = db.Column(db.JSON, nullable=False, default=dict)
+
+
+class UnidadeTerritorial(db.Model):
+    """Polígono de um distrito ou subprefeitura em GeoJSON EPSG:4326."""
+
+    __tablename__ = "unidades_territoriais"
+    __table_args__ = (
+        db.ForeignKeyConstraint(
+            ["subprefeitura_id", "versao_id"],
+            ["unidades_territoriais.id", "unidades_territoriais.versao_id"],
+            name="fk_unidade_subprefeitura_versao", ondelete="RESTRICT",
+        ),
+        UniqueConstraint("versao_id", "tipo", "codigo", name="uq_unidade_territorial_codigo"),
+        UniqueConstraint("id", "versao_id", name="uq_unidade_territorial_id_versao"),
+        CheckConstraint("tipo IN ('DISTRITO', 'SUBPREFEITURA')", name="ck_unidade_territorial_tipo"),
+        CheckConstraint(
+            "(tipo = 'DISTRITO' AND subprefeitura_id IS NOT NULL) OR "
+            "(tipo = 'SUBPREFEITURA' AND subprefeitura_id IS NULL)",
+            name="ck_unidade_territorial_hierarquia",
+        ),
+        Index("ix_unidade_territorial_versao_tipo", "versao_id", "tipo"),
+    )
+
+    id = db.Column(db.String(36), primary_key=True, default=lambda: str(uuid4()))
+    versao_id = db.Column(
+        db.String(36), db.ForeignKey(
+            "versoes_territoriais.id", ondelete="RESTRICT", name="fk_unidade_territorial_versao",
+        ), nullable=False,
+    )
+    tipo = db.Column(db.String(16), nullable=False)
+    codigo = db.Column(db.String(32), nullable=False)
+    nome = db.Column(db.String(128), nullable=False)
+    identificador_fonte = db.Column(db.String(32), nullable=False)
+    subprefeitura_id = db.Column(db.String(36), nullable=True)
+    geometria = db.Column(db.JSON, nullable=False)
+
+    versao = db.relationship("VersaoTerritorial")
+    subprefeitura = db.relationship(
+        "UnidadeTerritorial", remote_side=[id, versao_id],
+        foreign_keys=[subprefeitura_id, versao_id], overlaps="versao",
+    )
+
+
+class ParadaTerritorial(db.Model):
+    """Atribuição única de parada a distrito/subprefeitura por versões."""
+
+    __tablename__ = "paradas_territorios"
+    __table_args__ = (
+        db.ForeignKeyConstraint(
+            ["versao_gtfs_id", "parada_codigo"],
+            ["paradas.versao_gtfs_id", "paradas.codigo"],
+            name="fk_parada_territorio_rede", ondelete="RESTRICT",
+        ),
+        db.ForeignKeyConstraint(
+            ["distrito_id", "versao_territorial_id"],
+            ["unidades_territoriais.id", "unidades_territoriais.versao_id"],
+            name="fk_parada_territorio_distrito", ondelete="RESTRICT",
+        ),
+        db.ForeignKeyConstraint(
+            ["subprefeitura_id", "versao_territorial_id"],
+            ["unidades_territoriais.id", "unidades_territoriais.versao_id"],
+            name="fk_parada_territorio_subprefeitura", ondelete="RESTRICT",
+        ),
+        Index("ix_parada_territorio_distrito", "versao_territorial_id", "distrito_id"),
+        Index("ix_parada_territorio_subprefeitura", "versao_territorial_id", "subprefeitura_id"),
+    )
+
+    versao_gtfs_id = db.Column(db.String(36), primary_key=True)
+    parada_codigo = db.Column(CodigoGTFS, primary_key=True)
+    versao_territorial_id = db.Column(db.String(36), primary_key=True)
+    distrito_id = db.Column(db.String(36), nullable=False)
+    subprefeitura_id = db.Column(db.String(36), nullable=False)
+    ponto_na_fronteira = db.Column(db.Boolean, nullable=False, default=False)
+    qualidade = db.Column(db.JSON, nullable=False, default=dict)
+
+
+class TrechoTerritorial(db.Model):
+    """Território principal de cada trecho, escolhido pela maior sobreposição."""
+
+    __tablename__ = "trechos_territorios"
+    __table_args__ = (
+        db.ForeignKeyConstraint(
+            ["trecho_id", "versao_gtfs_id", "linha_codigo"],
+            ["trechos.id", "trechos.versao_gtfs_id", "trechos.linha_codigo"],
+            name="fk_trecho_territorio_rede", ondelete="RESTRICT",
+        ),
+        db.ForeignKeyConstraint(
+            ["distrito_id", "versao_territorial_id"],
+            ["unidades_territoriais.id", "unidades_territoriais.versao_id"],
+            name="fk_trecho_territorio_distrito", ondelete="RESTRICT",
+        ),
+        db.ForeignKeyConstraint(
+            ["subprefeitura_id", "versao_territorial_id"],
+            ["unidades_territoriais.id", "unidades_territoriais.versao_id"],
+            name="fk_trecho_territorio_subprefeitura", ondelete="RESTRICT",
+        ),
+        CheckConstraint("fracao_distrito > 0 AND fracao_distrito <= 1", name="ck_trecho_territorio_fracao_distrito"),
+        CheckConstraint("fracao_subprefeitura > 0 AND fracao_subprefeitura <= 1", name="ck_trecho_territorio_fracao_subpref"),
+        Index("ix_trecho_territorio_distrito", "versao_territorial_id", "distrito_id"),
+        Index("ix_trecho_territorio_subprefeitura", "versao_territorial_id", "subprefeitura_id"),
+    )
+
+    trecho_id = db.Column(db.String(36), primary_key=True)
+    versao_gtfs_id = db.Column(db.String(36), primary_key=True)
+    linha_codigo = db.Column(CodigoGTFS, primary_key=True)
+    versao_territorial_id = db.Column(db.String(36), primary_key=True)
+    distrito_id = db.Column(db.String(36), nullable=False)
+    subprefeitura_id = db.Column(db.String(36), nullable=False)
+    fracao_distrito = db.Column(Double, nullable=False)
+    fracao_subprefeitura = db.Column(Double, nullable=False)
+    cruza_limite = db.Column(db.Boolean, nullable=False)
+    qualidade = db.Column(db.JSON, nullable=False, default=dict)
+
+
 class VerificacaoGTFS(db.Model):
     """Agenda, resultado e prazo de cada tentativa, inclusive após reiniciar."""
 
@@ -807,6 +938,54 @@ class ViagemObservada(db.Model):
     qualidade = db.Column(db.JSON, nullable=False, default=dict)
 
     partida_programada = db.relationship("PartidaProgramada")
+
+
+class PassagemEstimada(db.Model):
+    """Instante estimado em que uma viagem passou por uma parada (US15-T01).
+
+    Diagrama: ViagemObservada 1 — 0..* PassagemEstimada 0..* — 1 Parada, com
+    `instante` e `metodo`. Acréscimos para rastreabilidade: a versão da
+    estimativa e as duas posições GPS brutas (imutáveis) que cercam a parada.
+    Uma passagem por viagem, parada e versão da estimativa.
+    """
+
+    __tablename__ = "passagens_estimadas"
+    __table_args__ = (
+        db.ForeignKeyConstraint(
+            ["versao_gtfs_id", "parada_codigo"], ["paradas.versao_gtfs_id", "paradas.codigo"],
+            name="fk_passagens_estimadas_parada", ondelete="RESTRICT",
+        ),
+        UniqueConstraint("viagem_observada_id", "parada_codigo", "versao_estimativa",
+                         name="uq_passagens_estimadas_viagem_parada_versao"),
+        Index("ix_passagens_estimadas_parada_instante",
+              "versao_gtfs_id", "parada_codigo", "instante"),
+        {"mysql_engine": "InnoDB"},
+    )
+
+    id = db.Column(db.String(36), primary_key=True, default=lambda: str(uuid4()))
+    viagem_observada_id = db.Column(
+        db.String(36), db.ForeignKey("viagens_observadas.id",
+                                     name="fk_passagens_estimadas_viagem", ondelete="RESTRICT"),
+        nullable=False,
+    )
+    versao_gtfs_id = db.Column(db.String(36), nullable=False)
+    parada_codigo = db.Column(CodigoGTFS, nullable=False)
+    instante = db.Column(UTCDateTime, nullable=False)
+    metodo = db.Column(db.String(64), nullable=False)
+    versao_estimativa = db.Column(db.String(128), nullable=False)
+    posicao_anterior_id = db.Column(
+        IdGrande, db.ForeignKey("registros_gps.id", name="fk_passagens_estimadas_anterior",
+                                ondelete="RESTRICT"), nullable=False,
+    )
+    posicao_posterior_id = db.Column(
+        IdGrande, db.ForeignKey("registros_gps.id", name="fk_passagens_estimadas_posterior",
+                                ondelete="RESTRICT"), nullable=False,
+    )
+
+    viagem = db.relationship("ViagemObservada")
+    parada = db.relationship("Parada")
+    posicao_anterior = db.relationship("RegistroBrutoGPS", foreign_keys=[posicao_anterior_id])
+    posicao_posterior = db.relationship("RegistroBrutoGPS", foreign_keys=[posicao_posterior_id])
 
 
 class IndicadorOperacional(db.Model):
