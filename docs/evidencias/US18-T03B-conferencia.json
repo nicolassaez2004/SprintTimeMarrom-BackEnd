@@ -1,13 +1,13 @@
 {
   "tarefa": "US18-T03B",
   "origem": "SINTETICA_CONTROLADA",
-  "executado_em": "2026-11-24T17:41:17.773341+00:00",
+  "executado_em": "2026-11-24T17:43:40.973457+00:00",
   "aceite_institucional": "DISPENSADO_PELO_RESPONSAVEL",
   "envio_instituicao_parceira": "DISPENSADO_PELO_RESPONSAVEL",
   "pronto": true,
   "fonte_casos": "docs/validacoes/US18-T03B-casos.json",
   "sha256_caderno": "b30b1aa38655048450129eab5e8ab93678333f850eb97f1106aac34423f218ba",
-  "codigo_base": "c73d86986bf73645d711dd36abaf11b82e478e2f",
+  "codigo_base": "526b196d253165c5de69f708e89672318a01adfb",
   "banco": "SQLite em memória; FK ON; sem Aiven",
   "relogio_ensaio": "2026-12-03T00:00:00+00:00",
   "resumo": {
