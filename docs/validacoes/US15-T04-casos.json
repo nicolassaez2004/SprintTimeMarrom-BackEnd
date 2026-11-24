@@ -1,0 +1,159 @@
+{
+  "versao": 1,
+  "origem": "SINTETICA_CONTROLADA",
+  "aceite_institucional": "PENDENTE",
+  "fuso": "America/Sao_Paulo",
+  "lacuna_maxima_segundos_somente_ensaio": 120,
+  "tolerancia_interpolacao_segundos": 0.05,
+  "tolerancia_taxa": 0.00000051,
+  "referencia": "Requisitos: US15 e criterio comum US14-US19; docs/US15-T01.md, US15-T02.md e US15-T03.md",
+  "rede_controlada": {"crs": "EPSG:31983", "x_origem": 330000, "y": 7395000, "paradas_m": {"A": 0, "B": 100, "C": 200}},
+  "dia_padrao": {
+    "data": "2026-11-24",
+    "grade": {"inicio": 540, "passo": 15, "n": 1},
+    "coleta": {"inicio": 540, "minutos": 15},
+    "viagens": [{"inicio": 540, "passo": 1, "n": 1, "gps": [[0, 20, true], [120, 180, true]], "passagem_alvo_seg": 60}]
+  },
+  "casos": [
+    {
+      "id": "C01", "titulo": "Interpolacao no meio do par, ida", "escala": "janela", "parada": "B", "sentido": "0",
+      "manual": "09:00:00 + (100-20)/(180-20) x 120 s = 09:01:00; 1/(15/60) = 4/h. Programada intermediaria indisponivel.",
+      "esperado": [{"observada": {"n": 1, "taxa": "4", "horas": "1/4", "situacao": "CALCULADA"}, "programada": {"n": null, "taxa": null, "horas": "0", "situacao": "DADOS_AUSENTES"}}]
+    },
+    {
+      "id": "C02", "titulo": "Volta usa percurso invertido e separa ida", "escala": "janela", "parada": "B", "sentido": "1",
+      "dias": [{"viagens": [
+        {"inicio": 540, "passo": 1, "n": 1, "gps": [[0, 150, true], [90, 50, true]], "passagem_alvo_seg": 45},
+        {"inicio": 540, "passo": 1, "n": 1, "sentido": "0", "gps": [[0, 50, true], [90, 150, true]], "passagem_alvo_seg": 45}
+      ]}],
+      "manual": "Na volta, B esta a metade do avanco de 150 m para 50 m: 45 s; conta somente 1 passagem do sentido 1, 4/h.",
+      "esperado": [{"observada": {"n": 1, "taxa": "4", "horas": "1/4", "situacao": "CALCULADA"}, "programada": {"n": null, "taxa": null, "horas": "0", "situacao": "DADOS_AUSENTES"}}]
+    },
+    {
+      "id": "C03", "titulo": "Fim exclusivo sem dupla contagem", "escala": "janela", "parada": "B", "sentido": "0", "periodo_minutos": [540, 570],
+      "dias": [{"grade": {"inicio": 540, "passo": 15, "n": 2}, "coleta": {"inicio": 540, "minutos": 30}, "viagens": [{"inicio": 554.5, "passo": 1, "n": 1, "gps": [[0, 50, true], [30, 100, true]], "passagem_alvo_seg": 30}]}],
+      "manual": "Passagem exatamente 09:15:00: [09:00,09:15) recebe 0; [09:15,09:30) recebe 1. Taxas 0 e 4/h.",
+      "esperado": [
+        {"inicio_minuto": 540, "observada": {"n": 0, "taxa": "0", "horas": "1/4", "situacao": "ZERO_OBSERVADO"}, "programada": {"n": null, "taxa": null, "horas": "0", "situacao": "DADOS_AUSENTES"}},
+        {"inicio_minuto": 555, "observada": {"n": 1, "taxa": "4", "horas": "1/4", "situacao": "CALCULADA"}, "programada": {"n": null, "taxa": null, "horas": "0", "situacao": "DADOS_AUSENTES"}}
+      ]
+    },
+    {
+      "id": "C04", "titulo": "Lacuna acima do limite nao cria passagem", "escala": "janela", "parada": "B", "sentido": "0",
+      "dias": [{"viagens": [{"inicio": 540, "passo": 1, "n": 1, "gps": [[0, 20, true], [121, 180, true]], "passagem_alvo_seg": null, "rejeicao": "lacuna_temporal"}]}],
+      "manual": "121 s > limite de ensaio 120 s: nenhuma interpolacao. Com coleta completa e processamento executado: 0/0,25 = 0/h.",
+      "esperado": [{"observada": {"n": 0, "taxa": "0", "horas": "1/4", "situacao": "ZERO_OBSERVADO"}, "programada": {"n": null, "taxa": null, "horas": "0", "situacao": "DADOS_AUSENTES"}}]
+    },
+    {
+      "id": "C05", "titulo": "Origem: observada e programada distintas", "escala": "janela", "parada": "A", "sentido": "0",
+      "dias": [{"grade": {"inicio": 540, "passo": 5, "n": 3}, "viagens": [{"inicio": 540, "passo": 1, "n": 1, "gps": [[0, 0, true], [80, 160, true]], "passagem_alvo_seg": 0}]}],
+      "manual": "GPS sobre A recebe 09:00:00. Observada 1/0,25 = 4/h; programadas 09:00,09:05,09:10: 3/0,25 = 12/h.",
+      "esperado": [{"observada": {"n": 1, "taxa": "4", "horas": "1/4", "situacao": "CALCULADA"}, "programada": {"n": 3, "taxa": "12", "horas": "1/4", "situacao": "CALCULADA"}}]
+    },
+    {
+      "id": "C06", "titulo": "Faixa e interpolacao em um quarto", "escala": "faixa", "parada": "B", "sentido": "0", "faixa": ["06:00", "07:00"],
+      "dias": [{"grade": {"inicio": 360, "passo": 15, "n": 1}, "coleta": {"inicio": 360, "minutos": 60}, "viagens": [{"inicio": 360, "passo": 1, "n": 1, "gps": [[0, 80, true], [80, 160, true]], "passagem_alvo_seg": 20}]}],
+      "manual": "(100-80)/(160-80) x 80 = 20 s; 06:00:20. Faixa de 1 h: 1/1 = 1/h.",
+      "esperado": [{"observada": {"n": 1, "taxa": "1", "horas": "1", "situacao": "CALCULADA"}, "programada": {"n": null, "taxa": null, "horas": "0", "situacao": "DADOS_AUSENTES"}}]
+    },
+    {
+      "id": "C07", "titulo": "Faixa noturna e interpolacao na virada", "escala": "faixa", "parada": "B", "sentido": "0", "faixa": ["22:00", "02:00"],
+      "dias": [{"grade": {"horarios": [1320, 1559]}, "coleta": {"inicio": 1320, "minutos": 240}, "viagens": [{"inicio": 1439.8333333333333, "passo": 1, "n": 1, "gps": [[0, 80, true], [80, 160, true]], "passagem_alvo_seg": 20}]}],
+      "manual": "24/11 23:59:50 + 20 s = 25/11 00:00:10; pertence a operacao de 24/11. Faixa 22-02 tem 4 h: 1/4 = 0,25/h.",
+      "esperado": [{"observada": {"n": 1, "taxa": "1/4", "horas": "4", "situacao": "CALCULADA"}, "programada": {"n": null, "taxa": null, "horas": "0", "situacao": "DADOS_AUSENTES"}}]
+    },
+    {
+      "id": "C08", "titulo": "Posicao invalida interrompe interpolacao", "escala": "faixa", "parada": "B", "sentido": "0", "faixa": ["06:00", "09:00"],
+      "dias": [{"grade": {"inicio": 360, "passo": 15, "n": 1}, "coleta": {"inicio": 360, "minutos": 180}, "viagens": [{"inicio": 370, "passo": 1, "n": 1, "gps": [[0, 80, true], [30, 100, false], [80, 160, true]], "passagem_alvo_seg": null, "rejeicao": "posicao_invalida"}]}],
+      "manual": "Ha GPS invalido entre os validos: os dois pares consecutivos sao rejeitados. 0/3 = 0/h, sem pular o ponto invalido.",
+      "esperado": [{"observada": {"n": 0, "taxa": "0", "horas": "3", "situacao": "ZERO_OBSERVADO"}, "programada": {"n": null, "taxa": null, "horas": "0", "situacao": "DADOS_AUSENTES"}}]
+    },
+    {
+      "id": "C09", "titulo": "Faixa nao soma ida e volta", "escala": "faixa", "parada": "B", "sentido": "0", "faixa": ["08:00", "09:00"],
+      "dias": [{"grade": {"inicio": 480, "passo": 15, "n": 4}, "coleta": {"inicio": 480, "minutos": 60}, "viagens": [
+        {"inicio": 490, "passo": 30, "n": 2, "gps": [[0, 80, true], [80, 160, true]], "passagem_alvo_seg": 20},
+        {"inicio": 485, "passo": 20, "n": 3, "sentido": "1", "gps": [[0, 150, true], [90, 50, true]], "passagem_alvo_seg": 45}
+      ]}],
+      "manual": "2 passagens ida e 3 volta na mesma parada. Filtro sentido 0: 2/1 = 2/h; nunca 5/h.",
+      "esperado": [{"observada": {"n": 2, "taxa": "2", "horas": "1", "situacao": "CALCULADA"}, "programada": {"n": null, "taxa": null, "horas": "0", "situacao": "DADOS_AUSENTES"}}]
+    },
+    {
+      "id": "C10", "titulo": "Faixa compara duas observadas com quatro previstas", "escala": "faixa", "parada": "A", "sentido": "0", "faixa": ["08:00", "09:00"],
+      "dias": [{"grade": {"inicio": 480, "passo": 15, "n": 4}, "coleta": {"inicio": 480, "minutos": 60}, "viagens": [{"inicio": 490, "passo": 30, "n": 2, "gps": [[0, 0, true], [80, 160, true]], "passagem_alvo_seg": 0}]}],
+      "manual": "Observadas 08:10 e 08:40: 2/1 = 2/h. Previstas 08:00,08:15,08:30,08:45: 4/1 = 4/h.",
+      "esperado": [{"observada": {"n": 2, "taxa": "2", "horas": "1", "situacao": "CALCULADA"}, "programada": {"n": 4, "taxa": "4", "horas": "1", "situacao": "CALCULADA"}}]
+    },
+    {
+      "id": "C11", "titulo": "Dia completo soma contagens", "escala": "dia", "parada": "A", "sentido": "0",
+      "dias": [{"grade": {"inicio": 0, "passo": 30, "n": 48}, "coleta": {"inicio": 0, "minutos": 1440}, "viagens": [{"inicio": 0, "passo": 60, "n": 24, "gps": [[0, 0, true], [80, 160, true]], "passagem_alvo_seg": 0}]}],
+      "manual": "Uma observada por hora, duas previstas por hora: 24/24 = 1/h e 48/24 = 2/h.",
+      "esperado": [{"observada": {"n": 24, "taxa": "1", "horas": "24", "situacao": "CALCULADA"}, "programada": {"n": 48, "taxa": "2", "horas": "24", "situacao": "CALCULADA"}}]
+    },
+    {
+      "id": "C12", "titulo": "GTFS 24:40 conserva data operacional", "escala": "dia", "parada": "A", "sentido": "0",
+      "dias": [{"grade": {"inicio": 1480, "passo": 15, "n": 1}, "coleta": {"inicio": 0, "minutos": 1485}, "viagens": [{"inicio": 1480, "passo": 1, "n": 1, "gps": [[0, 0, true], [80, 160, true]], "passagem_alvo_seg": 0}]}],
+      "manual": "24:40 de 24/11 = 25/11 00:40 local. Janelas vao ate 24:45, 99/4 h; ambas 1/(99/4) = 4/99 por hora.",
+      "esperado": [{"observada": {"n": 1, "taxa": "4/99", "horas": "99/4", "situacao": "CALCULADA"}, "programada": {"n": 1, "taxa": "4/99", "horas": "99/4", "situacao": "CALCULADA"}}]
+    },
+    {
+      "id": "C13", "titulo": "Dia com cobertura parcial nao vira zero", "escala": "dia", "parada": "A", "sentido": "0",
+      "dias": [{"grade": {"inicio": 0, "passo": 60, "n": 24}, "coleta": {"inicio": 480, "minutos": 60}, "viagens": [{"inicio": 480, "passo": 1, "n": 1, "gps": [[0, 0, true], [80, 160, true]], "passagem_alvo_seg": 0}]}],
+      "manual": "So 08-09 tem coleta; 1 passagem parcial nao autoriza taxa diaria. Observada NULL, parcial 1; programada 24/24 = 1/h.",
+      "esperado": [{"observada": {"n": null, "taxa": null, "horas": "24", "situacao": "COBERTURA_PARCIAL", "parcial": 1}, "programada": {"n": 24, "taxa": "1", "horas": "24", "situacao": "CALCULADA"}}]
+    },
+    {
+      "id": "C14", "titulo": "Grades ambiguas nao sao escolhidas em silencio", "escala": "dia", "parada": "A", "sentido": "0",
+      "dias": [{"ambigua": true, "coleta": {"inicio": 0, "minutos": 1440}, "viagens": [{"inicio": 550, "passo": 1, "n": 1, "gps": [[0, 0, true], [80, 160, true]], "passagem_alvo_seg": 0}]}],
+      "manual": "Capturas UTIL e FERIADO para a mesma data sem escolha: programada NULL. Uma observada no dia: 1/24 por hora.",
+      "esperado": [{"observada": {"n": 1, "taxa": "1/24", "horas": "24", "situacao": "CALCULADA"}, "programada": {"n": null, "taxa": null, "horas": "24", "situacao": "DADOS_AUSENTES", "motivo": "programacao_ambigua"}}]
+    },
+    {
+      "id": "C15", "titulo": "Mesmo par GPS conta uma unica vez", "escala": "dia", "parada": "A", "sentido": "0", "duplicar_evidencia": true,
+      "dias": [{"grade": {"inicio": 540, "passo": 30, "n": 2}, "coleta": {"inicio": 0, "minutos": 1440}, "viagens": [{"inicio": 550, "passo": 1, "n": 1, "gps": [[0, 0, true], [80, 160, true]], "passagem_alvo_seg": 0}]}],
+      "manual": "Duas viagens apontam ao mesmo par GPS: uma evidencia observada, 1/24 por hora. Duas previstas: 2/24 = 1/12 por hora.",
+      "esperado": [{"observada": {"n": 1, "taxa": "1/24", "horas": "24", "situacao": "CALCULADA"}, "programada": {"n": 2, "taxa": "1/12", "horas": "24", "situacao": "CALCULADA"}}]
+    },
+    {
+      "id": "C16", "titulo": "Mes pondera horas, nao media de taxas", "escala": "mes", "parada": "A", "sentido": "0",
+      "dias": [
+        {"data": "2026-11-23", "grade": {"inicio": 0, "passo": 60, "n": 24}, "coleta": {"inicio": 0, "minutos": 1440}, "viagens": [{"inicio": 0, "passo": 60, "n": 24, "gps": [[0, 0, true], [80, 160, true]], "passagem_alvo_seg": 0}]},
+        {"grade": {"inicio": 15, "passo": 30, "n": 49}, "coleta": {"inicio": 0, "minutos": 1470}, "viagens": [{"inicio": 15, "passo": 30, "n": 49, "gps": [[0, 0, true], [80, 160, true]], "passagem_alvo_seg": 0}]}
+      ],
+      "manual": "Recorte mensal de dois dias: 24/24 e 49/24,5; (24+49)/(24+24,5) = 146/97 por hora, nao 1,5/h.",
+      "esperado": [{"observada": {"n": 73, "taxa": "146/97", "horas": "97/2", "situacao": "CALCULADA"}, "programada": {"n": 73, "taxa": "146/97", "horas": "97/2", "situacao": "CALCULADA"}}]
+    },
+    {
+      "id": "C17", "titulo": "Falta de publicacao mantem mes parcial", "escala": "mes", "parada": "A", "sentido": "0", "omitir_observada": "2026-11-24T12:00:00-03:00",
+      "dias": [
+        {"data": "2026-11-23", "grade": {"inicio": 0, "passo": 60, "n": 24}, "coleta": {"inicio": 0, "minutos": 1440}, "viagens": [{"inicio": 0, "passo": 1, "n": 1, "gps": [[0, 0, true], [80, 160, true]], "passagem_alvo_seg": 0}]},
+        {"grade": {"inicio": 0, "passo": 60, "n": 24}, "coleta": {"inicio": 0, "minutos": 1440}, "viagens": [{"inicio": 0, "passo": 1, "n": 1, "gps": [[0, 0, true], [80, 160, true]], "passagem_alvo_seg": 0}]}
+      ],
+      "manual": "Falta uma janela de 15 min de 48 h: observada NULL, 47,75 h publicadas e contagem parcial 2. Programada 48/48 = 1/h.",
+      "esperado": [{"observada": {"n": null, "taxa": null, "horas": "191/4", "situacao": "COBERTURA_PARCIAL", "parcial": 2, "motivo": "sem_publicacao"}, "programada": {"n": 48, "taxa": "1", "horas": "48", "situacao": "CALCULADA"}}]
+    },
+    {
+      "id": "C18", "titulo": "Mes completo coberto com zero", "escala": "mes", "parada": "A", "sentido": "0",
+      "dias": [{"data": "2026-11-01", "repetir_dias": 30, "grade": {"inicio": 0, "passo": 15, "n": 0}, "coleta": {"inicio": 0, "minutos": 1440}, "viagens": []}],
+      "manual": "Novembro inteiro: 30 x 24 = 720 h cobertas e processamento explicitamente executado; 0/720 = 0/h em ambos os lados.",
+      "esperado": [{"observada": {"n": 0, "taxa": "0", "horas": "720", "situacao": "ZERO_OBSERVADO"}, "programada": {"n": 0, "taxa": "0", "horas": "720", "situacao": "ZERO_PROGRAMADO"}}]
+    },
+    {
+      "id": "C19", "titulo": "Mes sem coleta preserva ausencia", "escala": "mes", "parada": "A", "sentido": "0",
+      "dias": [{"grade": {"inicio": 0, "passo": 60, "n": 2}, "coleta": null, "viagens": []}],
+      "manual": "Recorte mensal de um dia sem coleta: observada NULL, nunca zero; duas previstas em 24 h: 2/24 = 1/12 por hora.",
+      "esperado": [{"observada": {"n": null, "taxa": null, "horas": "24", "situacao": "DADOS_AUSENTES"}, "programada": {"n": 2, "taxa": "1/12", "horas": "24", "situacao": "CALCULADA"}}]
+    },
+    {
+      "id": "C20", "titulo": "Mes separa versoes da reconstrucao", "escala": "mes", "parada": "A", "sentido": "0",
+      "dias": [{"grade": {"inicio": 0, "passo": 30, "n": 48}, "coleta": {"inicio": 0, "minutos": 1440}, "viagens": [
+        {"inicio": 0, "passo": 60, "n": 24, "recon": "recon-controle-1", "gps": [[0, 0, true], [80, 160, true]], "passagem_alvo_seg": 0},
+        {"inicio": 0, "passo": 30, "n": 48, "recon": "recon-controle-2", "gps": [[0, 0, true], [80, 160, true]], "passagem_alvo_seg": 0}
+      ]}],
+      "manual": "Reconstrucao 1: 24/24 = 1/h; reconstrucao 2: 48/24 = 2/h. Dois itens, sem somar 72 nem tirar media 1,5.",
+      "esperado": [
+        {"recon": "recon-controle-1", "observada": {"n": 24, "taxa": "1", "horas": "24", "situacao": "CALCULADA"}, "programada": {"n": 48, "taxa": "2", "horas": "24", "situacao": "CALCULADA"}},
+        {"recon": "recon-controle-2", "observada": {"n": 48, "taxa": "2", "horas": "24", "situacao": "CALCULADA"}, "programada": {"n": 48, "taxa": "2", "horas": "24", "situacao": "CALCULADA"}}
+      ]
+    }
+  ]
+}

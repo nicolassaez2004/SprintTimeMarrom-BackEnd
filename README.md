@@ -1,5 +1,12 @@
 # SprintTimeMarrom-BackEnd
 
+## Conferência de passagem e frequência — US15-T04
+
+[Caderno de 20 exemplos controlados](docs/US15-T04.md), com cálculo manual nas
+escalas de 15 minutos, faixa horária, dia e mês. Reproduzir com
+`python -m scripts.validar_us15_t04`; o ensaio usa somente SQLite descartável.
+O aceite da Instituição Parceira e a revisão continuam pendentes.
+
 ## Painel histórico — US23-T01
 
 [`GET /series`](docs/US23-T01.md) aceita linha, sentido, período e faixa horária
