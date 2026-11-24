@@ -1,12 +1,13 @@
 """GET /posicoes/atuais: mapa ao vivo (US22), público e sem chamar a SPTrans."""
 
+import hashlib
 import re
 
-from flask import Blueprint, current_app, request
+from flask import Blueprint, current_app, jsonify, request
 from sqlalchemy.exc import SQLAlchemyError
 
 from app import db
-from app.consultas.posicoes import ultimas_posicoes
+from app.consultas.posicoes import ultimas_posicoes, versao_posicoes
 
 posicoes_bp = Blueprint("posicoes", __name__)
 
@@ -50,7 +51,18 @@ def posicoes_atuais():
     if erro:
         return erro
     try:
-        return ultimas_posicoes(**filtros), 200
+        # Polling curto do mapa sem refazer a consulta nem reenviar ~3 MB:
+        # sem ciclo novo, 304. Idade/`recente` são recalculados no cliente.
+        filtro = hashlib.sha256(repr(sorted(filtros.items())).encode()).hexdigest()[:12]
+        versao = versao_posicoes(ultima_coleta=filtros.get("ultima_coleta", False))
+        etag = f"{versao}-{filtro}"
+        if request.if_none_match.contains_weak(etag):
+            resposta = current_app.response_class(status=304)
+        else:
+            resposta = jsonify(ultimas_posicoes(**filtros))
+        resposta.set_etag(etag, weak=True)
+        resposta.headers["Cache-Control"] = "no-cache"
+        return resposta
     except SQLAlchemyError as falha:
         db.session.rollback()
         # A mensagem da exceção pode conter SQL ou credenciais da conexão.

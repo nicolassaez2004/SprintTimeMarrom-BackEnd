@@ -38,6 +38,9 @@ o MySQL definido no `.env`. Depois, execute `servidor.py` no frontend.
 O mapa consulta o último ciclo com posições gravadas por meio de
 `GET /posicoes/atuais?modo=ultima_coleta`.
 
+Execução separada do coletor: [docs/COLETOR.md](docs/COLETOR.md). Migrações
+pendentes na Aiven: [docs/AIVEN-MIGRACOES-MVP.md](docs/AIVEN-MIGRACOES-MVP.md).
+
 O servidor inicia em `http://127.0.0.1:5000`. Verifique com `GET /health`, que
 responde `{"status": "ok"}`. O Flask não cria `/docs` automaticamente.
 

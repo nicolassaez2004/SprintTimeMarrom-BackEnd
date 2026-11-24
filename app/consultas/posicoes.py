@@ -42,6 +42,31 @@ def _linha_gtfs(observacao, linha):
     }
 
 
+def _id_ultimo_ciclo_com_posicoes(agora):
+    return (
+        select(ExecucaoColeta.id)
+        .where(
+            ExecucaoColeta.estado == "OK",
+            ExecucaoColeta.novos_persistidos > 0,
+            ExecucaoColeta.iniciada_em.between(agora - JANELA_CONSULTA, agora),
+        )
+        .order_by(ExecucaoColeta.iniciada_em.desc(), ExecucaoColeta.id.desc())
+        .limit(1).correlate(None).scalar_subquery()
+    )
+
+
+def versao_posicoes(*, ultima_coleta=False):
+    """Identifica a coleta para revalidar o cache do mapa."""
+    ultimo_ok = db.session.query(func.max(ExecucaoColeta.id)).filter(ExecucaoColeta.estado == "OK")
+    if ultima_coleta:
+        ciclo_ok, ciclo_com_posicoes = ultimo_ok.add_columns(
+            _id_ultimo_ciclo_com_posicoes(agora_utc())
+        ).one()
+        # Mesmo sem novos ciclos, os últimos dados podem sair da janela de 24 h.
+        return f"{ciclo_ok or 0}-{ciclo_com_posicoes or 0}"
+    return ultimo_ok.scalar() or 0
+
+
 def ultimas_posicoes(*, linha=None, linha_gtfs=None, agora=None, ultima_coleta=False):
     """`linha` = código Olho Vivo (`cl`); `linha_gtfs` = `route_id` ligado na US03."""
     agora = agora or agora_utc()
@@ -63,16 +88,7 @@ def ultimas_posicoes(*, linha=None, linha_gtfs=None, agora=None, ultima_coleta=F
     )
     consulta = db.session.query(R, ObservacaoTratada, Linha)
     if ultima_coleta:
-        ultimo_ciclo_id = (
-            select(ExecucaoColeta.id)
-            .where(
-                ExecucaoColeta.estado == "OK",
-                ExecucaoColeta.novos_persistidos > 0,
-                ExecucaoColeta.iniciada_em.between(desde, agora),
-            )
-            .order_by(ExecucaoColeta.iniciada_em.desc(), ExecucaoColeta.id.desc())
-            .limit(1).scalar_subquery()
-        )
+        ultimo_ciclo_id = _id_ultimo_ciclo_com_posicoes(agora)
         consulta = consulta.select_from(R).filter(
             R.execucao_id == ultimo_ciclo_id,
             R.veiculo_prefixo.is_not(None), R.latitude.is_not(None),

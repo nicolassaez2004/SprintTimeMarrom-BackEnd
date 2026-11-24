@@ -57,7 +57,12 @@ paths:
       security: []
       parameters:
         - $ref: '#/components/parameters/linha'
+        - $ref: '#/components/parameters/sentido'
+        - $ref: '#/components/parameters/tipo'
         - $ref: '#/components/parameters/indicador'
+        - $ref: '#/components/parameters/parada'
+        - $ref: '#/components/parameters/trecho'
+        - $ref: '#/components/parameters/versao_gtfs_id'
         - $ref: '#/components/parameters/inicio'
         - $ref: '#/components/parameters/fim'
         - $ref: '#/components/parameters/page'
@@ -75,14 +80,22 @@ paths:
                 $ref: '#/components/schemas/PaginaIndicadores'
               example:
                 dados:
-                  - linha: '8000'
-                    indicador: pontualidade
+                  - linha: '3762-10'
+                    sentido: '0'
+                    tipo: PONTUALIDADE_VIAGENS
+                    indicador: PONTUALIDADE_VIAGENS
                     valor: 87.5
                     unidade: '%'
                     inicio: '2026-11-23T00:00:00Z'
                     fim: '2026-11-24T00:00:00Z'
-                    versao_conjunto: '2026-11-v1'
-                    qualidade: { cobertura: 0.98, observacoes: 1250 }
+                    parada: null
+                    trecho: null
+                    versao_conjunto: 'a02cbb7d2f77623f099e4d1192030e9b'
+                    versao_gtfs_id: 'b2c21816-0b5b-4fac-9e14-2406fc7b591a'
+                    versao_correspondencia: 'match-v3'
+                    versao_calculo: 'cumprimento-1.0'
+                    contagens: { numerador: 7, denominador: 8 }
+                    qualidade: { dados_insuficientes: false, limite_adiantamento_segundos: 60, limite_atraso_segundos: 300, limites_inclusivos: true, excluidas: { frequencia: 2, sem_pareamento: 1, saida_nao_confirmada: 0 } }
                 paginacao: { page: 1, page_size: 100, total: 1 }
         '400': { $ref: '#/components/responses/ParametroInvalido' }
         '429': { $ref: '#/components/responses/LimiteExcedido' }
@@ -95,7 +108,12 @@ paths:
       security: []
       parameters:
         - $ref: '#/components/parameters/linha'
+        - $ref: '#/components/parameters/sentido'
+        - $ref: '#/components/parameters/tipo'
         - $ref: '#/components/parameters/indicador'
+        - $ref: '#/components/parameters/parada'
+        - $ref: '#/components/parameters/trecho'
+        - $ref: '#/components/parameters/versao_gtfs_id'
         - $ref: '#/components/parameters/inicio'
         - $ref: '#/components/parameters/fim'
         - $ref: '#/components/parameters/page'
@@ -114,12 +132,20 @@ paths:
               example:
                 dados:
                   - instante: '2026-11-23T12:00:00Z'
-                    linha: '8000'
-                    indicador: espera_media
-                    valor: 8.2
-                    unidade: min
+                    linha: '3762-10'
+                    sentido: '0'
+                    tipo: PONTUALIDADE_VIAGENS
+                    indicador: PONTUALIDADE_VIAGENS
+                    valor: 87.5
+                    unidade: '%'
+                    parada: null
+                    trecho: null
                     versao_conjunto: '2026-11-v1'
-                    qualidade: { cobertura: 0.98, observacoes: 1250 }
+                    versao_gtfs_id: 'b2c21816-0b5b-4fac-9e14-2406fc7b591a'
+                    versao_correspondencia: 'match-v3'
+                    versao_calculo: 'cumprimento-1.0'
+                    contagens: { numerador: 7, denominador: 8 }
+                    qualidade: { dados_insuficientes: false, limite_adiantamento_segundos: 60, limite_atraso_segundos: 300, limites_inclusivos: true, excluidas: { frequencia: 2, sem_pareamento: 1, saida_nao_confirmada: 0 } }
                 paginacao: { page: 1, page_size: 100, total: 1 }
         '400': { $ref: '#/components/responses/ParametroInvalido' }
         '429': { $ref: '#/components/responses/LimiteExcedido' }
@@ -140,14 +166,45 @@ components:
       name: linha
       in: query
       required: false
-      description: Código numérico da linha de ônibus, até 16 dígitos.
-      schema: { type: string, pattern: '^[0-9]{1,16}$' }
+      description: Código da linha na versão GTFS; até 64 caracteres, sem controles.
+      schema: { type: string, maxLength: 64 }
+    sentido:
+      name: sentido
+      in: query
+      required: false
+      description: Sentido GTFS (0/ida ou 1/volta).
+      schema: { type: string, enum: ['0', '1', ida, volta] }
+    tipo:
+      name: tipo
+      in: query
+      required: false
+      description: Tipo de indicador; inclui PONTUALIDADE_VIAGENS. Na pontualidade, numerador conta saídas entre -60 s e +300 s, denominador inclui viagens fixas classificáveis; dados insuficientes são indicados em qualidade e valor null. Alias indicador preservado por compatibilidade.
+      schema: { type: string, pattern: '^[A-Za-z0-9_.:-]{1,64}$' }
     indicador:
       name: indicador
       in: query
       required: false
-      description: Identificador do indicador (case sensitive).
+      deprecated: true
+      description: Alias legado de tipo; não envie junto com tipo.
       schema: { type: string, pattern: '^[A-Za-z0-9_.:-]{1,64}$' }
+    parada:
+      name: parada
+      in: query
+      required: false
+      description: Código de parada GTFS; mutuamente exclusivo com trecho.
+      schema: { type: string, maxLength: 64 }
+    trecho:
+      name: trecho
+      in: query
+      required: false
+      description: UUID do trecho; mutuamente exclusivo com parada.
+      schema: { type: string, format: uuid }
+    versao_gtfs_id:
+      name: versao_gtfs_id
+      in: query
+      required: false
+      description: UUID da versão de rede GTFS usada no cálculo.
+      schema: { type: string, format: uuid }
     inicio:
       name: inicio
       in: query
@@ -176,32 +233,53 @@ components:
   schemas:
     Qualidade:
       type: object
-      required: [cobertura, observacoes]
+      additionalProperties: true
+    Contagens:
+      type: object
+      required: [numerador, denominador]
       properties:
-        cobertura: { type: number, minimum: 0, maximum: 1, description: Proporção de cobertura (sem unidade). }
-        observacoes: { type: integer, minimum: 0, description: Quantidade de observações (contagem). }
+        numerador: { type: integer, minimum: 0, nullable: true }
+        denominador: { type: integer, minimum: 0, nullable: true }
     Indicador:
       type: object
-      required: [linha, indicador, valor, unidade, inicio, fim, versao_conjunto, qualidade]
+      required: [linha, sentido, tipo, indicador, valor, unidade, inicio, fim, versao_conjunto, versao_gtfs_id, contagens, qualidade]
       properties:
         linha: { type: string }
+        sentido: { type: string, nullable: true, enum: ['0', '1'] }
+        tipo: { type: string }
         indicador: { type: string }
-        valor: { type: number, description: Valor numérico na unidade declarada. }
+        valor: { type: number, nullable: true, description: Valor numérico na unidade declarada; NULL quando não calculável. }
         unidade: { type: string, description: Unidade própria do indicador, por exemplo %, min, veiculos/h ou veiculos/km. }
         inicio: { type: string, format: date-time }
         fim: { type: string, format: date-time }
+        parada: { type: string, nullable: true }
+        trecho: { type: string, format: uuid, nullable: true }
         versao_conjunto: { type: string }
+        versao_gtfs_id: { type: string, format: uuid }
+        versao_correspondencia: { type: string, nullable: true }
+        versao_calculo: { type: string, nullable: true }
+        contagens: { $ref: '#/components/schemas/Contagens' }
         qualidade: { $ref: '#/components/schemas/Qualidade' }
     PontoSerie:
       type: object
-      required: [instante, linha, indicador, valor, unidade, versao_conjunto, qualidade]
+      required: [instante, linha, sentido, tipo, indicador, valor, unidade, inicio, fim, versao_conjunto, versao_gtfs_id, contagens, qualidade]
       properties:
         instante: { type: string, format: date-time }
         linha: { type: string }
+        sentido: { type: string, nullable: true, enum: ['0', '1'] }
+        tipo: { type: string }
         indicador: { type: string }
-        valor: { type: number }
+        valor: { type: number, nullable: true }
         unidade: { type: string, description: Unidade própria do indicador; nunca presumida pelo consumidor. }
+        inicio: { type: string, format: date-time }
+        fim: { type: string, format: date-time }
+        parada: { type: string, nullable: true }
+        trecho: { type: string, format: uuid, nullable: true }
         versao_conjunto: { type: string }
+        versao_gtfs_id: { type: string, format: uuid }
+        versao_correspondencia: { type: string, nullable: true }
+        versao_calculo: { type: string, nullable: true }
+        contagens: { $ref: '#/components/schemas/Contagens' }
         qualidade: { $ref: '#/components/schemas/Qualidade' }
     Paginacao:
       type: object

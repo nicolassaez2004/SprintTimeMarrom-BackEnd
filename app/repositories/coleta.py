@@ -12,6 +12,8 @@ from app.models import (
 )
 from app.monitoramento.journal import instante
 
+LOTE_INSERCAO = 2000
+
 
 class PossePerdida(RuntimeError):
     pass
@@ -198,9 +200,12 @@ class ColetaRepository:
                 }
                 for r in novos
             ]
-            for i in range(0, len(registros), 250):
+            # Cada lote é uma ida ao banco (RTT ~220 ms na Aiven); ~0,8 MB por lote.
+            for i in range(0, len(registros), LOTE_INSERCAO):
                 db.session.execute(
-                    RegistroBrutoGPS.__table__.insert().values(registros[i : i + 250])
+                    RegistroBrutoGPS.__table__.insert().values(
+                        registros[i : i + LOTE_INSERCAO]
+                    )
                 )
             e.estado = "OK"
             e.erro = None

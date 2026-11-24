@@ -42,3 +42,16 @@ def test_health(client):
 
 def test_flask_nao_cria_docs_automaticamente(client):
     assert client.get("/docs").status_code == 404
+
+
+@pytest.mark.parametrize("url", [
+    "/posicoes/atuais",
+    "/qualidade/correspondencias",
+    "/documentos/x/arquivo",
+    "/downloads/brutos/datas",
+    "/api/downloads/brutos/datas",
+])
+def test_cors_cobre_subrotas_publicas(client, url):
+    response = client.get(url, headers={"Origin": "http://127.0.0.1:5173"})
+
+    assert response.headers.get("Access-Control-Allow-Origin") == "http://127.0.0.1:5173"

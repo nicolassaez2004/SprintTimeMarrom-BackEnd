@@ -200,3 +200,49 @@ def test_mapa_le_apenas_ultimo_ciclo_que_gravou_posicoes(client):
     assert veiculos["22002"]["linha"]["codigo_olho_vivo"] == "210"
     assert client.get("/posicoes/atuais?modo=ultima_coleta&linha=200").get_json()["total"] == 0
     assert client.get("/posicoes/atuais?modo=desconhecido").status_code == 400
+
+
+def test_etag_responde_304_sem_ciclo_novo_e_200_apos_ciclo(client):
+    bruto("11001", "100", 20)
+    primeira = client.get("/posicoes/atuais", headers={"Origin": "http://127.0.0.1:5173"})
+    etag = primeira.headers["ETag"]
+    assert primeira.status_code == 200 and etag.startswith('W/"')
+    assert primeira.headers["Cache-Control"] == "no-cache"
+    assert "ETag" in primeira.headers["Access-Control-Expose-Headers"]
+
+    with patch("app.consultas.routes.ultimas_posicoes") as consulta:
+        repetida = client.get("/posicoes/atuais", headers={"If-None-Match": etag})
+    assert repetida.status_code == 304 and repetida.data == b""
+    consulta.assert_not_called()  # sem ciclo novo, nada de consulta pesada
+
+    bruto("11001", "100", 5, lat=-23.2)
+    with patch("app.consultas.posicoes.agora_utc", return_value=AGORA):
+        nova = client.get("/posicoes/atuais", headers={"If-None-Match": etag})
+    assert nova.status_code == 200 and nova.headers["ETag"] != etag
+    assert nova.get_json()["veiculos"][0]["latitude"] == -23.2
+
+
+def test_etag_depende_do_filtro_e_ignora_ciclo_com_falha(client):
+    bruto("11001", "100", 20)
+    todas = client.get("/posicoes/atuais").headers["ETag"]
+    linha = client.get("/posicoes/atuais?linha=100").headers["ETag"]
+    assert todas != linha
+    bruto("22002", "200", 5, estado="FALHA")
+    assert client.get("/posicoes/atuais", headers={"If-None-Match": todas}).status_code == 304
+
+
+
+def test_etag_do_ultimo_ciclo_expira_com_a_janela_de_posicoes(client):
+    registro = bruto("11001", "100", 60)
+    db.session.get(ExecucaoColeta, registro.execucao_id).novos_persistidos = 1
+    db.session.commit()
+    url = "/posicoes/atuais?modo=ultima_coleta"
+    with patch("app.consultas.posicoes.agora_utc", return_value=AGORA):
+        primeira = client.get(url)
+        assert primeira.get_json()["total"] == 1
+        headers = {"If-None-Match": primeira.headers["ETag"]}
+        assert client.get(url, headers=headers).status_code == 304
+    with patch("app.consultas.posicoes.agora_utc", return_value=AGORA + timedelta(days=1)):
+        expirada = client.get(url, headers=headers)
+        assert expirada.status_code == 200
+        assert expirada.get_json()["total"] == 0
