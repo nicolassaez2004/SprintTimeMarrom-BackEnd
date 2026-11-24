@@ -1,6 +1,6 @@
 """Cálculo de diferenças e publicação da pontualidade (US16)."""
 
-from collections import Counter, defaultdict
+from collections import Counter
 from dataclasses import dataclass
 from datetime import date, datetime, timezone
 from decimal import Decimal, ROUND_HALF_UP
@@ -11,6 +11,10 @@ from typing import Iterable
 from app import db
 from app.models import IndicadorOperacional, PartidaProgramada
 from app.viagens.separacao import ViagemObservada
+
+VERSAO_ALGORITMO_PONTUALIDADE = "pontualidade-1.0"
+LIMITE_ADIANTAMENTO_SEGUNDOS = 60
+LIMITE_ATRASO_SEGUNDOS = 300
 
 
 @dataclass(frozen=True)
@@ -95,12 +99,20 @@ def calcular_percentual_pontualidade(
     ausente e saída não confirmada são excluídos e reportados separadamente.
     """
     viagens = diferencas.viagens if isinstance(diferencas, ResultadoPontualidade) else tuple(diferencas)
-    contagens = Counter(item.status for item in viagens)
-    classificaveis = [item for item in viagens if item.status == "CALCULADA"]
-    if any(item.diferenca_segundos is None for item in classificaveis):
-        raise ValueError("viagem CALCULADA deve ter diferença de saída")
-    pontuais = sum(-60 <= item.diferenca_segundos <= 300 for item in classificaveis)
-    realizadas = len(classificaveis)
+    contagens = Counter()
+    pontuais = realizadas = 0
+    for item in viagens:
+        contagens[item.status] += 1
+        if item.status != "CALCULADA":
+            continue
+        if item.diferenca_segundos is None:
+            raise ValueError("viagem CALCULADA deve ter diferença de saída")
+        realizadas += 1
+        pontuais += (
+            -LIMITE_ADIANTAMENTO_SEGUNDOS
+            <= item.diferenca_segundos
+            <= LIMITE_ATRASO_SEGUNDOS
+        )
     percentual = None if realizadas == 0 else (
         Decimal(pontuais * 100) / Decimal(realizadas)
     ).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
@@ -115,9 +127,6 @@ def calcular_percentual_pontualidade(
             "saida_nao_confirmada": contagens["SAIDA_NAO_CONFIRMADA"],
         },
     )
-
-
-VERSAO_ALGORITMO_PONTUALIDADE = "pontualidade-1.0"
 
 
 def publicar_pontualidade(
@@ -179,8 +188,8 @@ def publicar_pontualidade(
         "viagens_realizadas": agregado.realizadas,
         "viagens_pontuais": agregado.pontuais,
         "excluidas": agregado.excluidas,
-        "limite_adiantamento_segundos": 60,
-        "limite_atraso_segundos": 300,
+        "limite_adiantamento_segundos": LIMITE_ADIANTAMENTO_SEGUNDOS,
+        "limite_atraso_segundos": LIMITE_ATRASO_SEGUNDOS,
         "limites_inclusivos": True,
         "oferta_por_frequencia_excluida": True,
         "versao_reconstrucao": versao_reconstrucao,
@@ -239,7 +248,7 @@ def calcular_diferencas(
     O resultado mantém a ordem recebida e não escreve no banco.
     """
     referencias = {}
-    por_contexto = defaultdict(list)
+    somente_frequencia_por_contexto = {}
     importacoes = {}
     for partida in partidas:
         ref = _referencia(partida)
@@ -251,7 +260,10 @@ def calcular_diferencas(
             raise ValueError("programação ambígua: selecione uma importação por contexto")
         importacoes[chave] = ref.importacao_id
         referencias[ref.partida_id] = ref
-        por_contexto[chave].append(ref)
+        somente_frequencia_por_contexto[chave] = (
+            somente_frequencia_por_contexto.get(chave, True)
+            and ref.tipo_oferta == "FREQUENCIA"
+        )
 
     entradas = list(saidas)
     ids = set()
@@ -285,9 +297,9 @@ def calcular_diferencas(
         ref = referencias.get(entrada.partida_programada_id)
         diferenca = None
         if ref is None:
-            ofertas = por_contexto.get(contexto, ())
-            if entrada.partida_programada_id is None and ofertas and all(
-                item.tipo_oferta == "FREQUENCIA" for item in ofertas
+            if (
+                entrada.partida_programada_id is None
+                and somente_frequencia_por_contexto.get(contexto, False)
             ):
                 status, motivo = "FREQUENCIA", "OFERTA_POR_FREQUENCIA"
             else:
