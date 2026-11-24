@@ -11,6 +11,8 @@ from app import db
 from app.indicadores.cumprimento import calcular_e_publicar_cumprimento
 from app.indicadores.pontualidade import calcular_e_publicar_pontualidade
 from app.indicadores.reproducao import ReproducaoIndicadores
+from test_frequencia_us15_t02 import MATCH as MATCH_US15, RECON as RECON_US15, T0 as T0_US15
+from test_frequencia_us15_t02 import cenario, lacuna_de_teste, passagem  # noqa: F401 (fixtures)
 from app.models import (
     ArquivoArmazenado, ExecucaoColeta, ImportacaoProgramacao, IndicadorOperacional,
     Linha, PartidaProgramada, RegistroBrutoGPS, VersaoGTFS, ViagemObservada,
@@ -22,7 +24,7 @@ SAIDA = datetime(2026, 2, 10, 12, tzinfo=UTC)
 JANELA = (SAIDA, SAIDA + timedelta(hours=1))
 DEPOIS_DO_MES = datetime(2026, 3, 15, tzinfo=UTC)
 VERSOES = {"versao_base": "alembic:sintetica", "versao_codigo": "git:sintetico",
-           "versao_regra": "cumprimento-1.1+pontualidade-1.0"}
+           "versao_regra": "cumprimento-1.1+pontualidade-1.0+frequencia-1.0"}
 CONTEXTO = {"linha": "SINT-01", "sentido": "0", "inicio": JANELA[0], "fim": JANELA[1],
             "versao_correspondencia": "match-sint-v1", "versao_reconstrucao": "recon-sint-v1"}
 
@@ -101,7 +103,8 @@ def test_reproducao_deterministica_com_versoes_fixadas_e_sem_escritas(mes_sintet
     assert primeiro["aceite_integral"] is False  # sintético + cadeia brutos→viagens ausente
     assert primeiro["origem_dados"] == "SINTETICA"
     assert primeiro["versoes"]["algoritmos"] == {
-        "CUMPRIMENTO_VIAGENS": "cumprimento-1.1", "PONTUALIDADE_VIAGENS": "pontualidade-1.0"}
+        "CUMPRIMENTO_VIAGENS": "cumprimento-1.1", "PONTUALIDADE_VIAGENS": "pontualidade-1.0",
+        "FREQUENCIA_OBSERVADA": "frequencia-1.0", "FREQUENCIA_PROGRAMADA": "frequencia-1.0"}
     assert primeiro["tolerancia"]["modo"] == "IGUALDADE_EXATA"
     assert primeiro["completude"]["completo"] is True
     assert primeiro["preservacao"]["inalterado"] is True
@@ -276,3 +279,22 @@ def test_janela_na_virada_do_mes_deixa_relatorio_inconclusivo(mes_sintetico):
     virada = verificar()
     assert virada["veredito"] == "INCONCLUSIVO"
     assert any("virada do mês" in m for m in virada["completude"]["motivos"])
+
+
+
+def test_reproduz_frequencia_publicada_da_us15(cenario, app):
+    from app.indicadores.frequencia import calcular_e_publicar_frequencias
+
+    app.config["GPS_COLLECTION_INTERVAL_SECONDS"] = 60
+    passagem(cenario, "B", T0_US15 + timedelta(minutes=5))
+    calcular_e_publicar_frequencias(
+        linha="3762-10", sentido="0", data_operacao=date(2026, 11, 24),
+        versao_gtfs_id=cenario["versao"].id, versao_correspondencia=MATCH_US15,
+        versao_reconstrucao=RECON_US15, agora=datetime(2026, 11, 26, 12, tzinfo=UTC))
+    relatorio = ReproducaoIndicadores("2026-11", **VERSOES, dados_sinteticos=True,
+                                      agora=datetime(2026, 12, 2, tzinfo=UTC)).executar()
+    frequencias = [i for i in relatorio["itens"] if i["indicador"].startswith("FREQUENCIA")]
+    assert len(frequencias) == 96 * 5
+    assert {i["status"] for i in frequencias} == {"IGUAL"}, [
+        (i["status"], i.get("detalhe"), i.get("divergencias")) for i in frequencias if i["status"] != "IGUAL"][:1]
+    assert relatorio["resultado"]["NAO_SUPORTADO"] == 0
