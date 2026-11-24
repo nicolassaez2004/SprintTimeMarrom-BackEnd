@@ -11,6 +11,7 @@ base compartilhada).
 
 import argparse
 from datetime import date, datetime, timedelta, timezone
+import re
 from hashlib import sha256
 import json
 from pathlib import Path
@@ -22,6 +23,9 @@ from sqlalchemy import func, inspect, text
 
 from app import db
 from app.indicadores.cumprimento import VERSAO_ALGORITMO, calcular_indicador_cumprimento
+from app.indicadores.frequencia import (
+    OBSERVADA, PROGRAMADA, VERSAO_CALCULO as VERSAO_FREQUENCIA, calcular_frequencias,
+)
 from app.indicadores.pontualidade import (
     VERSAO_ALGORITMO_PONTUALIDADE, calcular_indicador_pontualidade,
 )
@@ -34,7 +38,10 @@ FUSO = ZoneInfo("America/Sao_Paulo")
 CALCULOS = {
     "CUMPRIMENTO_VIAGENS": (calcular_indicador_cumprimento, VERSAO_ALGORITMO),
     "PONTUALIDADE_VIAGENS": (calcular_indicador_pontualidade, VERSAO_ALGORITMO_PONTUALIDADE),
+    OBSERVADA: (None, VERSAO_FREQUENCIA),
+    PROGRAMADA: (None, VERSAO_FREQUENCIA),
 }
+VERSAO_REGRA = "+".join(dict.fromkeys(versao for _, versao in CALCULOS.values()))
 CAMPOS = (
     "chave_resultado", "versao_conjunto", "indicador", "unidade", "linha_codigo",
     "sentido", "parada_codigo", "trecho_id", "periodo_inicio", "periodo_fim",
@@ -72,10 +79,13 @@ class ReproducaoIndicadores:
         self.versoes = {"base": versao_base, "codigo": versao_codigo, "regra": versao_regra}
         if not all(isinstance(v, str) and v.strip() for v in self.versoes.values()):
             raise ValueError("versões de base, código e regra são obrigatórias")
+        if versao_regra != VERSAO_REGRA:
+            raise ValueError(f"versão de regra {versao_regra} difere do código ({VERSAO_REGRA})")
         self.tolerancia = tolerancia_valor
         self.reprocessar_brutos = reprocessar_brutos
         self.dados_sinteticos = dados_sinteticos
         self.agora = agora or datetime.now(timezone.utc)
+        self._frequencias = {}
 
     # -- seleção e preservação -------------------------------------------------
     def _brutos(self):
@@ -109,6 +119,15 @@ class ReproducaoIndicadores:
         return {"brutos": quantidade, "brutos_sha256": brutos.hexdigest(),
                 "publicados_sha256": publicados.hexdigest()}
 
+    def _cruzam_virada(self):
+        """Janelas publicadas que começam ou terminam fora do mês."""
+        return IndicadorOperacional.query.filter(
+            IndicadorOperacional.periodo_inicio < self.fim,
+            IndicadorOperacional.periodo_fim > self.inicio,
+            (IndicadorOperacional.periodo_inicio < self.inicio)
+            | (IndicadorOperacional.periodo_fim > self.fim),
+        ).count()
+
     def _completude(self, publicados):
         def meia_noite(dia):
             return datetime(dia.year, dia.month, dia.day, tzinfo=FUSO).astimezone(timezone.utc)
@@ -124,6 +143,9 @@ class ReproducaoIndicadores:
         motivos = ([] if fechado else ["MES_NAO_ENCERRADO"]) + \
             ([f"{len(dias_sem_brutos)} dia(s) sem brutos"] if dias_sem_brutos else []) + \
             ([] if publicados else ["SEM_INDICADORES_PUBLICADOS"])
+        cruzam = self._cruzam_virada()
+        if cruzam:
+            motivos.append(f"{cruzam} indicador(es) com janela na virada do mês, fora da comparação")
         return {"completo": not motivos, "mes_encerrado": fechado,
                 "dias_no_mes": len(self.dias), "dias_sem_brutos": dias_sem_brutos,
                 "motivos": motivos}
@@ -158,7 +180,7 @@ class ReproducaoIndicadores:
             return "IGUAL"
         if None in (publicado, recalculado) or self.tolerancia is None:
             return "DIVERGENTE"
-        return "IGUAL_COM_TOLERANCIA" if abs(publicado - recalculado) <= self.tolerancia else "DIVERGENTE"
+        return "IGUAL_COM_TOLERANCIA" if abs(publicado - recalculado) <= self.tolerancia + 1e-9 else "DIVERGENTE"
 
     def _comparar(self, registro):
         item = {"id": registro.id, "indicador": registro.indicador, "linha": registro.linha_codigo,
@@ -179,6 +201,8 @@ class ReproducaoIndicadores:
         if not reconstrucao or not registro.versao_correspondencia:
             return {**item, "status": "DADOS_INSUFICIENTES",
                     "detalhe": "versão de reconstrução ou correspondência não registrada"}
+        if funcao is None:
+            return self._comparar_frequencia(registro, item)
         try:
             novo = funcao(linha=registro.linha_codigo, sentido=registro.sentido,
                           inicio=registro.periodo_inicio, fim=registro.periodo_fim,
@@ -187,6 +211,48 @@ class ReproducaoIndicadores:
                           versao_reconstrucao=reconstrucao, versao_calculo=versao_atual)
         except ValueError as erro:
             return {**item, "status": "ERRO_RECALCULO", "detalhe": str(erro)}
+        capturas = (registro.qualidade or {}).get("capturas_programacao")
+        if capturas is not None and capturas != (novo["qualidade"] or {}).get("capturas_programacao"):
+            return {**item, "status": "VERSAO_INCOMPATIVEL",
+                    "detalhe": "programação substituída: capturas usadas no recálculo diferem das publicadas"}
+        return self._resultado(registro, item, novo)
+
+    def _comparar_frequencia(self, registro, item):
+        """Recalcula o conjunto da US15-T02 da data operacional, uma vez por conjunto."""
+        q = registro.qualidade or {}
+        lacuna = re.search(r"-lacuna([0-9.]+)s$", q.get("versao_estimativa") or "")
+        if not (q.get("data_operacao") and q.get("versao_reconstrucao") and lacuna):
+            return {**item, "status": "DADOS_INSUFICIENTES",
+                    "detalhe": "data operacional, reconstrução ou lacuna máxima não registrada"}
+        chave = (registro.linha_codigo, registro.sentido, q["data_operacao"], registro.versao_gtfs_id,
+                 registro.versao_correspondencia, q["versao_reconstrucao"], lacuna.group(1),
+                 registro.periodo_fim - registro.periodo_inicio)
+        if chave not in self._frequencias:
+            try:
+                campos = calcular_frequencias(
+                    linha=registro.linha_codigo, sentido=registro.sentido,
+                    data_operacao=date.fromisoformat(q["data_operacao"]),
+                    versao_gtfs_id=registro.versao_gtfs_id,
+                    versao_correspondencia=registro.versao_correspondencia,
+                    versao_reconstrucao=q["versao_reconstrucao"],
+                    janela_minutos=int((registro.periodo_fim - registro.periodo_inicio).total_seconds() // 60),
+                    lacuna_maxima=timedelta(seconds=float(lacuna.group(1))),
+                    agora=self.agora,  # coleta já encerrada: publicação provisória aparece como divergência
+                )
+            except ValueError as erro:
+                campos = erro
+            self._frequencias[chave] = campos
+        campos = self._frequencias[chave]
+        if isinstance(campos, ValueError):
+            return {**item, "status": "ERRO_RECALCULO", "detalhe": str(campos)}
+        novo = next((c for c in campos if (c["indicador"], c["parada_codigo"], c["periodo_inicio"])
+                     == (registro.indicador, registro.parada_codigo, registro.periodo_inicio)), None)
+        if novo is None:
+            return {**item, "status": "DIVERGENTE", "divergencias": [
+                {"campo": "janela", "publicado": _iso(registro.periodo_inicio), "recalculado": None}]}
+        return self._resultado(registro, item, novo)
+
+    def _resultado(self, registro, item, novo):
         divergencias = [
             {"campo": c, "publicado": _iso(getattr(registro, c)), "recalculado": _iso(novo[c])}
             for c in CAMPOS if c != "valor" and getattr(registro, c) != novo[c]
@@ -220,6 +286,7 @@ class ReproducaoIndicadores:
         if db.session.new or db.session.dirty or db.session.deleted:
             db.session.rollback()
             raise RuntimeError("recálculo tentou alterar a sessão; nada foi gravado")
+        db.session.expire_all()  # relê a base, não o estado em memória
         depois = self._impressao()
 
         contagem = {s: sum(i["status"] == s for i in itens) for s in (
@@ -242,8 +309,7 @@ class ReproducaoIndicadores:
             limitacoes.append("Recálculo parte de viagens_observadas: nenhuma rotina reconstrói "
                               "ViagemObservada a partir dos brutos (US14-T01C não integrada).")
         if self.tolerancia is None:
-            limitacoes.append("Tolerância numérica não acordada: comparação por igualdade exata; "
-                              "definição pendente com o PO.")
+            limitacoes.append("Tolerância adotada: igualdade exata (nenhuma tolerância numérica).")
         if reprocesso is None:
             limitacoes.append("Base fixada só por leitura (id máximo e hash dos brutos); "
                               "reprocessamento US12-T03 não executado.")
@@ -293,10 +359,9 @@ def main(argv=None):
     parser.add_argument("--mes", required=True, help="AAAA-MM, em America/Sao_Paulo")
     parser.add_argument("--versao-base", help="padrão: revisão Alembic da base")
     parser.add_argument("--versao-codigo", help="padrão: commit git atual")
-    parser.add_argument("--versao-regra",
-                        default=f"{VERSAO_ALGORITMO}+{VERSAO_ALGORITMO_PONTUALIDADE}")
+    parser.add_argument("--versao-regra", default=VERSAO_REGRA)
     parser.add_argument("--tolerancia", type=float,
-                        help="tolerância absoluta acordada com o PO; omitida = igualdade exata")
+                        help="tolerância absoluta; omitida = igualdade exata (padrão adotado)")
     parser.add_argument("--reprocessar-brutos", action="store_true",
                         help="executa o manifesto US12-T03 (grava em execucoes_processamento)")
     parser.add_argument("--saida", type=Path, help="arquivo JSON do relatório de evidências")

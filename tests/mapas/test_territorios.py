@@ -277,3 +277,50 @@ def test_mapa_valida_base_de_agregacao_e_consulta_trecho(app):
     assert feature["geometry"]["type"] == "LineString"
     assert feature["properties"]["cruza_limite"] is True
     assert feature["properties"]["fracao_distrito"] == pytest.approx(0.6, abs=0.01)
+
+
+def test_mapa_nao_converte_ausencia_em_zero_nem_agrega_unidade_nao_percentual(app):
+    distritos, subprefeituras, _, linha_geom = _geojson_bairros_sinteticos()
+    territorial = importar_limites_geojson(distritos, subprefeituras)
+    gtfs_id = str(uuid4())
+    rede = _rede(
+        versao_id=gtfs_id,
+        paradas=[("P1", -46.6301, -23.55), ("P2", -46.6302, -23.55)],
+        geometria=[[linha_geom[0][0], linha_geom[0][1]], [linha_geom[1][0], linha_geom[1][1]]],
+    )
+    associar_rede_a_territorios(rede.id, territorial.id)
+    inicio = datetime(2026, 11, 1, tzinfo=UTC)
+    fim = datetime(2026, 11, 1, 1, tzinfo=UTC)
+    comum = dict(versao_gtfs_id=gtfs_id, linha_codigo="8000-10", sentido="0",
+                 periodo_inicio=inicio, periodo_fim=fim, versao_conjunto="v1")
+    db.session.add(IndicadorOperacional(
+        parada_codigo="P1", indicador="X_INSUF", valor=None, unidade="%",
+        contagem_numerador=0, contagem_denominador=4,
+        qualidade={"dados_insuficientes": True}, **comum,
+    ))
+    for parada, passagens in (("P1", 6), ("P2", 4)):
+        db.session.add(IndicadorOperacional(
+            parada_codigo=parada, indicador="FREQUENCIA_OBSERVADA", valor=passagens,
+            unidade="passagens/h", contagem_numerador=passagens,
+            contagem_denominador=None, **comum,
+        ))
+    db.session.commit()
+
+    cliente = app.test_client()
+    base = f"versao_gtfs_id={gtfs_id}&escopo=distrito&base=parada"
+    insuficiente = cliente.get(f"/mapas/indicadores?{base}&tipo=X_INSUF").json
+    propriedades = insuficiente["features"][0]["properties"]
+    assert propriedades["valor"] is None
+    assert propriedades["ausencia"] == "DADOS_INSUFICIENTES"
+
+    frequencia = cliente.get(f"/mapas/indicadores?{base}&tipo=FREQUENCIA_OBSERVADA").json
+    propriedades = frequencia["features"][0]["properties"]
+    assert propriedades["valor"] is None
+    assert propriedades["ausencia"] == "AGREGACAO_NAO_SUPORTADA"
+    assert set(frequencia["legenda"]["ausencia"]) >= {
+        "AGREGACAO_NAO_SUPORTADA", "VALOR_INDISPONIVEL", "DADOS_INSUFICIENTES",
+    }
+
+    inexistente = cliente.get(f"/mapas/indicadores?{base}&versao_territorial_id={uuid4()}")
+    assert inexistente.status_code == 400
+    assert inexistente.json["erro"]["campo"] == "versao_territorial_id"

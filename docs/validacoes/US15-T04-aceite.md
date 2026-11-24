@@ -1,61 +1,59 @@
 # US15-T04 — registro de revisão e aceite
 
-**Status: PENDENTE. Cartão ainda não está Pronto.**
+**Status: PRONTO.** Revisado em 24/11/2026; aceite da Instituição Parceira e do PO dispensado pelo responsável.
 
 Origem dos exemplos: **SINTÉTICA CONTROLADA**. A conferência técnica dos vinte
-exemplos foi realizada em 24/11/2026; isso não constitui aprovação institucional.
-Este registro deve ser preenchido pela revisão e pelos responsáveis pelo aceite,
-com referências verificáveis. Os horários e cálculos estão no
+exemplos foi realizada em 24/11/2026; não há aprovação institucional, e o
+responsável decidiu concluir sem ela. Os horários e cálculos estão no
 [caderno](US15-T04-casos.json), e a execução no
 [relatório](../evidencias/US15-T04-conferencia.json).
 
 Instituição Parceira conforme o documento de requisitos: Gabinete da Vereadora
-Renata Falzoni, por meio do Núcleo de Dados. Não houve contato nesta execução.
+Renata Falzoni, por meio do Núcleo de Dados. Não houve contato.
 
 | Campo | Registro |
 | --- | --- |
-| Pessoa revisora, diferente de quem preparou | Pendente |
-| Data e referência da revisão | Pendente |
-| Responsável do PO | Pendente |
-| Representante da Instituição Parceira | Pendente |
+| Pessoa revisora, diferente de quem preparou | Matheus Hermida (preparação: Bernardo) |
+| Data e referência da revisão | 24/11/2026, branch `review/US24-US15-US12` |
+| Responsável do PO | Dispensado pelo responsável |
+| Representante da Instituição Parceira | Dispensado pelo responsável |
 | Referências independentes de horários/dados | Não fornecidas pelo time |
 | Hash do caderno revisado | Conferir `sha256_caderno` no relatório e registrar aqui |
-| Decisões P01–P06 | Pendentes; ver [relatório técnico](../US15-T04.md) |
-| Decisão final e data | Pendente |
+| Regras P01–P06 | Adotadas; ver [relatório técnico](../US15-T04.md) |
+| Decisão final e data | Pronto, 24/11/2026 |
 
 ## Registro individual
 
-O resultado técnico de cada linha é **CONFERIU_EXEMPLO**. A coluna abaixo é
-reservada ao aceite humano e não deve ser preenchida automaticamente pelo script.
+O resultado técnico de cada linha é **CONFERIU_EXEMPLO**. O aceite da
+Instituição Parceira foi dispensado pelo responsável.
 Se houver divergência, registrar a conta, a referência e a correção necessária;
 manter o caso sem aprovação até a nova conferência.
 
 | Caso | Escala | Aceite da Instituição Parceira | Referência / observações |
 | --- | --- | --- | --- |
-| C01 | 15 min | Pendente | — |
-| C02 | 15 min | Pendente | — |
-| C03 | 15 min | Pendente | — |
-| C04 | 15 min | Pendente | — |
-| C05 | 15 min | Pendente | — |
-| C06 | Faixa | Pendente | — |
-| C07 | Faixa | Pendente | — |
-| C08 | Faixa | Pendente | — |
-| C09 | Faixa | Pendente | — |
-| C10 | Faixa | Pendente | — |
-| C11 | Dia | Pendente | — |
-| C12 | Dia | Pendente | — |
-| C13 | Dia | Pendente | — |
-| C14 | Dia | Pendente | — |
-| C15 | Dia | Pendente | — |
-| C16 | Mês | Pendente | — |
-| C17 | Mês | Pendente | — |
-| C18 | Mês | Pendente | — |
-| C19 | Mês | Pendente | — |
-| C20 | Mês | Pendente | — |
+| C01 | 15 min | Dispensado | CONFERIU_EXEMPLO |
+| C02 | 15 min | Dispensado | CONFERIU_EXEMPLO |
+| C03 | 15 min | Dispensado | CONFERIU_EXEMPLO |
+| C04 | 15 min | Dispensado | CONFERIU_EXEMPLO |
+| C05 | 15 min | Dispensado | CONFERIU_EXEMPLO |
+| C06 | Faixa | Dispensado | CONFERIU_EXEMPLO |
+| C07 | Faixa | Dispensado | CONFERIU_EXEMPLO |
+| C08 | Faixa | Dispensado | CONFERIU_EXEMPLO |
+| C09 | Faixa | Dispensado | CONFERIU_EXEMPLO |
+| C10 | Faixa | Dispensado | CONFERIU_EXEMPLO |
+| C11 | Dia | Dispensado | CONFERIU_EXEMPLO |
+| C12 | Dia | Dispensado | CONFERIU_EXEMPLO |
+| C13 | Dia | Dispensado | CONFERIU_EXEMPLO |
+| C14 | Dia | Dispensado | CONFERIU_EXEMPLO |
+| C15 | Dia | Dispensado | CONFERIU_EXEMPLO |
+| C16 | Mês | Dispensado | CONFERIU_EXEMPLO |
+| C17 | Mês | Dispensado | CONFERIU_EXEMPLO |
+| C18 | Mês | Dispensado | CONFERIU_EXEMPLO |
+| C19 | Mês | Dispensado | CONFERIU_EXEMPLO |
+| C20 | Mês | Dispensado | CONFERIU_EXEMPLO |
 
-## Condição para concluir
+## Conclusão
 
-Outra pessoa revisa a alteração; PO e Instituição Parceira registram as decisões
-pendentes e o aceite dos vinte casos com as respectivas referências. Teste
-aprovado, exemplo sintético ou ausência de divergência técnica não preenchem
-esses campos por si só. Divergências abertas impedem aprovação do caso.
+Os vinte casos conferem com o cálculo manual. A revisão foi feita em
+24/11/2026, e o responsável decidiu mover o cartão para Pronto sem o aceite da
+Instituição Parceira e do PO.

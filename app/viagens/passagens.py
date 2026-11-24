@@ -15,7 +15,7 @@ Regras (docs/US15-T01.md):
 """
 
 from dataclasses import dataclass
-from datetime import timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Optional
 
 from flask import current_app
@@ -23,10 +23,15 @@ from shapely.geometry import LineString
 
 from app import db
 from app.correspondencia.geografia import PROJECAO, Geografia
-from app.models import PassagemEstimada, Trecho
+from app.models import EstimativaPassagemViagem, PassagemEstimada, Trecho
 
 METODO = "INTERPOLACAO_LINEAR_PERCURSO"
 VERSAO = "us15-t01-v1"
+
+
+def versao_estimativa(lacuna_maxima):
+    """A lacuna máxima faz parte da versão: trocar o limite não reaproveita passagens."""
+    return f"{VERSAO}-lacuna{lacuna_maxima.total_seconds():g}s"
 
 
 class LimiteLacunaIndefinido(ValueError):
@@ -47,6 +52,9 @@ class ResultadoPassagens:
     rejeicoes: tuple = ()           # (bruto anterior, bruto posterior, motivo)
     paradas_sem_evidencia: tuple = ()
     motivo: Optional[str] = None    # por que nada pôde ser avaliado
+    # (parada, início, fim) em que a passagem sem evidência poderia ter ocorrido;
+    # None = limite da própria viagem.
+    intervalos_sem_evidencia: tuple = ()
 
 
 class Percurso:
@@ -110,7 +118,9 @@ class EstimadorPassagens:
         self._conferir_viagem(percurso, pontos)
         codigos = tuple(codigo for codigo, _ in percurso.paradas)
         if sum(self._valida(o) for o in pontos) < 2:
-            return ResultadoPassagens((), (), codigos, "posicoes_insuficientes")
+            unicos = tuple(dict.fromkeys(codigos))
+            return ResultadoPassagens((), (), unicos, "posicoes_insuficientes",
+                                      tuple((c, None, None) for c in unicos))
 
         medidas = {o.bruto_id: percurso.medida(o.bruto.longitude, o.bruto.latitude)
                    for o in pontos if self._valida(o)}
@@ -130,7 +140,19 @@ class EstimadorPassagens:
 
         ordenadas = tuple(passagens[c] for c in dict.fromkeys(codigos) if c in passagens)
         faltantes = tuple(c for c in dict.fromkeys(codigos) if c not in passagens)
-        return ResultadoPassagens(ordenadas, tuple(rejeicoes), faltantes)
+        return ResultadoPassagens(ordenadas, tuple(rejeicoes), faltantes,
+                                  intervalos_sem_evidencia=self._intervalos(percurso, pontos, medidas, faltantes))
+
+    def _intervalos(self, percurso, pontos, medidas, faltantes):
+        """Entre a última posição válida antes da parada e a primeira depois dela."""
+        validos = [(o.bruto.horario_gps, medidas[o.bruto_id]) for o in pontos if self._valida(o)]
+        medida = dict(reversed(percurso.paradas))  # primeira ocorrência de cada código
+        intervalos = []
+        for codigo in faltantes:
+            k = next((i for i, (_, m) in enumerate(validos) if m >= medida[codigo]), len(validos))
+            intervalos.append((codigo, validos[k - 1][0] if k else None,
+                               validos[k][0] if k < len(validos) else None))
+        return tuple(intervalos)
 
     @staticmethod
     def _valida(observacao):
@@ -169,12 +191,14 @@ def estimar_e_gravar(viagem, observacoes, lacuna_maxima=None):
     Idempotente: reexecutar com a mesma versão não duplica passagens. Não
     altera posições brutas nem observações tratadas; o commit fica com quem chama.
     """
-    estimador = EstimadorPassagens(lacuna_maxima or lacuna_configurada())
+    lacuna_maxima = lacuna_maxima or lacuna_configurada()
+    estimador = EstimadorPassagens(lacuna_maxima)
+    versao = versao_estimativa(lacuna_maxima)
     importacao = viagem.partida_programada.importacao
     percurso, motivo = Percurso.da_rede(importacao.versao_gtfs_id, importacao.linha_codigo,
                                         importacao.sentido)
     if percurso is None:
-        return ResultadoPassagens((), motivo=motivo)
+        return ResultadoPassagens((), motivo=motivo)  # sem registro: a T02 não afirma zero
     fora = [o for o in observacoes if o.bruto.horario_gps is not None and not (
         viagem.saida_observada <= o.bruto.horario_gps
         and (viagem.fim_observado is None or o.bruto.horario_gps <= viagem.fim_observado))]
@@ -183,15 +207,22 @@ def estimar_e_gravar(viagem, observacoes, lacuna_maxima=None):
 
     resultado = estimador.estimar(percurso, observacoes)
     existentes = {codigo for (codigo,) in db.session.query(PassagemEstimada.parada_codigo).filter_by(
-        viagem_observada_id=viagem.id, versao_estimativa=VERSAO)}
+        viagem_observada_id=viagem.id, versao_estimativa=versao)}
     db.session.add_all(
         PassagemEstimada(
             viagem_observada_id=viagem.id, versao_gtfs_id=percurso.versao_gtfs_id,
             parada_codigo=p.parada_codigo, instante=p.instante, metodo=METODO,
-            versao_estimativa=VERSAO, posicao_anterior_id=p.posicao_anterior_id,
+            versao_estimativa=versao, posicao_anterior_id=p.posicao_anterior_id,
             posicao_posterior_id=p.posicao_posterior_id,
         )
         for p in resultado.passagens if p.parada_codigo not in existentes
     )
+    iso = lambda t: t.isoformat() if t is not None else None  # noqa: E731
+    db.session.merge(EstimativaPassagemViagem(
+        viagem_observada_id=viagem.id, versao_estimativa=versao,
+        lacuna_maxima_seg=lacuna_maxima.total_seconds(), executada_em=datetime.now(timezone.utc),
+        sem_evidencia=[{"parada": c, "inicio": iso(a), "fim": iso(b)}
+                       for c, a, b in resultado.intervalos_sem_evidencia],
+    ))
     db.session.flush()
     return resultado

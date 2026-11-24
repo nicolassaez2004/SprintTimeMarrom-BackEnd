@@ -13,18 +13,32 @@ import pytest
 
 from app import db
 from app.models import (
-    ExecucaoColeta, ImportacaoProgramacao, IndicadorOperacional, Parada, PartidaProgramada,
+    EstimativaPassagemViagem, ExecucaoColeta, ImportacaoProgramacao, IndicadorOperacional, Parada, PartidaProgramada,
     PassagemEstimada, RegistroBrutoGPS, Trecho, ViagemObservada,
 )
 from app.indicadores.frequencia import (
     OBSERVADA, PROGRAMADA, UNIDADE, calcular_e_publicar_frequencias, calcular_frequencias,
 )
-from app.viagens.passagens import VERSAO
+from app.viagens.passagens import versao_estimativa
 
 T0 = datetime(2026, 11, 24, 12, tzinfo=timezone.utc)
 DEPOIS = datetime(2026, 11, 26, 12, tzinfo=timezone.utc)
 PARADAS = {"A": -46.700, "B": -46.697, "C": -46.694, "D": -46.690}
 RECON, MATCH = "recon-sint", "match-sint"
+LACUNA_SEG = 120  # valor de teste; o oficial aguarda o PO (US15-T04 P01)
+VERSAO = versao_estimativa(timedelta(seconds=LACUNA_SEG))
+
+
+@pytest.fixture(autouse=True)
+def lacuna_de_teste(app):
+    app.config["PASSAGEM_LACUNA_MAXIMA_SEG"] = LACUNA_SEG
+
+
+def estimada(viagem, sem_evidencia=()):
+    """Registra que a estimativa da US15-T01 rodou para a viagem."""
+    db.session.add(EstimativaPassagemViagem(
+        viagem_observada_id=viagem.id, versao_estimativa=VERSAO, lacuna_maxima_seg=LACUNA_SEG,
+        executada_em=DEPOIS, sem_evidencia=list(sem_evidencia)))
 
 
 @pytest.fixture
@@ -68,6 +82,7 @@ def passagem(c, parada, instante, partida=None, recon=RECON):
                                     instante=instante, metodo="INTERPOLACAO_LINEAR_PERCURSO",
                                     versao_estimativa=VERSAO, posicao_anterior_id=brutos[0].id,
                                     posicao_posterior_id=brutos[1].id))
+    estimada(viagem)
     db.session.commit()
     return viagem
 
@@ -161,6 +176,7 @@ def test_mesma_evidencia_gps_conta_uma_vez(cenario):
                                     instante=original.instante, metodo=original.metodo,
                                     versao_estimativa=VERSAO, posicao_anterior_id=original.posicao_anterior_id,
                                     posicao_posterior_id=original.posicao_posterior_id))
+    estimada(outra)
     db.session.commit()
     assert achar(calcular(cenario), OBSERVADA, "B", T0)["contagem_numerador"] == 1
 
@@ -249,3 +265,40 @@ def test_agregacao_horaria_exige_todas_as_janelas_confiaveis(cenario):
     assert achar(campos, OBSERVADA, "B", T0 + timedelta(hours=1))["valor"] is None
     with pytest.raises(ValueError):
         calcular(cenario, janela_minutos=20)
+
+
+def test_passagem_antes_da_meia_noite_de_partida_da_data_e_contada(cenario):
+    meia_noite = datetime(2026, 11, 24, 3, tzinfo=timezone.utc)  # 24/11 00:00 em São Paulo
+    passagem(cenario, "B", meia_noite - timedelta(seconds=30))
+    campos = calcular(cenario)
+    item = achar(campos, OBSERVADA, "B", meia_noite - timedelta(minutes=15))
+    assert item["qualidade"]["passagens_identificadas"] == 1
+    assert sum(x["qualidade"]["passagens_identificadas"] for x in campos
+               if x["indicador"] == OBSERVADA and x["parada_codigo"] == "B") == 1
+
+
+def test_zero_so_com_evidencia_gps_e_estimativa_executada(cenario, app):
+    viagem = ViagemObservada(partida_programada=cenario["partidas"][0], saida_observada=T0,
+                             fim_observado=T0 + timedelta(minutes=40), cobertura_tracado=1,
+                             versao_reconstrucao=RECON, versao_correspondencia=MATCH)
+    db.session.add(viagem)
+    db.session.commit()
+    # Viagem sem estimativa executada: nenhuma janela da viagem afirma zero.
+    item = achar(calcular(cenario), OBSERVADA, "C", T0 + timedelta(minutes=15))
+    assert item["valor"] is None
+    assert item["qualidade"]["motivo"] == "estimativa_nao_executada"
+
+    # Estimativa executada; C sem evidência entre 12:20 e 12:24 (par rejeitado).
+    estimada(viagem, [{"parada": "C", "inicio": (T0 + timedelta(minutes=20)).isoformat(),
+                       "fim": (T0 + timedelta(minutes=24)).isoformat()}])
+    db.session.commit()
+    campos = calcular(cenario)
+    sem_prova = achar(campos, OBSERVADA, "C", T0 + timedelta(minutes=15))
+    assert (sem_prova["valor"], sem_prova["qualidade"]["motivo"]) == (None, "sem_evidencia_gps")
+    assert achar(campos, OBSERVADA, "C", T0 + timedelta(minutes=30))["valor"] == 0.0
+    assert achar(campos, OBSERVADA, "B", T0 + timedelta(minutes=15))["valor"] == 0.0
+
+    # Sem lacuna máxima configurada não há passagens: nada de zero falso.
+    app.config["PASSAGEM_LACUNA_MAXIMA_SEG"] = None
+    item = achar(calcular(cenario), OBSERVADA, "B", T0 + timedelta(minutes=15))
+    assert (item["valor"], item["qualidade"]["motivo"]) == (None, "lacuna_maxima_indefinida")

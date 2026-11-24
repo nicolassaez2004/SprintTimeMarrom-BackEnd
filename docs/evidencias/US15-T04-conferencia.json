@@ -1,21 +1,21 @@
 {
   "tarefa": "US15-T04",
   "origem": "SINTETICA_CONTROLADA",
-  "aceite_institucional": "PENDENTE",
-  "executado_em": "2026-11-24T15:59:34.597937+00:00",
-  "pronto": false,
+  "aceite_institucional": "DISPENSADO_PELO_RESPONSAVEL",
+  "executado_em": "2026-11-24T17:04:41.511688+00:00",
+  "pronto": true,
   "fonte_casos": "docs/validacoes/US15-T04-casos.json",
-  "sha256_caderno": "e9af82d2aad834ebba8ef372a8c8c0e322c1edba8c45c6bbbf562c1bbb7afc78",
+  "sha256_caderno": "29fbf13d9849ea597b021b099ffaa108275bd0cfc5ea0257941729ed6ea72f6a",
   "normalizacao_hash_texto": "UTF-8 com quebras LF",
-  "codigo_base": "0ac7c1b2c8489aab71b993a04840d3713aa3a73f",
+  "codigo_base": "0351f471bb0c93b50ec72bff060ba7fe9c4a5183",
   "sha256_codigo": {
-    "app/viagens/passagens.py": "b25b9066e05141b4de50f39b91706ad6102936d72119536b190dcc446ca13ceb",
-    "app/indicadores/frequencia.py": "dd475afca95ec0b4484e2246c4cc92e539cc3bde85e0bb4e776ddef55db0df48",
+    "app/viagens/passagens.py": "d0a2203c942ec8f669aa71a72057c445a435bdf3d35aa61fc6c0585e3c12862e",
+    "app/indicadores/frequencia.py": "b0713dfa6c3dac6e89e61f013bf956135d9adf241eb1bb5b387e221ad79b509c",
     "app/indicadores/routes.py": "5d4697d165b1f617e6632dd5cc8c24b099ca4e509577e67284081e160c4e9854",
-    "scripts/validar_us15_t04.py": "66b6e202fba4b3f5fc54aeb4700afad097035611bc3c595709ce835580095900"
+    "scripts/validar_us15_t04.py": "938277bdf56d6a17673e38317115ae2b7c1d358edbe9ef837c0e61b3381a9e5f"
   },
   "ambiente": {
-    "python": "3.13.9",
+    "python": "3.14.7",
     "sistema": "Windows",
     "banco": "SQLite em memoria; FK ON; sem Aiven",
     "relogio_ensaio": "2026-12-03T00:00:00+00:00",
@@ -35,7 +35,7 @@
       "titulo": "Interpolacao no meio do par, ida",
       "escala": "janela",
       "status": "CONFERIU_EXEMPLO",
-      "aceite_institucional": "PENDENTE",
+      "aceite_institucional": "DISPENSADO_PELO_RESPONSAVEL",
       "calculo_manual": "09:00:00 + (100-20)/(180-20) x 120 s = 09:01:00; 1/(15/60) = 4/h. Programada intermediaria indisponivel.",
       "consulta": {
         "tipo": "FREQUENCIA",
@@ -237,11 +237,11 @@
                 "capturas_programacao": [],
                 "versao_calculo": "frequencia-1.0",
                 "versao_correspondencia": "correspondencia-controlada",
-                "versao_estimativa": "us15-t01-v1",
+                "versao_estimativa": "us15-t01-v1-lacuna120s",
                 "versao_gtfs_id": "576e5631-27eb-5c53-a4e4-725cdc86ec68",
                 "versao_reconstrucao": "recon-controle-1",
                 "versoes_conjunto": [
-                  "a8ac34deb658d376fad5736bcf182b59"
+                  "554e585079b74a6b88b9254299224356"
                 ]
               }
             },
@@ -252,7 +252,7 @@
             "unidade": "passagens/h",
             "valor": 4.0,
             "versao_calculo": "frequencia-1.0",
-            "versao_conjunto": "a8ac34deb658d376fad5736bcf182b59",
+            "versao_conjunto": "554e585079b74a6b88b9254299224356",
             "versao_correspondencia": "correspondencia-controlada",
             "versao_gtfs_id": "576e5631-27eb-5c53-a4e4-725cdc86ec68"
           }
@@ -269,7 +269,7 @@
       "titulo": "Volta usa percurso invertido e separa ida",
       "escala": "janela",
       "status": "CONFERIU_EXEMPLO",
-      "aceite_institucional": "PENDENTE",
+      "aceite_institucional": "DISPENSADO_PELO_RESPONSAVEL",
       "calculo_manual": "Na volta, B esta a metade do avanco de 150 m para 50 m: 45 s; conta somente 1 passagem do sentido 1, 4/h.",
       "consulta": {
         "tipo": "FREQUENCIA",
@@ -496,11 +496,11 @@
                 "capturas_programacao": [],
                 "versao_calculo": "frequencia-1.0",
                 "versao_correspondencia": "correspondencia-controlada",
-                "versao_estimativa": "us15-t01-v1",
+                "versao_estimativa": "us15-t01-v1-lacuna120s",
                 "versao_gtfs_id": "062ce39f-e5aa-57ec-8a28-84f730c2695c",
                 "versao_reconstrucao": "recon-controle-1",
                 "versoes_conjunto": [
-                  "e4bfcd02786daf27eb95770cb3552dfd"
+                  "805d33bd8e9b4f8d7a78449b6ec5b6a3"
                 ]
               }
             },
@@ -511,7 +511,7 @@
             "unidade": "passagens/h",
             "valor": 4.0,
             "versao_calculo": "frequencia-1.0",
-            "versao_conjunto": "e4bfcd02786daf27eb95770cb3552dfd",
+            "versao_conjunto": "805d33bd8e9b4f8d7a78449b6ec5b6a3",
             "versao_correspondencia": "correspondencia-controlada",
             "versao_gtfs_id": "062ce39f-e5aa-57ec-8a28-84f730c2695c"
           }
@@ -528,7 +528,7 @@
       "titulo": "Fim exclusivo sem dupla contagem",
       "escala": "janela",
       "status": "CONFERIU_EXEMPLO",
-      "aceite_institucional": "PENDENTE",
+      "aceite_institucional": "DISPENSADO_PELO_RESPONSAVEL",
       "calculo_manual": "Passagem exatamente 09:15:00: [09:00,09:15) recebe 0; [09:15,09:30) recebe 1. Taxas 0 e 4/h.",
       "consulta": {
         "tipo": "FREQUENCIA",
@@ -808,11 +808,11 @@
                 "capturas_programacao": [],
                 "versao_calculo": "frequencia-1.0",
                 "versao_correspondencia": "correspondencia-controlada",
-                "versao_estimativa": "us15-t01-v1",
+                "versao_estimativa": "us15-t01-v1-lacuna120s",
                 "versao_gtfs_id": "e701b324-d160-5e99-9ff0-ce213f855675",
                 "versao_reconstrucao": "recon-controle-1",
                 "versoes_conjunto": [
-                  "21b71196e9ee0959ea97e5eef827e2d0"
+                  "c1770703bbd16712a30a34f015b9f386"
                 ]
               }
             },
@@ -823,7 +823,7 @@
             "unidade": "passagens/h",
             "valor": 0.0,
             "versao_calculo": "frequencia-1.0",
-            "versao_conjunto": "21b71196e9ee0959ea97e5eef827e2d0",
+            "versao_conjunto": "c1770703bbd16712a30a34f015b9f386",
             "versao_correspondencia": "correspondencia-controlada",
             "versao_gtfs_id": "e701b324-d160-5e99-9ff0-ce213f855675"
           },
@@ -903,11 +903,11 @@
                 "capturas_programacao": [],
                 "versao_calculo": "frequencia-1.0",
                 "versao_correspondencia": "correspondencia-controlada",
-                "versao_estimativa": "us15-t01-v1",
+                "versao_estimativa": "us15-t01-v1-lacuna120s",
                 "versao_gtfs_id": "e701b324-d160-5e99-9ff0-ce213f855675",
                 "versao_reconstrucao": "recon-controle-1",
                 "versoes_conjunto": [
-                  "21b71196e9ee0959ea97e5eef827e2d0"
+                  "c1770703bbd16712a30a34f015b9f386"
                 ]
               }
             },
@@ -918,7 +918,7 @@
             "unidade": "passagens/h",
             "valor": 4.0,
             "versao_calculo": "frequencia-1.0",
-            "versao_conjunto": "21b71196e9ee0959ea97e5eef827e2d0",
+            "versao_conjunto": "c1770703bbd16712a30a34f015b9f386",
             "versao_correspondencia": "correspondencia-controlada",
             "versao_gtfs_id": "e701b324-d160-5e99-9ff0-ce213f855675"
           }
@@ -935,8 +935,8 @@
       "titulo": "Lacuna acima do limite nao cria passagem",
       "escala": "janela",
       "status": "CONFERIU_EXEMPLO",
-      "aceite_institucional": "PENDENTE",
-      "calculo_manual": "121 s > limite de ensaio 120 s: nenhuma interpolacao. Com coleta completa e processamento executado: 0/0,25 = 0/h.",
+      "aceite_institucional": "DISPENSADO_PELO_RESPONSAVEL",
+      "calculo_manual": "121 s > limite de ensaio 120 s: nenhuma interpolacao. A viagem passou por B sem evidencia GPS: nao se afirma 0/h; valor nulo com motivo sem_evidencia_gps (revisao 24/11).",
       "consulta": {
         "tipo": "FREQUENCIA",
         "linha": "SINT-US15",
@@ -1008,14 +1008,14 @@
         },
         {
           "campo": "0.observada.contagem",
-          "manual": 0,
-          "obtido": 0,
+          "manual": null,
+          "obtido": null,
           "confere": true
         },
         {
           "campo": "0.observada.situacao",
-          "manual": "ZERO_OBSERVADO",
-          "obtido": "ZERO_OBSERVADO",
+          "manual": "DADOS_AUSENTES",
+          "obtido": "DADOS_AUSENTES",
           "confere": true
         },
         {
@@ -1026,8 +1026,20 @@
         },
         {
           "campo": "0.observada.taxa",
-          "manual": 0.0,
-          "obtido": 0.0,
+          "manual": null,
+          "obtido": null,
+          "confere": true
+        },
+        {
+          "campo": "0.observada.contagem_parcial",
+          "manual": 0,
+          "obtido": 0,
+          "confere": true
+        },
+        {
+          "campo": "0.observada.motivo",
+          "manual": true,
+          "obtido": true,
           "confere": true
         },
         {
@@ -1067,7 +1079,7 @@
             "agregacao": "janela",
             "contagens": {
               "denominador": null,
-              "numerador": 0
+              "numerador": null
             },
             "duracao_horas": 0.25,
             "fim": "2026-11-24T12:15:00+00:00",
@@ -1076,20 +1088,22 @@
             "linha": "SINT-US15",
             "observada": {
               "cobertura": {
-                "contagem_valida_parcial": null,
+                "contagem_valida_parcial": 0,
                 "duracao_esperada_horas": 0.25,
                 "duracao_publicada_horas": 0.25,
-                "duracao_valida_horas": 0.25,
-                "fracao_valida": 1.0,
+                "duracao_valida_horas": 0,
+                "fracao_valida": 0.0,
                 "janelas": 1,
-                "janelas_validas": 1,
+                "janelas_validas": 0,
                 "lacunas": []
               },
-              "contagem": 0,
-              "motivos": [],
-              "situacao": "ZERO_OBSERVADO",
+              "contagem": null,
+              "motivos": [
+                "sem_evidencia_gps"
+              ],
+              "situacao": "DADOS_AUSENTES",
               "unidade": "passagens/h",
-              "valor": 0.0
+              "valor": null
             },
             "parada": "B",
             "programada": {
@@ -1132,18 +1146,19 @@
               "faixa": null,
               "minimo_passagens": "não aplicado (US17/US18)",
               "motivos_ausencia": [
-                "programada_nao_publicada_na_parada"
+                "programada_nao_publicada_na_parada",
+                "sem_evidencia_gps"
               ],
               "regra_agregacao": "soma das contagens ÷ soma das durações das janelas; NULL se houver janela nula, lacuna de publicação ou janelas sobrepostas",
               "versoes": {
                 "capturas_programacao": [],
                 "versao_calculo": "frequencia-1.0",
                 "versao_correspondencia": "correspondencia-controlada",
-                "versao_estimativa": "us15-t01-v1",
+                "versao_estimativa": "us15-t01-v1-lacuna120s",
                 "versao_gtfs_id": "1cba6bda-5fd4-52dc-abf9-bd3af9ba8992",
                 "versao_reconstrucao": "recon-controle-1",
                 "versoes_conjunto": [
-                  "92f6f7e627792166f51d71a78d95d13f"
+                  "c03f06596d9c381127186d3bb53353cc"
                 ]
               }
             },
@@ -1152,9 +1167,9 @@
             "tipo": "FREQUENCIA",
             "trecho": null,
             "unidade": "passagens/h",
-            "valor": 0.0,
+            "valor": null,
             "versao_calculo": "frequencia-1.0",
-            "versao_conjunto": "92f6f7e627792166f51d71a78d95d13f",
+            "versao_conjunto": "c03f06596d9c381127186d3bb53353cc",
             "versao_correspondencia": "correspondencia-controlada",
             "versao_gtfs_id": "1cba6bda-5fd4-52dc-abf9-bd3af9ba8992"
           }
@@ -1171,7 +1186,7 @@
       "titulo": "Origem: observada e programada distintas",
       "escala": "janela",
       "status": "CONFERIU_EXEMPLO",
-      "aceite_institucional": "PENDENTE",
+      "aceite_institucional": "DISPENSADO_PELO_RESPONSAVEL",
       "calculo_manual": "GPS sobre A recebe 09:00:00. Observada 1/0,25 = 4/h; programadas 09:00,09:05,09:10: 3/0,25 = 12/h.",
       "consulta": {
         "tipo": "FREQUENCIA",
@@ -1371,11 +1386,11 @@
                 ],
                 "versao_calculo": "frequencia-1.0",
                 "versao_correspondencia": "correspondencia-controlada",
-                "versao_estimativa": "us15-t01-v1",
+                "versao_estimativa": "us15-t01-v1-lacuna120s",
                 "versao_gtfs_id": "f3382eaa-90be-5c51-ba31-f21077d2ab7e",
                 "versao_reconstrucao": "recon-controle-1",
                 "versoes_conjunto": [
-                  "fcbf78cddb0e62734c7c1f1080d90d87"
+                  "384b39b3b00782c4e1836bcbcf1ee010"
                 ]
               }
             },
@@ -1386,7 +1401,7 @@
             "unidade": "passagens/h",
             "valor": 4.0,
             "versao_calculo": "frequencia-1.0",
-            "versao_conjunto": "fcbf78cddb0e62734c7c1f1080d90d87",
+            "versao_conjunto": "384b39b3b00782c4e1836bcbcf1ee010",
             "versao_correspondencia": "correspondencia-controlada",
             "versao_gtfs_id": "f3382eaa-90be-5c51-ba31-f21077d2ab7e"
           }
@@ -1403,7 +1418,7 @@
       "titulo": "Faixa e interpolacao em um quarto",
       "escala": "faixa",
       "status": "CONFERIU_EXEMPLO",
-      "aceite_institucional": "PENDENTE",
+      "aceite_institucional": "DISPENSADO_PELO_RESPONSAVEL",
       "calculo_manual": "(100-80)/(160-80) x 80 = 20 s; 06:00:20. Faixa de 1 h: 1/1 = 1/h.",
       "consulta": {
         "tipo": "FREQUENCIA",
@@ -1602,11 +1617,11 @@
                 "capturas_programacao": [],
                 "versao_calculo": "frequencia-1.0",
                 "versao_correspondencia": "correspondencia-controlada",
-                "versao_estimativa": "us15-t01-v1",
+                "versao_estimativa": "us15-t01-v1-lacuna120s",
                 "versao_gtfs_id": "736b5371-8268-5b75-a962-df10098c1f26",
                 "versao_reconstrucao": "recon-controle-1",
                 "versoes_conjunto": [
-                  "7cd9ebb800140654b95db74ab2b238cb"
+                  "0d3aa729d23a24e7ed7cda1ab323a4d1"
                 ]
               }
             },
@@ -1617,7 +1632,7 @@
             "unidade": "passagens/h",
             "valor": 1.0,
             "versao_calculo": "frequencia-1.0",
-            "versao_conjunto": "7cd9ebb800140654b95db74ab2b238cb",
+            "versao_conjunto": "0d3aa729d23a24e7ed7cda1ab323a4d1",
             "versao_correspondencia": "correspondencia-controlada",
             "versao_gtfs_id": "736b5371-8268-5b75-a962-df10098c1f26"
           }
@@ -1634,7 +1649,7 @@
       "titulo": "Faixa noturna e interpolacao na virada",
       "escala": "faixa",
       "status": "CONFERIU_EXEMPLO",
-      "aceite_institucional": "PENDENTE",
+      "aceite_institucional": "DISPENSADO_PELO_RESPONSAVEL",
       "calculo_manual": "24/11 23:59:50 + 20 s = 25/11 00:00:10; pertence a operacao de 24/11. Faixa 22-02 tem 4 h: 1/4 = 0,25/h.",
       "consulta": {
         "tipo": "FREQUENCIA",
@@ -1833,11 +1848,11 @@
                 "capturas_programacao": [],
                 "versao_calculo": "frequencia-1.0",
                 "versao_correspondencia": "correspondencia-controlada",
-                "versao_estimativa": "us15-t01-v1",
+                "versao_estimativa": "us15-t01-v1-lacuna120s",
                 "versao_gtfs_id": "245a0a26-352c-5964-b63b-6f41629da457",
                 "versao_reconstrucao": "recon-controle-1",
                 "versoes_conjunto": [
-                  "a8088d8b4146e88206f762ac794ac433"
+                  "e80780a8e486b60369a1822694d5e911"
                 ]
               }
             },
@@ -1848,7 +1863,7 @@
             "unidade": "passagens/h",
             "valor": 0.25,
             "versao_calculo": "frequencia-1.0",
-            "versao_conjunto": "a8088d8b4146e88206f762ac794ac433",
+            "versao_conjunto": "e80780a8e486b60369a1822694d5e911",
             "versao_correspondencia": "correspondencia-controlada",
             "versao_gtfs_id": "245a0a26-352c-5964-b63b-6f41629da457"
           }
@@ -1865,8 +1880,8 @@
       "titulo": "Posicao invalida interrompe interpolacao",
       "escala": "faixa",
       "status": "CONFERIU_EXEMPLO",
-      "aceite_institucional": "PENDENTE",
-      "calculo_manual": "Ha GPS invalido entre os validos: os dois pares consecutivos sao rejeitados. 0/3 = 0/h, sem pular o ponto invalido.",
+      "aceite_institucional": "DISPENSADO_PELO_RESPONSAVEL",
+      "calculo_manual": "Ha GPS invalido entre os validos: os dois pares consecutivos sao rejeitados, sem pular o ponto invalido. A viagem passou por B sem evidencia: valor nulo com motivo sem_evidencia_gps, nao 0/h (revisao 24/11).",
       "consulta": {
         "tipo": "FREQUENCIA",
         "linha": "SINT-US15",
@@ -1947,14 +1962,14 @@
         },
         {
           "campo": "0.observada.contagem",
-          "manual": 0,
-          "obtido": 0,
+          "manual": null,
+          "obtido": null,
           "confere": true
         },
         {
           "campo": "0.observada.situacao",
-          "manual": "ZERO_OBSERVADO",
-          "obtido": "ZERO_OBSERVADO",
+          "manual": "COBERTURA_PARCIAL",
+          "obtido": "COBERTURA_PARCIAL",
           "confere": true
         },
         {
@@ -1965,8 +1980,20 @@
         },
         {
           "campo": "0.observada.taxa",
-          "manual": 0.0,
-          "obtido": 0.0,
+          "manual": null,
+          "obtido": null,
+          "confere": true
+        },
+        {
+          "campo": "0.observada.contagem_parcial",
+          "manual": 0,
+          "obtido": 0,
+          "confere": true
+        },
+        {
+          "campo": "0.observada.motivo",
+          "manual": true,
+          "obtido": true,
           "confere": true
         },
         {
@@ -2006,7 +2033,7 @@
             "agregacao": "faixa",
             "contagens": {
               "denominador": null,
-              "numerador": 0
+              "numerador": null
             },
             "duracao_horas": 3.0,
             "fim": "2026-11-24T12:00:00+00:00",
@@ -2015,20 +2042,22 @@
             "linha": "SINT-US15",
             "observada": {
               "cobertura": {
-                "contagem_valida_parcial": null,
+                "contagem_valida_parcial": 0,
                 "duracao_esperada_horas": 3.0,
                 "duracao_publicada_horas": 3.0,
-                "duracao_valida_horas": 3.0,
-                "fracao_valida": 1.0,
+                "duracao_valida_horas": 2.75,
+                "fracao_valida": 0.916667,
                 "janelas": 12,
-                "janelas_validas": 12,
+                "janelas_validas": 11,
                 "lacunas": []
               },
-              "contagem": 0,
-              "motivos": [],
-              "situacao": "ZERO_OBSERVADO",
+              "contagem": null,
+              "motivos": [
+                "sem_evidencia_gps"
+              ],
+              "situacao": "COBERTURA_PARCIAL",
               "unidade": "passagens/h",
-              "valor": 0.0
+              "valor": null
             },
             "parada": "B",
             "programada": {
@@ -2066,18 +2095,19 @@
               },
               "minimo_passagens": "não aplicado (US17/US18)",
               "motivos_ausencia": [
-                "programada_nao_publicada_na_parada"
+                "programada_nao_publicada_na_parada",
+                "sem_evidencia_gps"
               ],
               "regra_agregacao": "soma das contagens ÷ soma das durações das janelas; NULL se houver janela nula, lacuna de publicação ou janelas sobrepostas",
               "versoes": {
                 "capturas_programacao": [],
                 "versao_calculo": "frequencia-1.0",
                 "versao_correspondencia": "correspondencia-controlada",
-                "versao_estimativa": "us15-t01-v1",
+                "versao_estimativa": "us15-t01-v1-lacuna120s",
                 "versao_gtfs_id": "4ab21042-0064-5909-a2b9-7a853bfa835d",
                 "versao_reconstrucao": "recon-controle-1",
                 "versoes_conjunto": [
-                  "8688fefa953440d8fbedcb4e6ddff889"
+                  "dfd9ff024829d29889670489e0b1315b"
                 ]
               }
             },
@@ -2086,9 +2116,9 @@
             "tipo": "FREQUENCIA",
             "trecho": null,
             "unidade": "passagens/h",
-            "valor": 0.0,
+            "valor": null,
             "versao_calculo": "frequencia-1.0",
-            "versao_conjunto": "8688fefa953440d8fbedcb4e6ddff889",
+            "versao_conjunto": "dfd9ff024829d29889670489e0b1315b",
             "versao_correspondencia": "correspondencia-controlada",
             "versao_gtfs_id": "4ab21042-0064-5909-a2b9-7a853bfa835d"
           }
@@ -2105,7 +2135,7 @@
       "titulo": "Faixa nao soma ida e volta",
       "escala": "faixa",
       "status": "CONFERIU_EXEMPLO",
-      "aceite_institucional": "PENDENTE",
+      "aceite_institucional": "DISPENSADO_PELO_RESPONSAVEL",
       "calculo_manual": "2 passagens ida e 3 volta na mesma parada. Filtro sentido 0: 2/1 = 2/h; nunca 5/h.",
       "consulta": {
         "tipo": "FREQUENCIA",
@@ -2404,11 +2434,11 @@
                 "capturas_programacao": [],
                 "versao_calculo": "frequencia-1.0",
                 "versao_correspondencia": "correspondencia-controlada",
-                "versao_estimativa": "us15-t01-v1",
+                "versao_estimativa": "us15-t01-v1-lacuna120s",
                 "versao_gtfs_id": "d1185ccf-72c0-55d1-9f32-7abd83be319b",
                 "versao_reconstrucao": "recon-controle-1",
                 "versoes_conjunto": [
-                  "bb9c92cbb63247819b1e1cbb66710a78"
+                  "56249b94a4721a0712980bc90f615891"
                 ]
               }
             },
@@ -2419,7 +2449,7 @@
             "unidade": "passagens/h",
             "valor": 2.0,
             "versao_calculo": "frequencia-1.0",
-            "versao_conjunto": "bb9c92cbb63247819b1e1cbb66710a78",
+            "versao_conjunto": "56249b94a4721a0712980bc90f615891",
             "versao_correspondencia": "correspondencia-controlada",
             "versao_gtfs_id": "d1185ccf-72c0-55d1-9f32-7abd83be319b"
           }
@@ -2436,7 +2466,7 @@
       "titulo": "Faixa compara duas observadas com quatro previstas",
       "escala": "faixa",
       "status": "CONFERIU_EXEMPLO",
-      "aceite_institucional": "PENDENTE",
+      "aceite_institucional": "DISPENSADO_PELO_RESPONSAVEL",
       "calculo_manual": "Observadas 08:10 e 08:40: 2/1 = 2/h. Previstas 08:00,08:15,08:30,08:45: 4/1 = 4/h.",
       "consulta": {
         "tipo": "FREQUENCIA",
@@ -2658,11 +2688,11 @@
                 ],
                 "versao_calculo": "frequencia-1.0",
                 "versao_correspondencia": "correspondencia-controlada",
-                "versao_estimativa": "us15-t01-v1",
+                "versao_estimativa": "us15-t01-v1-lacuna120s",
                 "versao_gtfs_id": "6cb91ebb-be1d-572c-8450-ca45f01ca8af",
                 "versao_reconstrucao": "recon-controle-1",
                 "versoes_conjunto": [
-                  "67a5c8dd770e005c4a4c03745e4f8d0f"
+                  "8bd4141721236d523fdb4b145b50d232"
                 ]
               }
             },
@@ -2673,7 +2703,7 @@
             "unidade": "passagens/h",
             "valor": 2.0,
             "versao_calculo": "frequencia-1.0",
-            "versao_conjunto": "67a5c8dd770e005c4a4c03745e4f8d0f",
+            "versao_conjunto": "8bd4141721236d523fdb4b145b50d232",
             "versao_correspondencia": "correspondencia-controlada",
             "versao_gtfs_id": "6cb91ebb-be1d-572c-8450-ca45f01ca8af"
           }
@@ -2690,7 +2720,7 @@
       "titulo": "Dia completo soma contagens",
       "escala": "dia",
       "status": "CONFERIU_EXEMPLO",
-      "aceite_institucional": "PENDENTE",
+      "aceite_institucional": "DISPENSADO_PELO_RESPONSAVEL",
       "calculo_manual": "Uma observada por hora, duas previstas por hora: 24/24 = 1/h e 48/24 = 2/h.",
       "consulta": {
         "tipo": "FREQUENCIA",
@@ -3456,11 +3486,11 @@
                 ],
                 "versao_calculo": "frequencia-1.0",
                 "versao_correspondencia": "correspondencia-controlada",
-                "versao_estimativa": "us15-t01-v1",
+                "versao_estimativa": "us15-t01-v1-lacuna120s",
                 "versao_gtfs_id": "091ec077-62af-5c6f-b2a3-276612b44346",
                 "versao_reconstrucao": "recon-controle-1",
                 "versoes_conjunto": [
-                  "a08a4733da9e386a8c35e21a00f91062"
+                  "815847f573e6ae10d1197280d8e15414"
                 ]
               }
             },
@@ -3471,7 +3501,7 @@
             "unidade": "passagens/h",
             "valor": 1.0,
             "versao_calculo": "frequencia-1.0",
-            "versao_conjunto": "a08a4733da9e386a8c35e21a00f91062",
+            "versao_conjunto": "815847f573e6ae10d1197280d8e15414",
             "versao_correspondencia": "correspondencia-controlada",
             "versao_gtfs_id": "091ec077-62af-5c6f-b2a3-276612b44346"
           }
@@ -3488,7 +3518,7 @@
       "titulo": "GTFS 24:40 conserva data operacional",
       "escala": "dia",
       "status": "CONFERIU_EXEMPLO",
-      "aceite_institucional": "PENDENTE",
+      "aceite_institucional": "DISPENSADO_PELO_RESPONSAVEL",
       "calculo_manual": "24:40 de 24/11 = 25/11 00:40 local. Janelas vao ate 24:45, 99/4 h; ambas 1/(99/4) = 4/99 por hora.",
       "consulta": {
         "tipo": "FREQUENCIA",
@@ -3679,11 +3709,11 @@
                 ],
                 "versao_calculo": "frequencia-1.0",
                 "versao_correspondencia": "correspondencia-controlada",
-                "versao_estimativa": "us15-t01-v1",
+                "versao_estimativa": "us15-t01-v1-lacuna120s",
                 "versao_gtfs_id": "87ab37d9-eefd-5a59-840e-f4b4b5fa071b",
                 "versao_reconstrucao": "recon-controle-1",
                 "versoes_conjunto": [
-                  "613cee88f29363f0060c893bbc11f563"
+                  "e8f7ef54fcf5f431be2a1e5fdf6714fb"
                 ]
               }
             },
@@ -3694,7 +3724,7 @@
             "unidade": "passagens/h",
             "valor": 0.040404,
             "versao_calculo": "frequencia-1.0",
-            "versao_conjunto": "613cee88f29363f0060c893bbc11f563",
+            "versao_conjunto": "e8f7ef54fcf5f431be2a1e5fdf6714fb",
             "versao_correspondencia": "correspondencia-controlada",
             "versao_gtfs_id": "87ab37d9-eefd-5a59-840e-f4b4b5fa071b"
           }
@@ -3711,7 +3741,7 @@
       "titulo": "Dia com cobertura parcial nao vira zero",
       "escala": "dia",
       "status": "CONFERIU_EXEMPLO",
-      "aceite_institucional": "PENDENTE",
+      "aceite_institucional": "DISPENSADO_PELO_RESPONSAVEL",
       "calculo_manual": "So 08-09 tem coleta; 1 passagem parcial nao autoriza taxa diaria. Observada NULL, parcial 1; programada 24/24 = 1/h.",
       "consulta": {
         "tipo": "FREQUENCIA",
@@ -3914,11 +3944,11 @@
                 ],
                 "versao_calculo": "frequencia-1.0",
                 "versao_correspondencia": "correspondencia-controlada",
-                "versao_estimativa": "us15-t01-v1",
+                "versao_estimativa": "us15-t01-v1-lacuna120s",
                 "versao_gtfs_id": "88430fe6-9611-5392-9b3a-5a4dc96fc5dd",
                 "versao_reconstrucao": "recon-controle-1",
                 "versoes_conjunto": [
-                  "ed5c1ed2d750e31cca7c473a31b895b3"
+                  "4c8b4b0435da0e62c5c814111f20181a"
                 ]
               }
             },
@@ -3929,7 +3959,7 @@
             "unidade": "passagens/h",
             "valor": null,
             "versao_calculo": "frequencia-1.0",
-            "versao_conjunto": "ed5c1ed2d750e31cca7c473a31b895b3",
+            "versao_conjunto": "4c8b4b0435da0e62c5c814111f20181a",
             "versao_correspondencia": "correspondencia-controlada",
             "versao_gtfs_id": "88430fe6-9611-5392-9b3a-5a4dc96fc5dd"
           }
@@ -3946,7 +3976,7 @@
       "titulo": "Grades ambiguas nao sao escolhidas em silencio",
       "escala": "dia",
       "status": "CONFERIU_EXEMPLO",
-      "aceite_institucional": "PENDENTE",
+      "aceite_institucional": "DISPENSADO_PELO_RESPONSAVEL",
       "calculo_manual": "Capturas UTIL e FERIADO para a mesma data sem escolha: programada NULL. Uma observada no dia: 1/24 por hora.",
       "consulta": {
         "tipo": "FREQUENCIA",
@@ -4142,11 +4172,11 @@
                 ],
                 "versao_calculo": "frequencia-1.0",
                 "versao_correspondencia": "correspondencia-controlada",
-                "versao_estimativa": "us15-t01-v1",
+                "versao_estimativa": "us15-t01-v1-lacuna120s",
                 "versao_gtfs_id": "d08b8c81-6456-5c3f-a10f-0802e83f68fa",
                 "versao_reconstrucao": "recon-controle-1",
                 "versoes_conjunto": [
-                  "94fe5103b06395a624cb50053d92b851"
+                  "bc647251c4d6d23843603ecfa4a81c0f"
                 ]
               }
             },
@@ -4157,7 +4187,7 @@
             "unidade": "passagens/h",
             "valor": 0.041667,
             "versao_calculo": "frequencia-1.0",
-            "versao_conjunto": "94fe5103b06395a624cb50053d92b851",
+            "versao_conjunto": "bc647251c4d6d23843603ecfa4a81c0f",
             "versao_correspondencia": "correspondencia-controlada",
             "versao_gtfs_id": "d08b8c81-6456-5c3f-a10f-0802e83f68fa"
           }
@@ -4174,7 +4204,7 @@
       "titulo": "Mesmo par GPS conta uma unica vez",
       "escala": "dia",
       "status": "CONFERIU_EXEMPLO",
-      "aceite_institucional": "PENDENTE",
+      "aceite_institucional": "DISPENSADO_PELO_RESPONSAVEL",
       "calculo_manual": "Duas viagens apontam ao mesmo par GPS: uma evidencia observada, 1/24 por hora. Duas previstas: 2/24 = 1/12 por hora.",
       "consulta": {
         "tipo": "FREQUENCIA",
@@ -4365,11 +4395,11 @@
                 ],
                 "versao_calculo": "frequencia-1.0",
                 "versao_correspondencia": "correspondencia-controlada",
-                "versao_estimativa": "us15-t01-v1",
+                "versao_estimativa": "us15-t01-v1-lacuna120s",
                 "versao_gtfs_id": "c80d7134-6785-5068-9c63-f82901582fec",
                 "versao_reconstrucao": "recon-controle-1",
                 "versoes_conjunto": [
-                  "26f9db0ac9d8ec80b73620f58a8705d9"
+                  "43618c89c7f3c39d623ee06fa2a327e3"
                 ]
               }
             },
@@ -4380,7 +4410,7 @@
             "unidade": "passagens/h",
             "valor": 0.041667,
             "versao_calculo": "frequencia-1.0",
-            "versao_conjunto": "26f9db0ac9d8ec80b73620f58a8705d9",
+            "versao_conjunto": "43618c89c7f3c39d623ee06fa2a327e3",
             "versao_correspondencia": "correspondencia-controlada",
             "versao_gtfs_id": "c80d7134-6785-5068-9c63-f82901582fec"
           }
@@ -4397,7 +4427,7 @@
       "titulo": "Mes pondera horas, nao media de taxas",
       "escala": "mes",
       "status": "CONFERIU_EXEMPLO",
-      "aceite_institucional": "PENDENTE",
+      "aceite_institucional": "DISPENSADO_PELO_RESPONSAVEL",
       "calculo_manual": "Recorte mensal de dois dias: 24/24 e 49/24,5; (24+49)/(24+24,5) = 146/97 por hora, nao 1,5/h.",
       "consulta": {
         "tipo": "FREQUENCIA",
@@ -6395,12 +6425,12 @@
                 ],
                 "versao_calculo": "frequencia-1.0",
                 "versao_correspondencia": "correspondencia-controlada",
-                "versao_estimativa": "us15-t01-v1",
+                "versao_estimativa": "us15-t01-v1-lacuna120s",
                 "versao_gtfs_id": "c27efb29-90b4-5f9a-95f3-2d462ec68008",
                 "versao_reconstrucao": "recon-controle-1",
                 "versoes_conjunto": [
-                  "401fb16e86582170cf81b540808a5279",
-                  "91b3fd26b051270b6b67580e9d358020"
+                  "37adbe1073fce752c2d150bb6d6f6ef9",
+                  "3c3cd585aa967b3ec7fb3539ed73adb9"
                 ]
               }
             },
@@ -6411,7 +6441,7 @@
             "unidade": "passagens/h",
             "valor": 1.505155,
             "versao_calculo": "frequencia-1.0",
-            "versao_conjunto": "7f535203b89fd8b260ad2de9decd2473",
+            "versao_conjunto": "89379aa537dea5f3219691dee3af0e69",
             "versao_correspondencia": "correspondencia-controlada",
             "versao_gtfs_id": "c27efb29-90b4-5f9a-95f3-2d462ec68008"
           }
@@ -6428,7 +6458,7 @@
       "titulo": "Falta de publicacao mantem mes parcial",
       "escala": "mes",
       "status": "CONFERIU_EXEMPLO",
-      "aceite_institucional": "PENDENTE",
+      "aceite_institucional": "DISPENSADO_PELO_RESPONSAVEL",
       "calculo_manual": "Falta uma janela de 15 min de 48 h: observada NULL, 47,75 h publicadas e contagem parcial 2. Programada 48/48 = 1/h.",
       "consulta": {
         "tipo": "FREQUENCIA",
@@ -6672,12 +6702,12 @@
                 ],
                 "versao_calculo": "frequencia-1.0",
                 "versao_correspondencia": "correspondencia-controlada",
-                "versao_estimativa": "us15-t01-v1",
+                "versao_estimativa": "us15-t01-v1-lacuna120s",
                 "versao_gtfs_id": "1e7b5745-b8fb-5051-9ab2-307259e9cc12",
                 "versao_reconstrucao": "recon-controle-1",
                 "versoes_conjunto": [
-                  "45c3e2cf3e603dbaacff6aeae679f1fe",
-                  "4b2c678a1997cc431d34b54783210c48"
+                  "5ee65b4fc1b66bd2427b84bb0b2dbf78",
+                  "6fad482c7559e25920dfe60b43025bb0"
                 ]
               }
             },
@@ -6688,7 +6718,7 @@
             "unidade": "passagens/h",
             "valor": null,
             "versao_calculo": "frequencia-1.0",
-            "versao_conjunto": "77eb470f202733d108d1e86f48182590",
+            "versao_conjunto": "e4180f5b461c92ae7f7a74c5a6f1085a",
             "versao_correspondencia": "correspondencia-controlada",
             "versao_gtfs_id": "1e7b5745-b8fb-5051-9ab2-307259e9cc12"
           }
@@ -6705,7 +6735,7 @@
       "titulo": "Mes completo coberto com zero",
       "escala": "mes",
       "status": "CONFERIU_EXEMPLO",
-      "aceite_institucional": "PENDENTE",
+      "aceite_institucional": "DISPENSADO_PELO_RESPONSAVEL",
       "calculo_manual": "Novembro inteiro: 30 x 24 = 720 h cobertas e processamento explicitamente executado; 0/720 = 0/h em ambos os lados.",
       "consulta": {
         "tipo": "FREQUENCIA",
@@ -7073,40 +7103,40 @@
                 ],
                 "versao_calculo": "frequencia-1.0",
                 "versao_correspondencia": "correspondencia-controlada",
-                "versao_estimativa": "us15-t01-v1",
+                "versao_estimativa": "us15-t01-v1-lacuna120s",
                 "versao_gtfs_id": "a84b26e0-4531-56f1-a414-7b0e63410c25",
                 "versao_reconstrucao": "recon-controle-1",
                 "versoes_conjunto": [
-                  "05d8fa3cb254f039cdcf78ec6a6b6ebe",
-                  "196d0f814ac5645dcee098fa06bc6dec",
-                  "255c999a832b735cd8a99feda8b0be46",
-                  "2bea0b82df745b904947c0927bd9692c",
-                  "2ec61f26018269cbf03e56b729d6894e",
-                  "36c9c0ade9e47358a72755c7abe567b6",
-                  "394f780c3d536ee66878b5c8f324b40b",
-                  "3bc36324bd7f2ca3778ddda433a22675",
-                  "3df37848b01e79584497293ff90f42be",
-                  "67c19e926f24b28b47786aa6e1d87367",
-                  "71131900fc6c81af48078858a9298d60",
-                  "75424248b8199caf25719792fe8e6251",
-                  "770970910f57f7b64c27081f8755f0e1",
-                  "7a16f9f41bdde9438e3634ef439a6d80",
-                  "806014896557867e190722ae7195f902",
-                  "8a2df1d6a2e316ce45c526bb1ae595fd",
-                  "8c6705e384b79559cece80c3b92987dd",
-                  "90ca3fd78f5bb5409a41e6e988f94aca",
-                  "925af4bbab9eaa8790963087c2801759",
-                  "9288a673444fa1da2bf13e0734d401d2",
-                  "94b8eb0f25456bcac037eb874dc726a8",
-                  "9f7a3f64bccb6bfaba2018c51c9afd15",
-                  "b4e45b071a4ea4a0d0fdc8f98fc6520b",
-                  "b5aacddf65403e592695dc2753b4f598",
-                  "d3bb5c5aa0090d0781067bb79902b45f",
-                  "d817159a73ed64aa0d0b4d7e4b446308",
-                  "e20643844ca3ac05f291cd83296c8d5d",
-                  "eb9c0d6f8298d5bfe884a311088149a4",
-                  "ef1419458e6a565021bd40be318bf6c7",
-                  "f7bf7e9c180c3c9b9df8c8f8c0977668"
+                  "166aa6a99ee13ea4ea2f29000dda43a1",
+                  "1c5af2f6ead0cf7f1ddb0cfe5a485207",
+                  "1cbe8830d026c2e153d02e8df218bae0",
+                  "28a1887484f781d744dc4b92d470da69",
+                  "298c0a5e615d28047d7d4b090fa6bad1",
+                  "2c5ef2526f37257fe11d5f2174bc27eb",
+                  "33e851c8a0e74d8e1de63e9f1b252bac",
+                  "36cf6b8b97fca9f1f88a7192aec3690a",
+                  "45132324b7b15ac4a8ccfe77b08d64b9",
+                  "67a5f43d6d469b7364e3fb89dedcf8fb",
+                  "6b4abe6d45bb4b579ac5fb497ea042b6",
+                  "72ff4459e3de0b69e9314f861061ac04",
+                  "7448c57d90f7af79dd49c8066e7958c8",
+                  "7c672804d5a9053332ce23ed163b0b73",
+                  "8646284dcbd2f90a8ef348cccb5c6324",
+                  "8b2f11acf4521baccc1bfd98b1631f28",
+                  "8b6d5ebe553da03f2a64388886d4a645",
+                  "8d5af56ac3fd5c726c4cfdb9b9275313",
+                  "9efc277a9037601879ede3e8f6fd5b12",
+                  "9f7f45c58e9f502e5c59ccf8bad7f644",
+                  "a16060950d65ca219c90e6d3296b0294",
+                  "a2e95c81135e914b9222f2b40eb2e40a",
+                  "ad473f58a66fb1dcf2d259c5774c4a16",
+                  "c18113ec34bf6778b1cc8663bee25dfb",
+                  "c2b13d15347b26f56d442ecf98b5e09e",
+                  "ced544a060c8f3a4b421e2098ec66825",
+                  "d50b45dd43875b00eb1487c8fbd9f9fd",
+                  "d6d6beb7b8820b042a715a38c499aa32",
+                  "e49106f9956ec0bd73ce142d75ba8ce1",
+                  "f5cf27f93bf21305ecf15f20c8b266b7"
                 ]
               }
             },
@@ -7117,7 +7147,7 @@
             "unidade": "passagens/h",
             "valor": 0.0,
             "versao_calculo": "frequencia-1.0",
-            "versao_conjunto": "74a810fe6ca324de07227c3943ccd09b",
+            "versao_conjunto": "389bca5fb5d724268834b57e558998ea",
             "versao_correspondencia": "correspondencia-controlada",
             "versao_gtfs_id": "a84b26e0-4531-56f1-a414-7b0e63410c25"
           }
@@ -7134,7 +7164,7 @@
       "titulo": "Mes sem coleta preserva ausencia",
       "escala": "mes",
       "status": "CONFERIU_EXEMPLO",
-      "aceite_institucional": "PENDENTE",
+      "aceite_institucional": "DISPENSADO_PELO_RESPONSAVEL",
       "calculo_manual": "Recorte mensal de um dia sem coleta: observada NULL, nunca zero; duas previstas em 24 h: 2/24 = 1/12 por hora.",
       "consulta": {
         "tipo": "FREQUENCIA",
@@ -7303,11 +7333,11 @@
                 ],
                 "versao_calculo": "frequencia-1.0",
                 "versao_correspondencia": "correspondencia-controlada",
-                "versao_estimativa": "us15-t01-v1",
+                "versao_estimativa": "us15-t01-v1-lacuna120s",
                 "versao_gtfs_id": "d0eec243-546a-53c7-91cb-fc0644aca3ed",
                 "versao_reconstrucao": "recon-controle-1",
                 "versoes_conjunto": [
-                  "1a7efb0d51960cbf37113bde1491fb39"
+                  "a4079e3b82ebac5bb90883629bd7b130"
                 ]
               }
             },
@@ -7318,7 +7348,7 @@
             "unidade": "passagens/h",
             "valor": null,
             "versao_calculo": "frequencia-1.0",
-            "versao_conjunto": "1a7efb0d51960cbf37113bde1491fb39",
+            "versao_conjunto": "a4079e3b82ebac5bb90883629bd7b130",
             "versao_correspondencia": "correspondencia-controlada",
             "versao_gtfs_id": "d0eec243-546a-53c7-91cb-fc0644aca3ed"
           }
@@ -7335,7 +7365,7 @@
       "titulo": "Mes separa versoes da reconstrucao",
       "escala": "mes",
       "status": "CONFERIU_EXEMPLO",
-      "aceite_institucional": "PENDENTE",
+      "aceite_institucional": "DISPENSADO_PELO_RESPONSAVEL",
       "calculo_manual": "Reconstrucao 1: 24/24 = 1/h; reconstrucao 2: 48/24 = 2/h. Dois itens, sem somar 72 nem tirar media 1,5.",
       "consulta": {
         "tipo": "FREQUENCIA",
@@ -9367,11 +9397,11 @@
                 ],
                 "versao_calculo": "frequencia-1.0",
                 "versao_correspondencia": "correspondencia-controlada",
-                "versao_estimativa": "us15-t01-v1",
+                "versao_estimativa": "us15-t01-v1-lacuna120s",
                 "versao_gtfs_id": "36aeef0c-142f-55d1-a6d2-cde915ebe499",
                 "versao_reconstrucao": "recon-controle-1",
                 "versoes_conjunto": [
-                  "6bf704e246a0850d6ac07047eb269eca"
+                  "48a197054b34a1eee683469145176867"
                 ]
               }
             },
@@ -9382,7 +9412,7 @@
             "unidade": "passagens/h",
             "valor": 1.0,
             "versao_calculo": "frequencia-1.0",
-            "versao_conjunto": "6bf704e246a0850d6ac07047eb269eca",
+            "versao_conjunto": "48a197054b34a1eee683469145176867",
             "versao_correspondencia": "correspondencia-controlada",
             "versao_gtfs_id": "36aeef0c-142f-55d1-a6d2-cde915ebe499"
           },
@@ -9451,11 +9481,11 @@
                 ],
                 "versao_calculo": "frequencia-1.0",
                 "versao_correspondencia": "correspondencia-controlada",
-                "versao_estimativa": "us15-t01-v1",
+                "versao_estimativa": "us15-t01-v1-lacuna120s",
                 "versao_gtfs_id": "36aeef0c-142f-55d1-a6d2-cde915ebe499",
                 "versao_reconstrucao": "recon-controle-2",
                 "versoes_conjunto": [
-                  "e5325290f9746a4cb796faaa25ad9bd4"
+                  "d8523d4a48c1b1da5d28d4c969c2a7c4"
                 ]
               }
             },
@@ -9466,7 +9496,7 @@
             "unidade": "passagens/h",
             "valor": 2.0,
             "versao_calculo": "frequencia-1.0",
-            "versao_conjunto": "e5325290f9746a4cb796faaa25ad9bd4",
+            "versao_conjunto": "d8523d4a48c1b1da5d28d4c969c2a7c4",
             "versao_correspondencia": "correspondencia-controlada",
             "versao_gtfs_id": "36aeef0c-142f-55d1-a6d2-cde915ebe499"
           }

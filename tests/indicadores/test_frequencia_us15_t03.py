@@ -12,7 +12,7 @@ import pytest
 from app import db
 from app.indicadores.frequencia import OBSERVADA, PROGRAMADA, UNIDADE, calcular_e_publicar_frequencias
 from app.models import IndicadorOperacional, Linha
-from test_frequencia_us15_t02 import DEPOIS, MATCH, RECON, T0, cenario, passagem  # noqa: F401
+from test_frequencia_us15_t02 import DEPOIS, MATCH, RECON, T0, cenario, lacuna_de_teste, passagem  # noqa: F401
 
 UTC = timezone.utc
 NOV1 = datetime(2026, 11, 1, 3, tzinfo=UTC)  # 01/11 00:00 em São Paulo
@@ -237,3 +237,26 @@ def test_compatibilidade_com_os_demais_indicadores(cenario, app):
     assert all(campo in item for campo in COMUNS)
     series = cliente.get("/series?linha=3762-10&tipo=CUMPRIMENTO_VIAGENS")
     assert series.status_code == 200 and series.get_json()["dados"][0]["valor"] == 87.5
+
+
+def test_mes_com_servico_apos_24h_nao_vira_janelas_sobrepostas(cenario, app):
+    # 01/11 vai até 24:30 (98 janelas, a mesma hora civil das 2 primeiras de 02/11).
+    dia(cenario, NOV1, [1] * 98, data="2026-11-01")
+    dia(cenario, NOV1 + timedelta(days=1), [1] * 96, data="2026-11-02")
+    db.session.commit()
+    item = unico(consultar(app, parada="B", agregacao="mes",
+                           inicio="2026-11-01T00:00:00-03:00", fim="2026-11-03T00:00:00-03:00"))
+    assert item["observada"]["situacao"] == "CALCULADA", item["observada"]["motivos"]
+    assert item["observada"]["contagem"] == 194
+    assert item["observada"]["valor"] == pytest.approx(194 / 48.5)
+
+
+def test_faixa_que_atravessa_meia_noite_sem_servico_apos_24h_nao_e_lacuna(cenario, app):
+    dia(cenario, NOV1, [0] * 96, data="2026-11-01")
+    dia(cenario, NOV1 + timedelta(days=1), [0] * 96, data="2026-11-02")
+    db.session.commit()
+    item = unico(consultar(app, parada="B", agregacao="faixa", hora_inicio="23:00", hora_fim="01:00",
+                           inicio="2026-11-01T00:00:00-03:00", fim="2026-11-02T00:00:00-03:00"))
+    assert (item["observada"]["valor"], item["observada"]["situacao"]) == (0.0, "ZERO_OBSERVADO")
+    assert item["observada"]["cobertura"]["lacunas"] == []
+    assert item["fim"] == "2026-11-02T03:00:00+00:00"  # período usado termina à meia-noite

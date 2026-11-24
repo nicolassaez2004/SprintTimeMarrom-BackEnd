@@ -17,7 +17,8 @@ from app.models import (
     Trecho, ViagemObservada,
 )
 from app.viagens.passagens import (
-    METODO, VERSAO, EstimadorPassagens, LimiteLacunaIndefinido, Percurso, estimar_e_gravar,
+    METODO, EstimadorPassagens, LimiteLacunaIndefinido, Percurso, estimar_e_gravar,
+    versao_estimativa,
 )
 
 LAT = -23.55
@@ -136,10 +137,11 @@ def test_lacuna_temporal_acima_do_limite(cenario):
     assert "B" in por_parada(estimar(cenario, obs, lacuna=timedelta(seconds=121)))
 
 
-def test_limite_de_lacuna_nao_definido_impede_a_estimativa(cenario):
+def test_limite_de_lacuna_nao_definido_impede_a_estimativa(cenario, app):
+    assert app.config["PASSAGEM_LACUNA_MAXIMA_SEG"] == "120"  # padrão adotado
     with pytest.raises(LimiteLacunaIndefinido):
         EstimadorPassagens(None)
-    # O app de teste não define PASSAGEM_LACUNA_MAXIMA_SEG.
+    app.config["PASSAGEM_LACUNA_MAXIMA_SEG"] = None
     with pytest.raises(LimiteLacunaIndefinido):
         estimar_e_gravar(cenario["viagem"], [])
 
@@ -186,7 +188,7 @@ def test_grava_com_rastreabilidade_sem_duplicar_e_sem_alterar_brutos(cenario):
     gravadas = PassagemEstimada.query.order_by(PassagemEstimada.instante).all()
     assert [p.parada_codigo for p in gravadas] == ["B", "C"]
     b = gravadas[0]
-    assert (b.metodo, b.versao_estimativa, b.versao_gtfs_id) == (METODO, VERSAO, cenario["versao"].id)
+    assert (b.metodo, b.versao_estimativa, b.versao_gtfs_id) == (METODO, versao_estimativa(LACUNA), cenario["versao"].id)
     assert b.viagem.id == cenario["viagem"].id and b.parada.nome == "Parada B"
     assert b.posicao_anterior.horario_gps <= b.instante <= b.posicao_posterior.horario_gps
     assert (b.posicao_anterior_id, b.posicao_posterior_id) == (obs[0].bruto_id, obs[1].bruto_id)
@@ -200,7 +202,7 @@ def test_banco_recusa_segunda_passagem_da_mesma_parada_e_viagem(cenario):
     original = PassagemEstimada.query.one()
     db.session.add(PassagemEstimada(
         viagem_observada_id=original.viagem_observada_id, versao_gtfs_id=original.versao_gtfs_id,
-        parada_codigo="B", instante=original.instante, metodo=METODO, versao_estimativa=VERSAO,
+        parada_codigo="B", instante=original.instante, metodo=METODO, versao_estimativa=versao_estimativa(LACUNA),
         posicao_anterior_id=original.posicao_anterior_id,
         posicao_posterior_id=original.posicao_posterior_id))
     with pytest.raises(IntegrityError):
@@ -217,3 +219,26 @@ def test_observacao_fora_da_viagem_e_recusada(cenario):
 def test_resultado_deterministico(cenario):
     obs = posicoes(cenario, (0, -46.7005), (50, -46.6965), (100, -46.6935), (150, -46.6895))
     assert estimar(cenario, obs) == estimar(cenario, list(reversed(obs)))
+
+
+def test_registra_execucao_lacuna_e_intervalo_das_paradas_sem_evidencia(cenario):
+    from app.models import EstimativaPassagemViagem
+
+    # Par em volta de C separado por 3 min (> 2 min): C fica sem evidência entre eles.
+    obs = posicoes(cenario, (0, -46.6985), (60, -46.6955), (240, -46.6925))
+    resultado = estimar_e_gravar(cenario["viagem"], obs, LACUNA)
+    db.session.commit()
+    registro = EstimativaPassagemViagem.query.one()
+    assert registro.versao_estimativa == versao_estimativa(LACUNA) == "us15-t01-v1-lacuna120s"
+    assert registro.lacuna_maxima_seg == 120
+    sem = {item["parada"]: item for item in registro.sem_evidencia}
+    assert set(sem) == {"A", "C", "D"} == set(resultado.paradas_sem_evidencia)
+    assert (sem["C"]["inicio"], sem["C"]["fim"]) == (
+        obs[1].bruto.horario_gps.isoformat(), obs[2].bruto.horario_gps.isoformat())
+    assert sem["A"]["inicio"] is None and sem["D"]["fim"] is None
+
+    # Outro limite é outra versão: a passagem de 120 s não é reaproveitada.
+    estimar_e_gravar(cenario["viagem"], obs, timedelta(seconds=30))
+    db.session.commit()
+    assert {p.versao_estimativa for p in PassagemEstimada.query} == {"us15-t01-v1-lacuna120s"}
+    assert EstimativaPassagemViagem.query.count() == 2

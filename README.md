@@ -5,7 +5,7 @@
 [Caderno de 20 exemplos controlados](docs/US15-T04.md), com cálculo manual nas
 escalas de 15 minutos, faixa horária, dia e mês. Reproduzir com
 `python -m scripts.validar_us15_t04`; o ensaio usa somente SQLite descartável.
-O aceite da Instituição Parceira e a revisão continuam pendentes.
+Revisada em 24/11/2026; aceite da Instituição Parceira dispensado pelo responsável.
 
 ## Painel histórico — US23-T01
 
@@ -203,9 +203,9 @@ Segue o diagrama de componentes e serviços:
 
 **US12-T04 — reprodução mensal de indicadores.** O relatório em
 [docs/US12-T04.md](docs/US12-T04.md) registra a dependência ainda ausente de
-US14/US16, do `IndicatorService` e de um conjunto mensal publicado. O aceite
-integral permanece pendente; os testes sintéticos do reprocessamento não são
-apresentados como prova de indicadores reais.
+US14/US16, do `IndicatorService` e de um conjunto mensal publicado. Pronta com
+essa limitação explícita: os testes sintéticos não são apresentados como prova
+de indicadores reais, e o aceite integral com um mês real fica pendente.
 
 **Duplicação.** Cada registro aponta ao ciclo que o gravou primeiro.
 
