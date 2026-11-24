@@ -1,5 +1,11 @@
 # SprintTimeMarrom-BackEnd
 
+## Painel histórico — US23-T01
+
+[`GET /series`](docs/US23-T01.md) aceita linha, sentido, período e faixa horária
+diária. Reutiliza indicadores persistidos, declara limites do histórico e
+preserva zero, resultados nulos e intervalos sem publicação.
+
 ## Diferença entre saídas observadas e programadas — US16-T01
 
 O serviço de [pontualidade por viagem](docs/US16-T01.md) calcula a diferença

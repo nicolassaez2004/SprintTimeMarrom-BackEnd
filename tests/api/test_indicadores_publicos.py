@@ -3,7 +3,7 @@ import pytest
 from datetime import datetime, timezone
 
 from app import create_app, db
-from app.models import IndicadorOperacional, LimiteConsultaIP
+from app.models import ExecucaoColeta, IndicadorOperacional, LimiteConsultaIP
 
 
 @pytest.fixture
@@ -13,7 +13,7 @@ def client():
         "SQLALCHEMY_DATABASE_URI": "sqlite:///:memory:",
     })
     with app.app_context():
-        db.metadata.create_all(bind=db.engine, tables=[IndicadorOperacional.__table__, LimiteConsultaIP.__table__])
+        db.metadata.create_all(bind=db.engine, tables=[IndicadorOperacional.__table__, LimiteConsultaIP.__table__, ExecucaoColeta.__table__])
     return app.test_client()
 
 
@@ -22,7 +22,8 @@ def test_rotas_publicas_sem_resultados_retornam_pagina_vazia(client, path):
     response = client.get(path)
 
     assert response.status_code == 200
-    assert response.get_json() == {"dados": [], "paginacao": {"page": 1, "page_size": 100, "total": 0}}
+    assert response.get_json()["dados"] == []
+    assert response.get_json()["paginacao"] == {"page": 1, "page_size": 100, "total": 0}
 
 
 @pytest.mark.parametrize("path,series", [("/indicadores", False), ("/series", True)])
