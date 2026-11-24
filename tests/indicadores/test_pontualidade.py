@@ -2,12 +2,17 @@
 
 from dataclasses import replace
 from datetime import date, datetime, timedelta, timezone
+from decimal import Decimal
 from zoneinfo import ZoneInfo
 
 import pytest
 
 from app import create_app, db
-from app.indicadores.pontualidade import SaidaObservada, calcular_diferencas
+from app.indicadores.pontualidade import (
+    DiferencaSaida, ResultadoPontualidade, SaidaObservada,
+    calcular_diferencas, calcular_percentual_pontualidade,
+    publicar_pontualidade,
+)
 from app.models import (
     ArquivoArmazenado, ImportacaoProgramacao, Linha, PartidaProgramada, VersaoGTFS,
 )
@@ -18,6 +23,7 @@ UTC = timezone.utc
 SP = ZoneInfo("America/Sao_Paulo")
 DIA = date(2026, 11, 24)
 PREVISTA = datetime(2026, 11, 24, 8, tzinfo=SP)
+AGORA = datetime(2026, 11, 24, 12, tzinfo=UTC)
 
 
 def partida(id="p1", *, horario=PREVISTA, tipo="FIXA", **contexto):
@@ -254,3 +260,81 @@ def test_integra_separacao_us14_e_programacao_us04_persistida_sem_gravar(tmp_pat
         finally:
             db.session.remove()
             db.engine.dispose()
+
+
+@pytest.mark.parametrize("segundos,esperado", [
+    (-60, True), (300, True), (-60.001, False), (300.001, False),
+])
+def test_limites_inclusivos_de_pontualidade(segundos, esperado):
+    diferencas = calcular_diferencas(
+        [observada(horario=PREVISTA + timedelta(seconds=segundos))], [partida()],
+    )
+    resultado = calcular_percentual_pontualidade(diferencas)
+    assert resultado.pontuais == int(esperado)
+    assert resultado.realizadas == 1
+    assert resultado.percentual == (Decimal("100.00") if esperado else Decimal("0.00"))
+
+
+def test_frequencia_pareamento_ausente_e_saida_nao_confirmada_nao_entram_no_denominador():
+    diferencas = ResultadoPontualidade((
+        DiferencaSaida("v1", DIA, "CALCULADA", "FIXA_PAREADA", PREVISTA, None, -60),
+        DiferencaSaida("v2", DIA, "FREQUENCIA", "OFERTA_POR_FREQUENCIA", None, None),
+        DiferencaSaida("v3", DIA, "SEM_PAREAMENTO", "PAREAMENTO_NAO_INFORMADO", None, None),
+        DiferencaSaida("v4", DIA, "SAIDA_NAO_CONFIRMADA", "PRIMEIRO_GPS_NAO_CONFIRMA_SAIDA", None, None),
+    ))
+    resultado = calcular_percentual_pontualidade(diferencas)
+    assert (resultado.pontuais, resultado.realizadas, resultado.percentual) == (1, 1, Decimal("100.00"))
+    assert resultado.excluidas == {
+        "frequencia": 1, "sem_pareamento": 1, "saida_nao_confirmada": 1,
+    }
+
+
+def test_denominador_zero_indica_insuficiencia_e_nao_inventa_percentual():
+    resultado = calcular_percentual_pontualidade(calcular_diferencas([], []))
+    assert (resultado.pontuais, resultado.realizadas, resultado.percentual) == (0, 0, None)
+    assert resultado.dados_insuficientes
+
+
+def test_publicacao_versionada_idempotente_e_consultavel_na_rota_publica(app, programacao):
+    versao, linha, _, _ = programacao
+    agregado = ResultadoPontualidade((DiferencaSaida(
+        "v1", DIA, "CALCULADA", "FIXA_PAREADA", PREVISTA, None, -60,
+    ), DiferencaSaida(
+        "v2", DIA, "CALCULADA", "FIXA_PAREADA", PREVISTA, None, 301,
+    ), DiferencaSaida(
+        "v3", DIA, "FREQUENCIA", "OFERTA_POR_FREQUENCIA", PREVISTA, None,
+    )))
+    argumentos = {
+        "linha": linha.codigo, "sentido": "0", "inicio": AGORA,
+        "fim": AGORA + timedelta(hours=1), "versao_gtfs_id": versao.id,
+        "versao_correspondencia": "match-v3", "versao_reconstrucao": "recon-v1",
+    }
+    indicador = publicar_pontualidade(agregado, **argumentos)
+    assert indicador.indicador == "PONTUALIDADE_VIAGENS"
+    assert indicador.valor == 50.0
+    assert (indicador.contagem_numerador, indicador.contagem_denominador) == (1, 2)
+    assert indicador.versao_calculo == "pontualidade-1.0"
+    assert indicador.qualidade["excluidas"]["frequencia"] == 1
+    repetido = publicar_pontualidade(agregado, **argumentos)
+    assert repetido.id == indicador.id
+
+    response = app.test_client().get(
+        f"/indicadores?linha={linha.codigo}&tipo=PONTUALIDADE_VIAGENS"
+    )
+    assert response.status_code == 200
+    publicado = response.json["dados"][0]
+    assert publicado["valor"] == 50.0
+    assert publicado["contagens"] == {"numerador": 1, "denominador": 2}
+    assert publicado["qualidade"]["limites_inclusivos"] is True
+
+
+def test_publicacao_sem_viagens_guarda_null_e_dados_insuficientes(app, programacao):
+    versao, linha, _, _ = programacao
+    registro = publicar_pontualidade(
+        ResultadoPontualidade(()), linha=linha.codigo, sentido="0",
+        inicio=AGORA, fim=AGORA + timedelta(hours=1), versao_gtfs_id=versao.id,
+        versao_correspondencia="match-v3", versao_reconstrucao="recon-v1",
+    )
+    assert registro.valor is None
+    assert (registro.contagem_numerador, registro.contagem_denominador) == (0, 0)
+    assert registro.qualidade["dados_insuficientes"] is True

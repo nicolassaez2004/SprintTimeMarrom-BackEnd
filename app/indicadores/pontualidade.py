@@ -1,11 +1,15 @@
-"""US16-T01: diferença por viagem, sem inferir saídas ou publicar percentuais."""
+"""Cálculo de diferenças e publicação da pontualidade (US16)."""
 
 from collections import Counter, defaultdict
 from dataclasses import dataclass
 from datetime import date, datetime, timezone
+from decimal import Decimal, ROUND_HALF_UP
+from hashlib import sha256
+import json
 from typing import Iterable
 
-from app.models import PartidaProgramada
+from app import db
+from app.models import IndicadorOperacional, PartidaProgramada
 from app.viagens.separacao import ViagemObservada
 
 
@@ -67,6 +71,126 @@ class ResultadoPontualidade:
     def denominador(self) -> int:
         """Viagens fixas com saída confirmada e pareamento único; sujeito ao PO."""
         return self.contagens["CALCULADA"]
+
+
+@dataclass(frozen=True)
+class PercentualPontualidade:
+    pontuais: int
+    realizadas: int
+    percentual: Decimal | None
+    classificadas: int
+    excluidas: dict[str, int]
+
+    @property
+    def dados_insuficientes(self) -> bool:
+        return self.realizadas == 0
+
+
+def calcular_percentual_pontualidade(
+    diferencas: ResultadoPontualidade | Iterable[DiferencaSaida],
+) -> PercentualPontualidade:
+    """Conta saídas fixas confirmadas entre -60s e +300s, limites inclusivos.
+
+    Somente itens CALCULADA entram no denominador. Frequência, pareamento
+    ausente e saída não confirmada são excluídos e reportados separadamente.
+    """
+    viagens = diferencas.viagens if isinstance(diferencas, ResultadoPontualidade) else tuple(diferencas)
+    contagens = Counter(item.status for item in viagens)
+    classificaveis = [item for item in viagens if item.status == "CALCULADA"]
+    if any(item.diferenca_segundos is None for item in classificaveis):
+        raise ValueError("viagem CALCULADA deve ter diferença de saída")
+    pontuais = sum(-60 <= item.diferenca_segundos <= 300 for item in classificaveis)
+    realizadas = len(classificaveis)
+    percentual = None if realizadas == 0 else (
+        Decimal(pontuais * 100) / Decimal(realizadas)
+    ).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+    return PercentualPontualidade(
+        pontuais=pontuais,
+        realizadas=realizadas,
+        percentual=percentual,
+        classificadas=len(viagens),
+        excluidas={
+            "frequencia": contagens["FREQUENCIA"],
+            "sem_pareamento": contagens["SEM_PAREAMENTO"],
+            "saida_nao_confirmada": contagens["SAIDA_NAO_CONFIRMADA"],
+        },
+    )
+
+
+VERSAO_ALGORITMO_PONTUALIDADE = "pontualidade-1.0"
+
+
+def publicar_pontualidade(
+    resultado: ResultadoPontualidade,
+    *, linha: str, sentido: str, inicio: datetime, fim: datetime,
+    versao_gtfs_id: str, versao_correspondencia: str,
+    versao_reconstrucao: str, versao_calculo: str = VERSAO_ALGORITMO_PONTUALIDADE,
+) -> IndicadorOperacional:
+    """Persiste o agregado versionado na tabela consumida por GET /indicadores."""
+    if sentido not in ("0", "1"):
+        raise ValueError("sentido deve ser '0' (ida) ou '1' (volta)")
+    if not all(isinstance(valor, str) and valor.strip() for valor in (
+        linha, versao_gtfs_id, versao_correspondencia, versao_reconstrucao, versao_calculo,
+    )):
+        raise ValueError("linha e versões GTFS, correspondência, reconstrução e cálculo são obrigatórias")
+    inicio_utc, fim_utc = _utc(inicio, "inicio"), _utc(fim, "fim")
+    if fim_utc <= inicio_utc:
+        raise ValueError("fim deve ser posterior a inicio")
+
+    agregado = calcular_percentual_pontualidade(resultado)
+    versoes_programacao = sorted({
+        (item.programacao.importacao_id, item.programacao.fonte,
+         item.programacao.versao_fonte)
+        for item in resultado.viagens if item.programacao is not None
+    })
+    identidade = {
+        "tipo": "PONTUALIDADE_VIAGENS", "linha": linha, "sentido": sentido,
+        "inicio": inicio_utc.isoformat(), "fim": fim_utc.isoformat(),
+        "versao_gtfs_id": versao_gtfs_id,
+        "versao_correspondencia": versao_correspondencia,
+        "versao_reconstrucao": versao_reconstrucao,
+        "versao_calculo": versao_calculo,
+        "versoes_programacao": versoes_programacao,
+    }
+    chave = sha256(json.dumps(identidade, sort_keys=True, separators=(",", ":")).encode()).hexdigest()
+    registro = IndicadorOperacional.query.filter_by(chave_resultado=chave).one_or_none()
+    if registro is None:
+        registro = IndicadorOperacional(chave_resultado=chave)
+        db.session.add(registro)
+    registro.versao_gtfs_id = versao_gtfs_id
+    registro.linha_codigo = linha
+    registro.sentido = sentido
+    registro.parada_codigo = None
+    registro.trecho_id = None
+    registro.indicador = "PONTUALIDADE_VIAGENS"
+    registro.valor = float(agregado.percentual) if agregado.percentual is not None else None
+    registro.unidade = "%"
+    registro.periodo_inicio = inicio_utc
+    registro.periodo_fim = fim_utc
+    registro.contagem_numerador = agregado.pontuais
+    registro.contagem_denominador = agregado.realizadas
+    registro.versao_conjunto = chave[:32]
+    registro.versao_correspondencia = versao_correspondencia
+    registro.versao_calculo = versao_calculo
+    registro.qualidade = {
+        "dados_insuficientes": agregado.dados_insuficientes,
+        "motivo_insuficiencia": "NENHUMA_VIAGEM_FIXA_CLASSIFICAVEL" if agregado.dados_insuficientes else None,
+        "viagens_classificadas": agregado.classificadas,
+        "viagens_realizadas": agregado.realizadas,
+        "viagens_pontuais": agregado.pontuais,
+        "excluidas": agregado.excluidas,
+        "limite_adiantamento_segundos": 60,
+        "limite_atraso_segundos": 300,
+        "limites_inclusivos": True,
+        "oferta_por_frequencia_excluida": True,
+        "versao_reconstrucao": versao_reconstrucao,
+        "capturas_programacao": [
+            {"importacao_id": item[0], "fonte": item[1], "versao_fonte": item[2]}
+            for item in versoes_programacao
+        ],
+    }
+    db.session.commit()
+    return registro
 
 
 def _utc(instante: datetime, campo: str) -> datetime:
