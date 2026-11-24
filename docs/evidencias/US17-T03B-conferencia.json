@@ -1,12 +1,13 @@
 {
   "tarefa": "US17-T03B",
   "origem": "SINTETICA_CONTROLADA",
-  "executado_em": "2026-11-24T17:26:09.197104+00:00",
-  "aceite_institucional": "PENDENTE",
-  "envio_instituicao_parceira": "NAO_ENVIADO_PELO_SCRIPT",
+  "executado_em": "2026-11-24T17:29:21.209732+00:00",
+  "aceite_institucional": "DISPENSADO_PELO_RESPONSAVEL",
+  "envio_instituicao_parceira": "DISPENSADO_PELO_RESPONSAVEL",
+  "pronto": true,
   "fonte_casos": "docs/validacoes/US17-T03B-casos.json",
-  "sha256_caderno": "558ce963b95756eb53f8a5a4d845fb90b11f5b41ee535f8e4045bb01d960ea5a",
-  "codigo_base": "d47f68fd3e4f7a8f83f941340f7aa0754024f98b",
+  "sha256_caderno": "d0112c2141c7c9250a64c622d07193060f6e1f023d7644461736d9c57710f94b",
+  "codigo_base": "c19092864f5803d0342a5751ea3c731943465af5",
   "banco": "SQLite em memória; FK ON; sem Aiven",
   "relogio_ensaio": "2026-12-03T00:00:00+00:00",
   "resumo": {
@@ -18,7 +19,7 @@
       "titulo": "Intervalos iguais: CV 0 é regularidade real",
       "escala": "janela",
       "status": "CONFERIU_EXEMPLO",
-      "aceite_institucional": "PENDENTE",
+      "aceite_institucional": "DISPENSADO_PELO_RESPONSAVEL",
       "calculo_manual": "Janela 09:00–09:15: passagens posteriores 09:00, 09:05, 09:10 → intervalos 300, 300, 300 s. Média 300, desvio 0, CV 0/300 = 0. Sem agrupamento.",
       "consulta": {
         "tipo": "REGULARIDADE_INTERVALOS",
@@ -157,7 +158,7 @@
       "titulo": "Exemplo manual da US17-T01",
       "escala": "janela",
       "status": "CONFERIU_EXEMPLO",
-      "aceite_institucional": "PENDENTE",
+      "aceite_institucional": "DISPENSADO_PELO_RESPONSAVEL",
       "calculo_manual": "Passagens 09:00, 09:04, 09:10, 09:13: intervalos 240, 360, 180 s (09:00 não tem anterior). Média 260; desvios −20, 100, −80; variância (400 + 10000 + 6400)/3 = 5600; desvio √5600 = 74,8331; CV = 74,8331/260 = 0,287820.",
       "consulta": {
         "tipo": "REGULARIDADE_INTERVALOS",
@@ -296,7 +297,7 @@
       "titulo": "Limite exato 0,5 não é agrupamento",
       "escala": "janela",
       "status": "CONFERIU_EXEMPLO",
-      "aceite_institucional": "PENDENTE",
+      "aceite_institucional": "DISPENSADO_PELO_RESPONSAVEL",
       "calculo_manual": "Passagens 09:00:00, 09:01:40, 09:06:40: intervalos 100 e 300 s. Média 200; desvio √((100² + 100²)/2) = 100; CV = 100/200 = 0,5 → não é agrupamento (exige CV > 0,5).",
       "consulta": {
         "tipo": "REGULARIDADE_INTERVALOS",
@@ -435,7 +436,7 @@
       "titulo": "Acima de 0,5 marca agrupamento",
       "escala": "janela",
       "status": "CONFERIU_EXEMPLO",
-      "aceite_institucional": "PENDENTE",
+      "aceite_institucional": "DISPENSADO_PELO_RESPONSAVEL",
       "calculo_manual": "Passagens 09:00:00, 09:01:40, 09:06:50: intervalos 100 e 310 s. Média 205; desvio √((105² + 105²)/2) = 105; CV = 105/205 = 0,512195 > 0,5 → agrupamento.",
       "consulta": {
         "tipo": "REGULARIDADE_INTERVALOS",
@@ -574,7 +575,7 @@
       "titulo": "Menos de três passagens: NULL, não zero",
       "escala": "janela",
       "status": "CONFERIU_EXEMPLO",
-      "aceite_institucional": "PENDENTE",
+      "aceite_institucional": "DISPENSADO_PELO_RESPONSAVEL",
       "calculo_manual": "Passagens 09:00 e 09:07: um intervalo (420 s), menos de três passagens → sem CV; nunca CV 0.",
       "consulta": {
         "tipo": "REGULARIDADE_INTERVALOS",
@@ -715,7 +716,7 @@
       "titulo": "Faixa une os intervalos das janelas",
       "escala": "faixa",
       "status": "CONFERIU_EXEMPLO",
-      "aceite_institucional": "PENDENTE",
+      "aceite_institucional": "DISPENSADO_PELO_RESPONSAVEL",
       "calculo_manual": "Dez passagens a cada 6 min entre 09:00 e 09:54: nove intervalos de 360 s, distribuídos em quatro janelas. União: média 360, desvio 0, CV 0.",
       "consulta": {
         "tipo": "REGULARIDADE_INTERVALOS",
@@ -861,7 +862,7 @@
       "titulo": "Ônibus em comboio na faixa",
       "escala": "faixa",
       "status": "CONFERIU_EXEMPLO",
-      "aceite_institucional": "PENDENTE",
+      "aceite_institucional": "DISPENSADO_PELO_RESPONSAVEL",
       "calculo_manual": "Pares 09:00/09:01, 09:12/09:13, 09:24/09:25: intervalos 60, 660, 60, 660, 60 s. Média 300; desvios −240, 360, −240, 360, −240; variância (3 × 57600 + 2 × 129600)/5 = 86400; desvio 293,9388; CV = 0,979796 → agrupamento.",
       "consulta": {
         "tipo": "REGULARIDADE_INTERVALOS",
@@ -1007,7 +1008,7 @@
       "titulo": "Sentidos não se misturam",
       "escala": "faixa",
       "status": "CONFERIU_EXEMPLO",
-      "aceite_institucional": "PENDENTE",
+      "aceite_institucional": "DISPENSADO_PELO_RESPONSAVEL",
       "calculo_manual": "Ida em 09:00, 09:10, 09:20, 09:30: intervalos 600, 600, 600 s; CV 0. Misturar a volta (09:05, 09:15, 09:25) daria intervalos de 300 s, o que não pode ocorrer.",
       "consulta": {
         "tipo": "REGULARIDADE_INTERVALOS",
@@ -1153,7 +1154,7 @@
       "titulo": "Só passagens da oferta por frequência",
       "escala": "faixa",
       "status": "CONFERIU_EXEMPLO",
-      "aceite_institucional": "PENDENTE",
+      "aceite_institucional": "DISPENSADO_PELO_RESPONSAVEL",
       "calculo_manual": "Viagens da oferta por frequência em 09:00, 09:10, 09:20, 09:30 → intervalos 600, 600, 600 s; CV 0. As viagens de horário fixo (09:05 e 09:25) ficam fora.",
       "consulta": {
         "tipo": "REGULARIDADE_INTERVALOS",
@@ -1299,7 +1300,7 @@
       "titulo": "Coleta incompleta na faixa: NULL com motivo",
       "escala": "faixa",
       "status": "CONFERIU_EXEMPLO",
-      "aceite_institucional": "PENDENTE",
+      "aceite_institucional": "DISPENSADO_PELO_RESPONSAVEL",
       "calculo_manual": "Coleta só até 09:30: um ônibus perdido entre 09:30 e 10:00 dobraria um intervalo sem aviso. A faixa fica sem CV (coleta não confiável).",
       "consulta": {
         "tipo": "REGULARIDADE_INTERVALOS",
@@ -1447,7 +1448,7 @@
       "titulo": "Dia inteiro: o vão entre os picos conta",
       "escala": "dia",
       "status": "CONFERIU_EXEMPLO",
-      "aceite_institucional": "PENDENTE",
+      "aceite_institucional": "DISPENSADO_PELO_RESPONSAVEL",
       "calculo_manual": "06:00–07:00 e 18:00–19:00 a cada 10 min: 12 intervalos de 600 s e um de 39600 s (07:00→18:00). Média 46800/13 = 3600; variância (12 × 3000² + 36000²)/13 = 108000000; desvio 10392,3048; CV 2,886751 → agrupamento.",
       "consulta": {
         "tipo": "REGULARIDADE_INTERVALOS",
@@ -1587,7 +1588,7 @@
       "titulo": "Dia com duas passagens: NULL",
       "escala": "dia",
       "status": "CONFERIU_EXEMPLO",
-      "aceite_institucional": "PENDENTE",
+      "aceite_institucional": "DISPENSADO_PELO_RESPONSAVEL",
       "calculo_manual": "Duas passagens no dia (06:00 e 06:40): um intervalo; sem CV.",
       "consulta": {
         "tipo": "REGULARIDADE_INTERVALOS",
@@ -1729,7 +1730,7 @@
       "titulo": "Passagem sem evidência GPS anula o dia",
       "escala": "dia",
       "status": "CONFERIU_EXEMPLO",
-      "aceite_institucional": "PENDENTE",
+      "aceite_institucional": "DISPENSADO_PELO_RESPONSAVEL",
       "calculo_manual": "Uma viagem passou por B entre 06:12 e 06:14 sem par GPS válido: o intervalo 06:10→06:20 pode ter um ônibus a mais. Sem CV.",
       "consulta": {
         "tipo": "REGULARIDADE_INTERVALOS",
@@ -1871,7 +1872,7 @@
       "titulo": "Estimativa não executada anula o dia",
       "escala": "dia",
       "status": "CONFERIU_EXEMPLO",
-      "aceite_institucional": "PENDENTE",
+      "aceite_institucional": "DISPENSADO_PELO_RESPONSAVEL",
       "calculo_manual": "Uma viagem saiu às 06:15 e a estimativa de passagens não rodou para ela: não se sabe se passou por B. Sem CV.",
       "consulta": {
         "tipo": "REGULARIDADE_INTERVALOS",
@@ -2013,7 +2014,7 @@
       "titulo": "Linha só com horário fixo não tem regularidade",
       "escala": "dia",
       "status": "CONFERIU_EXEMPLO",
-      "aceite_institucional": "PENDENTE",
+      "aceite_institucional": "DISPENSADO_PELO_RESPONSAVEL",
       "calculo_manual": "A programação da data é de horário fixo: a regularidade da US17 vale só para a oferta por frequência.",
       "consulta": {
         "tipo": "REGULARIDADE_INTERVALOS",
@@ -2155,7 +2156,7 @@
       "titulo": "Mês: união dos intervalos de dois dias",
       "escala": "mes",
       "status": "CONFERIU_EXEMPLO",
-      "aceite_institucional": "PENDENTE",
+      "aceite_institucional": "DISPENSADO_PELO_RESPONSAVEL",
       "calculo_manual": "24/11: 600, 600 s; 25/11: 900, 900 s (não há intervalo entre dias operacionais). União: média 750; desvio 150; CV = 0,2.",
       "consulta": {
         "tipo": "REGULARIDADE_INTERVALOS",
@@ -2303,7 +2304,7 @@
       "titulo": "Dia sem publicação: NULL",
       "escala": "mes",
       "status": "CONFERIU_EXEMPLO",
-      "aceite_institucional": "PENDENTE",
+      "aceite_institucional": "DISPENSADO_PELO_RESPONSAVEL",
       "calculo_manual": "25/11 não foi publicado: o recorte não tem todos os intervalos. Sem CV.",
       "consulta": {
         "tipo": "REGULARIDADE_INTERVALOS",
@@ -2450,7 +2451,7 @@
       "titulo": "Dias insuficientes somam intervalos no mês",
       "escala": "mes",
       "status": "CONFERIU_EXEMPLO",
-      "aceite_institucional": "PENDENTE",
+      "aceite_institucional": "DISPENSADO_PELO_RESPONSAVEL",
       "calculo_manual": "Cada dia tem um intervalo (600 e 1200 s) e fica sem CV; no mês são dois intervalos: média 900, desvio 300, CV = 0,333333.",
       "consulta": {
         "tipo": "REGULARIDADE_INTERVALOS",
@@ -2598,7 +2599,7 @@
       "titulo": "Mês com faixa diária",
       "escala": "mes",
       "status": "CONFERIU_EXEMPLO",
-      "aceite_institucional": "PENDENTE",
+      "aceite_institucional": "DISPENSADO_PELO_RESPONSAVEL",
       "calculo_manual": "Faixa 06:00–07:00: 24/11 360, 360 s; 25/11 720, 720 s (a passagem das 13:20 fica fora da faixa). Média 540; desvio 180; CV = 0,333333.",
       "consulta": {
         "tipo": "REGULARIDADE_INTERVALOS",
@@ -2752,7 +2753,7 @@
       "titulo": "Mês sem passagens: NULL, não regularidade perfeita",
       "escala": "mes",
       "status": "CONFERIU_EXEMPLO",
-      "aceite_institucional": "PENDENTE",
+      "aceite_institucional": "DISPENSADO_PELO_RESPONSAVEL",
       "calculo_manual": "Coleta completa e nenhuma passagem em B: zero intervalos. Sem CV; nunca CV 0.",
       "consulta": {
         "tipo": "REGULARIDADE_INTERVALOS",
