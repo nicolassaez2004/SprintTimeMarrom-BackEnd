@@ -57,16 +57,18 @@ def create_app(config_extra=None):
     origens_frontend = ["http://localhost:5173", "http://127.0.0.1:5173"]
     CORS(
         app,
-        expose_headers=["Retry-After", "X-RateLimit-Limit", "X-RateLimit-Remaining", "X-RateLimit-Reset"],
+        expose_headers=["ETag", "Retry-After", "X-RateLimit-Limit", "X-RateLimit-Remaining", "X-RateLimit-Reset"],
         resources={
             r"/api/*": {
                 "origins": origens_frontend
             },
             r"/partidas": {"origins": origens_frontend},
             r"/posicoes/atuais": {"origins": origens_frontend},
-            r"/qualidade": {"origins": origens_frontend},
-            r"/documentos": {"origins": origens_frontend},
-            r"/downloads": {"origins": origens_frontend},
+            # Flask-Cors 6 compara padrões sem metacaracteres literalmente;
+            # o sufixo regex cobre as sub-rotas públicas desses recursos.
+            r"/qualidade(/.*)?": {"origins": origens_frontend},
+            r"/documentos(/.*)?": {"origins": origens_frontend},
+            r"/downloads/.*": {"origins": origens_frontend},
             r"/indicadores": {"origins": origens_frontend},
             r"/series": {"origins": origens_frontend},
         }

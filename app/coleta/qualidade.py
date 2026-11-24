@@ -9,12 +9,17 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 from decimal import Decimal
 
+from sqlalchemy import tuple_
+
 from app import db
 from app.config import validar_intervalo_coleta
 from app.models import ExecucaoColeta, RegistroBrutoGPS
 
 
 META_COBERTURA_MENSAL = Decimal("99")
+# Chaves por consulta: a frota (~11 mil) cabe em 1–2 idas ao banco remoto,
+# dentro do range_optimizer_max_mem_size e do limite de parâmetros do SQLite.
+LOTE_CONSULTA_CHAVES = 10000
 
 
 def chave_gps_completa(registro):
@@ -102,16 +107,17 @@ def validar_unicidade_chave(registros, *, sessao=None):
     chaves = {chave_gps_completa(r) for r in registros}
     chaves.discard(None)
     existentes = set()
-    if chaves:
-        prefixos = {chave[0] for chave in chaves}
-        horarios = {chave[1] for chave in chaves}
-        linhas = sessao.query(
-            RegistroBrutoGPS.prefixo_origem, RegistroBrutoGPS.horario_gps
-        ).filter(
-            RegistroBrutoGPS.prefixo_origem.in_(prefixos),
-            RegistroBrutoGPS.horario_gps.in_(horarios),
-        ).all()
-        existentes = set(linhas)
+    # Pares exatos no índice único: o custo depende do lote, não do histórico
+    # (`prefixo IN ... AND horario IN ...` relia todo o histórico dos prefixos).
+    chave_bd = tuple_(RegistroBrutoGPS.prefixo_origem, RegistroBrutoGPS.horario_gps)
+    pendentes = list(chaves)
+    for i in range(0, len(pendentes), LOTE_CONSULTA_CHAVES):
+        lote = pendentes[i : i + LOTE_CONSULTA_CHAVES]
+        existentes.update(
+            sessao.query(RegistroBrutoGPS.prefixo_origem, RegistroBrutoGPS.horario_gps)
+            .filter(chave_bd.in_(lote))
+            .all()
+        )
 
     novos = []
     for registro in registros:
