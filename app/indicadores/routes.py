@@ -1,7 +1,7 @@
 """Consulta pública dos indicadores persistidos (US11/US23)."""
 
 import re
-from datetime import datetime
+from datetime import datetime, time, timedelta
 from pathlib import Path
 
 from flask import Blueprint, current_app, g, request, send_file
@@ -9,7 +9,9 @@ from sqlalchemy.exc import SQLAlchemyError
 
 from app import db
 from app.core.limites import IdentidadeIPInvalida, consumir_limite, identificar_ip
+from app.indicadores.frequencia import AGREGACOES, TIPO_PUBLICO, consultar_frequencias
 from app.indicadores.service import consultar_indicadores
+from app.qualidade.service import FUSO
 from app.indicadores.series import consultar_series
 
 indicadores_bp = Blueprint("indicadores", __name__)
@@ -73,7 +75,9 @@ def _ler_instante(args, campo):
 
 
 def ler_filtros(args, *, serie=False):
-    permitidos = _PARAMETROS | ({"hora_inicio", "hora_fim"} if serie else set())
+    frequencia = not serie and (args.get("tipo") or args.get("indicador") or "").strip() == TIPO_PUBLICO
+    permitidos = (_PARAMETROS | ({"hora_inicio", "hora_fim"} if serie or frequencia else set())
+                  | ({"agregacao"} if frequencia else set()))
     for campo in args:
         if campo not in permitidos:
             raise ParametroInvalido(campo, "Parâmetro não reconhecido.")
@@ -135,7 +139,7 @@ def ler_filtros(args, *, serie=False):
         "page": inteiro("page", 1, 1, 2_147_483_647),
         "page_size": inteiro("page_size", 100, 1, PAGE_SIZE_MAX),
     }
-    if serie:
+    if serie or frequencia:
         horas = []
         for campo in ("hora_inicio", "hora_fim"):
             valor = args.get(campo)
@@ -146,10 +150,35 @@ def ler_filtros(args, *, serie=False):
             raise ParametroInvalido("hora_inicio", "Informe hora_inicio e hora_fim juntas.")
         if horas[0] is not None and horas[0] == horas[1]:
             raise ParametroInvalido("hora_fim", "Use horas diferentes; omita a faixa para consultar o dia inteiro.")
-        if inicio and fim and fim == inicio:
+        if serie and inicio and fim and fim == inicio:
             raise ParametroInvalido("fim", "fim deve ser posterior a inicio na consulta de séries.")
         filtros.update(hora_inicio=horas[0], hora_fim=horas[1])
+    if frequencia:
+        filtros["agregacao"] = _ler_agregacao(args, filtros)
     return filtros
+
+
+def _ler_agregacao(args, filtros):
+    """US15-T03: limites da consulta de frequência (lida em memória, por linha)."""
+    agregacao = args.get("agregacao", "janela").strip()
+    inicio, fim, faixa = filtros["inicio"], filtros["fim"], filtros["hora_inicio"] is not None
+    if agregacao not in AGREGACOES:
+        raise ParametroInvalido("agregacao", "Use janela, faixa, dia ou mes.")
+    if filtros["linha"] is None:
+        raise ParametroInvalido("linha", "Informe a linha para consultar a frequência.")
+    if filtros["trecho"] is not None:
+        raise ParametroInvalido("trecho", "A frequência é publicada por parada, não por trecho.")
+    if inicio is None or fim is None or fim - inicio > timedelta(days=31):
+        raise ParametroInvalido("inicio", "Informe inicio e fim, com até 31 dias entre eles.")
+    if agregacao != "janela" and fim == inicio:
+        raise ParametroInvalido("fim", "Nas agregações, fim deve ser posterior a inicio.")
+    if agregacao == "faixa" and not faixa:
+        raise ParametroInvalido("hora_inicio", "agregacao=faixa exige hora_inicio e hora_fim.")
+    if faixa and agregacao in ("janela", "dia"):
+        raise ParametroInvalido("hora_inicio", "Use hora_inicio/hora_fim com agregacao=faixa ou mes.")
+    if agregacao != "janela" and any(i.astimezone(FUSO).time() != time() for i in (inicio, fim)):
+        raise ParametroInvalido("inicio", "Nas agregações, inicio e fim devem ser meia-noite de America/Sao_Paulo.")
+    return agregacao
 
 
 def _erro(codigo, mensagem, status, campo=None):
@@ -165,7 +194,11 @@ def _responder(*, serie=False):
     except ParametroInvalido as erro:
         return _erro("PARAMETRO_INVALIDO", str(erro), 400, erro.campo)
     try:
-        return (consultar_series(filtros) if serie else consultar_indicadores(filtros)), 200
+        if serie:
+            return consultar_series(filtros), 200
+        if filtros.get("agregacao"):
+            return consultar_frequencias(filtros), 200
+        return consultar_indicadores(filtros), 200
     except SQLAlchemyError as erro:
         db.session.rollback()
         current_app.logger.error("Falha ao consultar indicadores (%s)", type(erro).__name__)

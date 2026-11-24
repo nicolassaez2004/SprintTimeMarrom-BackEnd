@@ -1,0 +1,501 @@
+{
+  "gerado_por": "SQLite em memória, dados sintéticos; nenhuma conexão com a Aiven",
+  "valido_1_passagem_15min": {
+    "dados": [
+      {
+        "agregacao": "janela",
+        "contagens": {
+          "denominador": null,
+          "numerador": 1
+        },
+        "duracao_horas": 0.25,
+        "fim": "2026-11-01T09:15:00+00:00",
+        "indicador": "FREQUENCIA",
+        "inicio": "2026-11-01T09:00:00+00:00",
+        "linha": "3762-10",
+        "observada": {
+          "cobertura": {
+            "contagem_valida_parcial": null,
+            "duracao_esperada_horas": 0.25,
+            "duracao_publicada_horas": 0.25,
+            "duracao_valida_horas": 0.25,
+            "fracao_valida": 1.0,
+            "janelas": 1,
+            "janelas_validas": 1,
+            "lacunas": []
+          },
+          "contagem": 1,
+          "motivos": [],
+          "situacao": "CALCULADA",
+          "unidade": "passagens/h",
+          "valor": 4.0
+        },
+        "parada": "A",
+        "programada": {
+          "cobertura": {
+            "contagem_valida_parcial": null,
+            "duracao_esperada_horas": 0.25,
+            "duracao_publicada_horas": 0.25,
+            "duracao_valida_horas": 0.25,
+            "fracao_valida": 1.0,
+            "janelas": 1,
+            "janelas_validas": 1,
+            "lacunas": []
+          },
+          "contagem": 1,
+          "motivos": [],
+          "situacao": "CALCULADA",
+          "unidade": "passagens/h",
+          "valor": 4.0
+        },
+        "qualidade": {
+          "coleta": null,
+          "datas_operacao": [
+            "2026-11-01"
+          ],
+          "faixa": null,
+          "minimo_passagens": "não aplicado (US17/US18)",
+          "motivos_ausencia": [],
+          "regra_agregacao": "soma das contagens ÷ soma das durações das janelas; NULL se houver janela nula, lacuna de publicação ou janelas sobrepostas",
+          "versoes": {
+            "capturas_programacao": [
+              {
+                "fonte": "OFICIAL",
+                "importacao_id": "imp-1",
+                "tipo_dia": "UTIL",
+                "versao_fonte": "captura-1"
+              }
+            ],
+            "versao_calculo": "frequencia-1.0",
+            "versao_correspondencia": "match-v1",
+            "versao_estimativa": "us15-t01-v1",
+            "versao_gtfs_id": "b2c21816-0b5b-4fac-9e14-2406fc7b591a",
+            "versao_reconstrucao": "recon-v1",
+            "versoes_conjunto": [
+              "a02cbb7d2f77623f099e4d1192030e9b"
+            ]
+          }
+        },
+        "referencia": "2026-11-01",
+        "sentido": "0",
+        "tipo": "FREQUENCIA",
+        "trecho": null,
+        "unidade": "passagens/h",
+        "valor": 4.0,
+        "versao_calculo": "frequencia-1.0",
+        "versao_conjunto": "a02cbb7d2f77623f099e4d1192030e9b",
+        "versao_correspondencia": "match-v1",
+        "versao_gtfs_id": "b2c21816-0b5b-4fac-9e14-2406fc7b591a"
+      }
+    ],
+    "paginacao": {
+      "page": 1,
+      "page_size": 100,
+      "total": 1
+    }
+  },
+  "zero_observado": {
+    "dados": [
+      {
+        "agregacao": "janela",
+        "contagens": {
+          "denominador": null,
+          "numerador": 0
+        },
+        "duracao_horas": 0.25,
+        "fim": "2026-11-01T09:30:00+00:00",
+        "indicador": "FREQUENCIA",
+        "inicio": "2026-11-01T09:15:00+00:00",
+        "linha": "3762-10",
+        "observada": {
+          "cobertura": {
+            "contagem_valida_parcial": null,
+            "duracao_esperada_horas": 0.25,
+            "duracao_publicada_horas": 0.25,
+            "duracao_valida_horas": 0.25,
+            "fracao_valida": 1.0,
+            "janelas": 1,
+            "janelas_validas": 1,
+            "lacunas": []
+          },
+          "contagem": 0,
+          "motivos": [],
+          "situacao": "ZERO_OBSERVADO",
+          "unidade": "passagens/h",
+          "valor": 0.0
+        },
+        "parada": "A",
+        "programada": {
+          "cobertura": {
+            "contagem_valida_parcial": null,
+            "duracao_esperada_horas": 0.25,
+            "duracao_publicada_horas": 0.25,
+            "duracao_valida_horas": 0.25,
+            "fracao_valida": 1.0,
+            "janelas": 1,
+            "janelas_validas": 1,
+            "lacunas": []
+          },
+          "contagem": 1,
+          "motivos": [],
+          "situacao": "CALCULADA",
+          "unidade": "passagens/h",
+          "valor": 4.0
+        },
+        "qualidade": {
+          "coleta": null,
+          "datas_operacao": [
+            "2026-11-01"
+          ],
+          "faixa": null,
+          "minimo_passagens": "não aplicado (US17/US18)",
+          "motivos_ausencia": [],
+          "regra_agregacao": "soma das contagens ÷ soma das durações das janelas; NULL se houver janela nula, lacuna de publicação ou janelas sobrepostas",
+          "versoes": {
+            "capturas_programacao": [
+              {
+                "fonte": "OFICIAL",
+                "importacao_id": "imp-1",
+                "tipo_dia": "UTIL",
+                "versao_fonte": "captura-1"
+              }
+            ],
+            "versao_calculo": "frequencia-1.0",
+            "versao_correspondencia": "match-v1",
+            "versao_estimativa": "us15-t01-v1",
+            "versao_gtfs_id": "b2c21816-0b5b-4fac-9e14-2406fc7b591a",
+            "versao_reconstrucao": "recon-v1",
+            "versoes_conjunto": [
+              "a02cbb7d2f77623f099e4d1192030e9b"
+            ]
+          }
+        },
+        "referencia": "2026-11-01",
+        "sentido": "0",
+        "tipo": "FREQUENCIA",
+        "trecho": null,
+        "unidade": "passagens/h",
+        "valor": 0.0,
+        "versao_calculo": "frequencia-1.0",
+        "versao_conjunto": "a02cbb7d2f77623f099e4d1192030e9b",
+        "versao_correspondencia": "match-v1",
+        "versao_gtfs_id": "b2c21816-0b5b-4fac-9e14-2406fc7b591a"
+      }
+    ],
+    "paginacao": {
+      "page": 1,
+      "page_size": 100,
+      "total": 1
+    }
+  },
+  "ausencia_null": {
+    "dados": [
+      {
+        "agregacao": "janela",
+        "contagens": {
+          "denominador": null,
+          "numerador": null
+        },
+        "duracao_horas": 0.25,
+        "fim": "2026-11-01T10:15:00+00:00",
+        "indicador": "FREQUENCIA",
+        "inicio": "2026-11-01T10:00:00+00:00",
+        "linha": "3762-10",
+        "observada": {
+          "cobertura": {
+            "contagem_valida_parcial": 0,
+            "duracao_esperada_horas": 0.25,
+            "duracao_publicada_horas": 0.25,
+            "duracao_valida_horas": 0,
+            "fracao_valida": 0.0,
+            "janelas": 1,
+            "janelas_validas": 0,
+            "lacunas": []
+          },
+          "contagem": null,
+          "motivos": [
+            "coleta_sem_dados"
+          ],
+          "situacao": "DADOS_AUSENTES",
+          "unidade": "passagens/h",
+          "valor": null
+        },
+        "parada": "A",
+        "programada": {
+          "cobertura": {
+            "contagem_valida_parcial": null,
+            "duracao_esperada_horas": 0.25,
+            "duracao_publicada_horas": 0.25,
+            "duracao_valida_horas": 0.25,
+            "fracao_valida": 1.0,
+            "janelas": 1,
+            "janelas_validas": 1,
+            "lacunas": []
+          },
+          "contagem": 1,
+          "motivos": [],
+          "situacao": "CALCULADA",
+          "unidade": "passagens/h",
+          "valor": 4.0
+        },
+        "qualidade": {
+          "coleta": null,
+          "datas_operacao": [
+            "2026-11-01"
+          ],
+          "faixa": null,
+          "minimo_passagens": "não aplicado (US17/US18)",
+          "motivos_ausencia": [
+            "coleta_sem_dados"
+          ],
+          "regra_agregacao": "soma das contagens ÷ soma das durações das janelas; NULL se houver janela nula, lacuna de publicação ou janelas sobrepostas",
+          "versoes": {
+            "capturas_programacao": [
+              {
+                "fonte": "OFICIAL",
+                "importacao_id": "imp-1",
+                "tipo_dia": "UTIL",
+                "versao_fonte": "captura-1"
+              }
+            ],
+            "versao_calculo": "frequencia-1.0",
+            "versao_correspondencia": "match-v1",
+            "versao_estimativa": "us15-t01-v1",
+            "versao_gtfs_id": "b2c21816-0b5b-4fac-9e14-2406fc7b591a",
+            "versao_reconstrucao": "recon-v1",
+            "versoes_conjunto": [
+              "a02cbb7d2f77623f099e4d1192030e9b"
+            ]
+          }
+        },
+        "referencia": "2026-11-01",
+        "sentido": "0",
+        "tipo": "FREQUENCIA",
+        "trecho": null,
+        "unidade": "passagens/h",
+        "valor": null,
+        "versao_calculo": "frequencia-1.0",
+        "versao_conjunto": "a02cbb7d2f77623f099e4d1192030e9b",
+        "versao_correspondencia": "match-v1",
+        "versao_gtfs_id": "b2c21816-0b5b-4fac-9e14-2406fc7b591a"
+      }
+    ],
+    "paginacao": {
+      "page": 1,
+      "page_size": 100,
+      "total": 1
+    }
+  },
+  "faixa_06_07_valida": {
+    "dados": [
+      {
+        "agregacao": "faixa",
+        "contagens": {
+          "denominador": null,
+          "numerador": 4
+        },
+        "duracao_horas": 1.0,
+        "fim": "2026-11-01T10:00:00+00:00",
+        "indicador": "FREQUENCIA",
+        "inicio": "2026-11-01T09:00:00+00:00",
+        "linha": "3762-10",
+        "observada": {
+          "cobertura": {
+            "contagem_valida_parcial": null,
+            "duracao_esperada_horas": 1.0,
+            "duracao_publicada_horas": 1.0,
+            "duracao_valida_horas": 1.0,
+            "fracao_valida": 1.0,
+            "janelas": 4,
+            "janelas_validas": 4,
+            "lacunas": []
+          },
+          "contagem": 4,
+          "motivos": [],
+          "situacao": "CALCULADA",
+          "unidade": "passagens/h",
+          "valor": 4.0
+        },
+        "parada": "A",
+        "programada": {
+          "cobertura": {
+            "contagem_valida_parcial": null,
+            "duracao_esperada_horas": 1.0,
+            "duracao_publicada_horas": 1.0,
+            "duracao_valida_horas": 1.0,
+            "fracao_valida": 1.0,
+            "janelas": 4,
+            "janelas_validas": 4,
+            "lacunas": []
+          },
+          "contagem": 4,
+          "motivos": [],
+          "situacao": "CALCULADA",
+          "unidade": "passagens/h",
+          "valor": 4.0
+        },
+        "qualidade": {
+          "datas_operacao": [
+            "2026-11-01"
+          ],
+          "faixa": {
+            "fuso": "America/Sao_Paulo",
+            "hora_fim": "07:00",
+            "hora_inicio": "06:00"
+          },
+          "minimo_passagens": "não aplicado (US17/US18)",
+          "motivos_ausencia": [],
+          "regra_agregacao": "soma das contagens ÷ soma das durações das janelas; NULL se houver janela nula, lacuna de publicação ou janelas sobrepostas",
+          "versoes": {
+            "capturas_programacao": [
+              {
+                "fonte": "OFICIAL",
+                "importacao_id": "imp-1",
+                "tipo_dia": "UTIL",
+                "versao_fonte": "captura-1"
+              }
+            ],
+            "versao_calculo": "frequencia-1.0",
+            "versao_correspondencia": "match-v1",
+            "versao_estimativa": "us15-t01-v1",
+            "versao_gtfs_id": "b2c21816-0b5b-4fac-9e14-2406fc7b591a",
+            "versao_reconstrucao": "recon-v1",
+            "versoes_conjunto": [
+              "a02cbb7d2f77623f099e4d1192030e9b"
+            ]
+          }
+        },
+        "referencia": "2026-11-01",
+        "sentido": "0",
+        "tipo": "FREQUENCIA",
+        "trecho": null,
+        "unidade": "passagens/h",
+        "valor": 4.0,
+        "versao_calculo": "frequencia-1.0",
+        "versao_conjunto": "a02cbb7d2f77623f099e4d1192030e9b",
+        "versao_correspondencia": "match-v1",
+        "versao_gtfs_id": "b2c21816-0b5b-4fac-9e14-2406fc7b591a"
+      }
+    ],
+    "paginacao": {
+      "page": 1,
+      "page_size": 100,
+      "total": 1
+    }
+  },
+  "faixa_06_08_cobertura_parcial": {
+    "dados": [
+      {
+        "agregacao": "faixa",
+        "contagens": {
+          "denominador": null,
+          "numerador": null
+        },
+        "duracao_horas": 1.25,
+        "fim": "2026-11-01T11:00:00+00:00",
+        "indicador": "FREQUENCIA",
+        "inicio": "2026-11-01T09:00:00+00:00",
+        "linha": "3762-10",
+        "observada": {
+          "cobertura": {
+            "contagem_valida_parcial": 4,
+            "duracao_esperada_horas": 2.0,
+            "duracao_publicada_horas": 1.25,
+            "duracao_valida_horas": 1.0,
+            "fracao_valida": 0.5,
+            "janelas": 5,
+            "janelas_validas": 4,
+            "lacunas": [
+              {
+                "fim": "2026-11-01T11:00:00+00:00",
+                "inicio": "2026-11-01T10:15:00+00:00"
+              }
+            ]
+          },
+          "contagem": null,
+          "motivos": [
+            "coleta_sem_dados",
+            "sem_publicacao"
+          ],
+          "situacao": "COBERTURA_PARCIAL",
+          "unidade": "passagens/h",
+          "valor": null
+        },
+        "parada": "A",
+        "programada": {
+          "cobertura": {
+            "contagem_valida_parcial": 5,
+            "duracao_esperada_horas": 2.0,
+            "duracao_publicada_horas": 1.25,
+            "duracao_valida_horas": 1.25,
+            "fracao_valida": 0.625,
+            "janelas": 5,
+            "janelas_validas": 5,
+            "lacunas": [
+              {
+                "fim": "2026-11-01T11:00:00+00:00",
+                "inicio": "2026-11-01T10:15:00+00:00"
+              }
+            ]
+          },
+          "contagem": null,
+          "motivos": [
+            "sem_publicacao"
+          ],
+          "situacao": "COBERTURA_PARCIAL",
+          "unidade": "passagens/h",
+          "valor": null
+        },
+        "qualidade": {
+          "datas_operacao": [
+            "2026-11-01"
+          ],
+          "faixa": {
+            "fuso": "America/Sao_Paulo",
+            "hora_fim": "08:00",
+            "hora_inicio": "06:00"
+          },
+          "minimo_passagens": "não aplicado (US17/US18)",
+          "motivos_ausencia": [
+            "coleta_sem_dados",
+            "sem_publicacao"
+          ],
+          "regra_agregacao": "soma das contagens ÷ soma das durações das janelas; NULL se houver janela nula, lacuna de publicação ou janelas sobrepostas",
+          "versoes": {
+            "capturas_programacao": [
+              {
+                "fonte": "OFICIAL",
+                "importacao_id": "imp-1",
+                "tipo_dia": "UTIL",
+                "versao_fonte": "captura-1"
+              }
+            ],
+            "versao_calculo": "frequencia-1.0",
+            "versao_correspondencia": "match-v1",
+            "versao_estimativa": "us15-t01-v1",
+            "versao_gtfs_id": "b2c21816-0b5b-4fac-9e14-2406fc7b591a",
+            "versao_reconstrucao": "recon-v1",
+            "versoes_conjunto": [
+              "a02cbb7d2f77623f099e4d1192030e9b"
+            ]
+          }
+        },
+        "referencia": "2026-11-01",
+        "sentido": "0",
+        "tipo": "FREQUENCIA",
+        "trecho": null,
+        "unidade": "passagens/h",
+        "valor": null,
+        "versao_calculo": "frequencia-1.0",
+        "versao_conjunto": "a02cbb7d2f77623f099e4d1192030e9b",
+        "versao_correspondencia": "match-v1",
+        "versao_gtfs_id": "b2c21816-0b5b-4fac-9e14-2406fc7b591a"
+      }
+    ],
+    "paginacao": {
+      "page": 1,
+      "page_size": 100,
+      "total": 1
+    }
+  }
+}
