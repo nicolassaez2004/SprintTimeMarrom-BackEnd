@@ -4,7 +4,7 @@ from app import db
 from app.models import IndicadorOperacional
 
 
-def consultar_indicadores(filtros, *, serie=False):
+def consulta_base(filtros):
     consulta = db.session.query(IndicadorOperacional)
     if filtros["linha"] is not None:
         consulta = consulta.filter(IndicadorOperacional.linha_codigo == filtros["linha"])
@@ -18,6 +18,11 @@ def consultar_indicadores(filtros, *, serie=False):
         consulta = consulta.filter(IndicadorOperacional.trecho_id == filtros["trecho"])
     if filtros["versao_gtfs_id"] is not None:
         consulta = consulta.filter(IndicadorOperacional.versao_gtfs_id == filtros["versao_gtfs_id"])
+    return consulta
+
+
+def consultar_indicadores(filtros, *, serie=False):
+    consulta = consulta_base(filtros)
     if filtros["inicio"] is not None:
         consulta = consulta.filter(IndicadorOperacional.periodo_fim > filtros["inicio"])
     if filtros["fim"] is not None:
@@ -36,41 +41,38 @@ def consultar_indicadores(filtros, *, serie=False):
         .limit(filtros["page_size"])
         .all()
     )
-    dados = []
-    for registro in registros:
-        valor = {
-            "linha": registro.linha_codigo,
-            "sentido": registro.sentido,
-            "tipo": registro.indicador,
-            "indicador": registro.indicador,
-            "valor": registro.valor,
-            "unidade": registro.unidade,
-            "versao_conjunto": registro.versao_conjunto,
-            "versao_gtfs_id": registro.versao_gtfs_id,
-            "versao_correspondencia": registro.versao_correspondencia,
-            "versao_calculo": registro.versao_calculo,
-            "parada": registro.parada_codigo,
-            "trecho": registro.trecho_id,
-            "contagens": {
-                "numerador": registro.contagem_numerador,
-                "denominador": registro.contagem_denominador,
-            },
-            "qualidade": registro.qualidade or {},
-        }
-        if serie:
-            valor["instante"] = registro.periodo_inicio.isoformat()
-            valor["inicio"] = registro.periodo_inicio.isoformat()
-            valor["fim"] = registro.periodo_fim.isoformat()
-        else:
-            valor["inicio"] = registro.periodo_inicio.isoformat()
-            valor["fim"] = registro.periodo_fim.isoformat()
-        dados.append(valor)
-
     return {
-        "dados": dados,
+        "dados": [serializar(registro, serie=serie) for registro in registros],
         "paginacao": {
             "page": filtros["page"],
             "page_size": filtros["page_size"],
             "total": total,
         },
     }
+
+
+def serializar(registro, *, serie=False):
+    valor = {
+        "linha": registro.linha_codigo,
+        "sentido": registro.sentido,
+        "tipo": registro.indicador,
+        "indicador": registro.indicador,
+        "valor": registro.valor,
+        "unidade": registro.unidade,
+        "versao_conjunto": registro.versao_conjunto,
+        "versao_gtfs_id": registro.versao_gtfs_id,
+        "versao_correspondencia": registro.versao_correspondencia,
+        "versao_calculo": registro.versao_calculo,
+        "parada": registro.parada_codigo,
+        "trecho": registro.trecho_id,
+        "contagens": {
+            "numerador": registro.contagem_numerador,
+            "denominador": registro.contagem_denominador,
+        },
+        "qualidade": registro.qualidade or {},
+    }
+    valor["inicio"] = registro.periodo_inicio.isoformat()
+    valor["fim"] = registro.periodo_fim.isoformat()
+    if serie:
+        valor["instante"] = valor["inicio"]
+    return valor

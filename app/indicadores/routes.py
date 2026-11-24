@@ -1,9 +1,4 @@
-"""Contrato público de indicadores e séries (US11-T01).
-
-As rotas são deliberadamente públicas. Enquanto o conjunto publicado da
-US14/US23 não existir, respondem com 503 em vez de apresentar dados brutos
-como se fossem indicadores calculados.
-"""
+"""Consulta pública dos indicadores persistidos (US11/US23)."""
 
 import re
 from datetime import datetime
@@ -15,6 +10,7 @@ from sqlalchemy.exc import SQLAlchemyError
 from app import db
 from app.core.limites import IdentidadeIPInvalida, consumir_limite, identificar_ip
 from app.indicadores.service import consultar_indicadores
+from app.indicadores.series import consultar_series
 
 indicadores_bp = Blueprint("indicadores", __name__)
 
@@ -76,9 +72,10 @@ def _ler_instante(args, campo):
     return instante
 
 
-def ler_filtros(args):
+def ler_filtros(args, *, serie=False):
+    permitidos = _PARAMETROS | ({"hora_inicio", "hora_fim"} if serie else set())
     for campo in args:
-        if campo not in _PARAMETROS:
+        if campo not in permitidos:
             raise ParametroInvalido(campo, "Parâmetro não reconhecido.")
         if len(args.getlist(campo)) != 1:
             raise ParametroInvalido(campo, "Informe cada parâmetro uma única vez.")
@@ -126,7 +123,7 @@ def ler_filtros(args):
             raise ParametroInvalido(campo, f"Informe um valor entre {minimo} e {maximo}.")
         return numero
 
-    return {
+    filtros = {
         "linha": linha,
         "sentido": sentido,
         "tipo": tipo,
@@ -138,6 +135,21 @@ def ler_filtros(args):
         "page": inteiro("page", 1, 1, 2_147_483_647),
         "page_size": inteiro("page_size", 100, 1, PAGE_SIZE_MAX),
     }
+    if serie:
+        horas = []
+        for campo in ("hora_inicio", "hora_fim"):
+            valor = args.get(campo)
+            if valor is not None and not re.fullmatch(r"(?:[01]\d|2[0-3]):[0-5]\d", valor):
+                raise ParametroInvalido(campo, "Informe a hora no formato HH:MM, de 00:00 a 23:59.")
+            horas.append(valor)
+        if (horas[0] is None) != (horas[1] is None):
+            raise ParametroInvalido("hora_inicio", "Informe hora_inicio e hora_fim juntas.")
+        if horas[0] is not None and horas[0] == horas[1]:
+            raise ParametroInvalido("hora_fim", "Use horas diferentes; omita a faixa para consultar o dia inteiro.")
+        if inicio and fim and fim == inicio:
+            raise ParametroInvalido("fim", "fim deve ser posterior a inicio na consulta de séries.")
+        filtros.update(hora_inicio=horas[0], hora_fim=horas[1])
+    return filtros
 
 
 def _erro(codigo, mensagem, status, campo=None):
@@ -149,11 +161,11 @@ def _erro(codigo, mensagem, status, campo=None):
 
 def _responder(*, serie=False):
     try:
-        filtros = ler_filtros(request.args)
+        filtros = ler_filtros(request.args, serie=serie)
     except ParametroInvalido as erro:
         return _erro("PARAMETRO_INVALIDO", str(erro), 400, erro.campo)
     try:
-        return consultar_indicadores(filtros, serie=serie), 200
+        return (consultar_series(filtros) if serie else consultar_indicadores(filtros)), 200
     except SQLAlchemyError as erro:
         db.session.rollback()
         current_app.logger.error("Falha ao consultar indicadores (%s)", type(erro).__name__)

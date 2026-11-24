@@ -1,12 +1,12 @@
 openapi: 3.0.3
 info:
   title: API pública de indicadores — Auditoria Cidadã dos Ônibus de São Paulo
-  version: 1.1.0
+  version: 1.2.0
   description: >-
     Contrato para consulta pública, sem autenticação, de indicadores operacionais
     publicados e suas séries temporais. Sem valores publicados, as rotas retornam
     uma página vazia. Valores devem declarar unidade, janela, versão do conjunto
-    e qualidade; os serviços produtores das dependências US14-T03B e US23-T01
+    e qualidade; os serviços produtores das dependências US14-T03B e US16-T02
     são responsáveis por gravar os valores calculados.
     GET e HEAD de /indicadores e /series compartilham 60 chamadas por IP por
     minuto UTC (janela fixa). A 61ª chamada retorna 429 com Retry-After em
@@ -104,9 +104,17 @@ paths:
     get:
       operationId: consultarSeries
       summary: Consultar série temporal de indicador
-      description: Cada ponto temporal usa unidade, janela, versão e qualidade declaradas.
+      description: >-
+        US23-T01. Somente janelas persistidas inteiramente contidas no período
+        [inicio,fim) e na faixa diária em America/Sao_Paulo. Sem período consulta
+        desde o início conhecido da coleta. Não recalcula nem fatia agregados.
+        Zero é valor; null é ausência. Lacunas acompanham os registros da página,
+        considerando registros anteriores à paginação e sobreposições. Até 200
+        lacunas por página; consulta.lacunas_truncadas pede reduzir o período.
       security: []
       parameters:
+        - $ref: '#/components/parameters/hora_inicio'
+        - $ref: '#/components/parameters/hora_fim'
         - $ref: '#/components/parameters/linha'
         - $ref: '#/components/parameters/sentido'
         - $ref: '#/components/parameters/tipo'
@@ -132,6 +140,10 @@ paths:
               example:
                 dados:
                   - instante: '2026-11-23T12:00:00Z'
+                    id: '7c1beb67-96eb-4f1a-8043-b0ec9aeb75f0'
+                    status: DISPONIVEL
+                    inicio: '2026-11-23T12:00:00Z'
+                    fim: '2026-11-23T13:00:00Z'
                     linha: '3762-10'
                     sentido: '0'
                     tipo: PONTUALIDADE_VIAGENS
@@ -147,6 +159,9 @@ paths:
                     contagens: { numerador: 7, denominador: 8 }
                     qualidade: { dados_insuficientes: false, limite_adiantamento_segundos: 60, limite_atraso_segundos: 300, limites_inclusivos: true, excluidas: { frequencia: 2, sem_pareamento: 1, saida_nao_confirmada: 0 } }
                 paginacao: { page: 1, page_size: 100, total: 1 }
+                lacunas: []
+                historico: { coleta_inicio: null, coleta_ultimo_ciclo: null, inicio_indicadores: '2026-11-23T12:00:00Z', fim_indicadores: '2026-11-23T13:00:00Z' }
+                consulta: { inicio: '2026-11-23T12:00:00Z', fim: '2026-11-23T13:00:00Z', hora_inicio: null, hora_fim: null, fuso: America/Sao_Paulo, lacunas_escopo: PAGINA, lacunas_truncadas: false, criterio_periodo: JANELAS_INTEIRAMENTE_CONTIDAS }
         '400': { $ref: '#/components/responses/ParametroInvalido' }
         '429': { $ref: '#/components/responses/LimiteExcedido' }
         '503': { $ref: '#/components/responses/Indisponivel' }
@@ -162,6 +177,16 @@ components:
       description: Fim da janela em segundos desde Unix epoch, UTC.
       schema: { type: integer, format: int64 }
   parameters:
+    hora_inicio:
+      name: hora_inicio
+      in: query
+      description: Início da faixa diária em America/Sao_Paulo; enviar junto com hora_fim. Omitir ambas para dia inteiro.
+      schema: { type: string, pattern: '^(?:[01]\d|2[0-3]):[0-5]\d$' }
+    hora_fim:
+      name: hora_fim
+      in: query
+      description: Fim exclusivo da faixa diária. Menor que o início representa faixa noturna; horas iguais são inválidas.
+      schema: { type: string, pattern: '^(?:[01]\d|2[0-3]):[0-5]\d$' }
     linha:
       name: linha
       in: query
@@ -262,8 +287,10 @@ components:
         qualidade: { $ref: '#/components/schemas/Qualidade' }
     PontoSerie:
       type: object
-      required: [instante, linha, sentido, tipo, indicador, valor, unidade, inicio, fim, versao_conjunto, versao_gtfs_id, contagens, qualidade]
+      required: [id, status, instante, linha, sentido, tipo, indicador, valor, unidade, inicio, fim, versao_conjunto, versao_gtfs_id, contagens, qualidade]
       properties:
+        id: { type: string }
+        status: { type: string, enum: [DISPONIVEL, SEM_RESULTADO] }
         instante: { type: string, format: date-time }
         linha: { type: string }
         sentido: { type: string, nullable: true, enum: ['0', '1'] }
@@ -296,10 +323,44 @@ components:
         paginacao: { $ref: '#/components/schemas/Paginacao' }
     PaginaSeries:
       type: object
-      required: [dados, paginacao]
+      required: [dados, paginacao, lacunas, historico, consulta]
       properties:
         dados: { type: array, items: { $ref: '#/components/schemas/PontoSerie' } }
         paginacao: { $ref: '#/components/schemas/Paginacao' }
+        lacunas:
+          type: array
+          maxItems: 200
+          items:
+            type: object
+            required: [linha, sentido, tipo, unidade, inicio, fim, motivo]
+            properties:
+              linha: { type: string, nullable: true }
+              sentido: { type: string, nullable: true }
+              tipo: { type: string, nullable: true }
+              unidade: { type: string, nullable: true }
+              inicio: { type: string, format: date-time }
+              fim: { type: string, format: date-time }
+              motivo: { type: string, enum: [SEM_PUBLICACAO, RESULTADO_NULO] }
+        historico:
+          type: object
+          required: [coleta_inicio, coleta_ultimo_ciclo, inicio_indicadores, fim_indicadores]
+          properties:
+            coleta_inicio: { type: string, format: date-time, nullable: true }
+            coleta_ultimo_ciclo: { type: string, format: date-time, nullable: true }
+            inicio_indicadores: { type: string, format: date-time, nullable: true }
+            fim_indicadores: { type: string, format: date-time, nullable: true }
+        consulta:
+          type: object
+          required: [inicio, fim, hora_inicio, hora_fim, fuso, lacunas_escopo, lacunas_truncadas, criterio_periodo]
+          properties:
+            inicio: { type: string, format: date-time, nullable: true }
+            fim: { type: string, format: date-time, nullable: true }
+            hora_inicio: { type: string, nullable: true }
+            hora_fim: { type: string, nullable: true }
+            fuso: { type: string, enum: [America/Sao_Paulo] }
+            lacunas_escopo: { type: string, enum: [PAGINA] }
+            lacunas_truncadas: { type: boolean }
+            criterio_periodo: { type: string, enum: [JANELAS_INTEIRAMENTE_CONTIDAS] }
     Erro:
       type: object
       required: [erro]
