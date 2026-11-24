@@ -3,28 +3,28 @@
   "data_verificacao": "2026-11-24",
   "origem_dados": "SINTETICA_CONTROLADA",
   "banco_compartilhado_acessado": false,
-  "codigo_base": "0ac7c1b2c8489aab71b993a04840d3713aa3a73f",
+  "codigo_base": "1e44ff89027e43d1fd4f593a2dd4937a9aac261e",
   "conferencia": {
     "casos": 20,
     "conferiram": 20,
     "divergencias_tecnicas_amostra": 0,
-    "comparacoes_frequencia_contrato": 308,
+    "comparacoes_frequencia_contrato": 312,
     "sequencias_gps_controladas": 191,
     "maior_diferenca_interpolacao_segundos": 0.000449
   },
   "testes_dirigidos": {
     "comando": "python -m pytest -q tests/passagens/test_validacao_us15_t04.py tests/indicadores/test_passagens_us15_t01.py tests/indicadores/test_frequencia_us15_t02.py tests/indicadores/test_frequencia_us15_t03.py",
-    "passaram": 70,
+    "passaram": 75,
     "falharam": 0,
-    "segundos": 13.88
+    "segundos": 6.84
   },
   "suite_geral_final": {
-    "comando": "python -m pytest -q --tb=short",
-    "passaram": 791,
-    "falharam": 3,
+    "comando": "python -m pytest -q -p no:cacheprovider",
+    "passaram": 808,
+    "falharam": 0,
     "ignorados": 9,
     "subtestes_passaram": 14,
-    "segundos": 68.42,
+    "segundos": 34.46,
     "integracoes_reais_optativas": "DESATIVADAS"
   },
   "falhas_pontualidade_reproduzidas_na_main_limpa": {
@@ -35,7 +35,8 @@
       "viagem v-01 não pertence à linha/sentido/versão/janela publicada",
       "viagem CALCULADA precisa da programação de referência"
     ],
-    "correcao_na_us15_t04": false
+    "correcao_na_us15_t04": false,
+    "situacao_revisao_24_11": "corrigidas em 4b1700f (fixtures da US16); passam na suíte atual"
   },
   "oscilacao_gtfs": {
     "teste": "tests/test_gtfs.py::test_usa_diretorio_configurado_no_filestore",
@@ -47,7 +48,24 @@
       "intervalo_entre_geracoes_segundos": 2.1,
       "mesmos_textos": true,
       "mesmos_bytes_zip": false,
-      "timestamps_zip_sem_fuso": [[2026, 11, 24, 12, 56, 58], [2026, 11, 24, 12, 57, 0]]
+      "timestamps_zip_sem_fuso": [
+        [
+          2026,
+          11,
+          24,
+          12,
+          56,
+          58
+        ],
+        [
+          2026,
+          11,
+          24,
+          12,
+          57,
+          0
+        ]
+      ]
     },
     "correcao_na_us15_t04": false
   },
