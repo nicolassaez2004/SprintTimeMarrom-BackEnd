@@ -809,6 +809,54 @@ class ViagemObservada(db.Model):
     partida_programada = db.relationship("PartidaProgramada")
 
 
+class PassagemEstimada(db.Model):
+    """Instante estimado em que uma viagem passou por uma parada (US15-T01).
+
+    Diagrama: ViagemObservada 1 — 0..* PassagemEstimada 0..* — 1 Parada, com
+    `instante` e `metodo`. Acréscimos para rastreabilidade: a versão da
+    estimativa e as duas posições GPS brutas (imutáveis) que cercam a parada.
+    Uma passagem por viagem, parada e versão da estimativa.
+    """
+
+    __tablename__ = "passagens_estimadas"
+    __table_args__ = (
+        db.ForeignKeyConstraint(
+            ["versao_gtfs_id", "parada_codigo"], ["paradas.versao_gtfs_id", "paradas.codigo"],
+            name="fk_passagens_estimadas_parada", ondelete="RESTRICT",
+        ),
+        UniqueConstraint("viagem_observada_id", "parada_codigo", "versao_estimativa",
+                         name="uq_passagens_estimadas_viagem_parada_versao"),
+        Index("ix_passagens_estimadas_parada_instante",
+              "versao_gtfs_id", "parada_codigo", "instante"),
+        {"mysql_engine": "InnoDB"},
+    )
+
+    id = db.Column(db.String(36), primary_key=True, default=lambda: str(uuid4()))
+    viagem_observada_id = db.Column(
+        db.String(36), db.ForeignKey("viagens_observadas.id",
+                                     name="fk_passagens_estimadas_viagem", ondelete="RESTRICT"),
+        nullable=False,
+    )
+    versao_gtfs_id = db.Column(db.String(36), nullable=False)
+    parada_codigo = db.Column(CodigoGTFS, nullable=False)
+    instante = db.Column(UTCDateTime, nullable=False)
+    metodo = db.Column(db.String(64), nullable=False)
+    versao_estimativa = db.Column(db.String(128), nullable=False)
+    posicao_anterior_id = db.Column(
+        IdGrande, db.ForeignKey("registros_gps.id", name="fk_passagens_estimadas_anterior",
+                                ondelete="RESTRICT"), nullable=False,
+    )
+    posicao_posterior_id = db.Column(
+        IdGrande, db.ForeignKey("registros_gps.id", name="fk_passagens_estimadas_posterior",
+                                ondelete="RESTRICT"), nullable=False,
+    )
+
+    viagem = db.relationship("ViagemObservada")
+    parada = db.relationship("Parada")
+    posicao_anterior = db.relationship("RegistroBrutoGPS", foreign_keys=[posicao_anterior_id])
+    posicao_posterior = db.relationship("RegistroBrutoGPS", foreign_keys=[posicao_posterior_id])
+
+
 class IndicadorOperacional(db.Model):
     """Valor publicado e versionado para a API pública (US11/US14).
 

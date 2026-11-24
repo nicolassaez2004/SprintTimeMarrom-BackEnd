@@ -54,3 +54,8 @@ class Config:
     GPS_COLLECTION_INTERVAL_SECONDS = validar_intervalo_coleta(
         os.getenv("GPS_COLLECTION_INTERVAL_SECONDS") or "30"
     )
+
+    # US15-T01: lacuna máxima (s) entre as duas posições usadas para estimar
+    # uma passagem. Sem padrão de propósito: aguarda decisão do PO e, sem ela,
+    # nenhuma passagem é estimada (docs/US15-T01.md).
+    PASSAGEM_LACUNA_MAXIMA_SEG = os.getenv("PASSAGEM_LACUNA_MAXIMA_SEG") or None
