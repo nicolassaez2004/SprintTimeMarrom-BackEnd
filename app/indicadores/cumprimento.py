@@ -237,8 +237,11 @@ def calcular_indicador_cumprimento(
     }
 
 
-def gravar_indicador(campos):
-    """Upsert idempotente pela ``chave_resultado`` e commit (publicação)."""
+def gravar_indicador(campos, *, commit=True):
+    """Upsert idempotente pela ``chave_resultado`` e commit (publicação).
+
+    ``commit=False`` deixa a transação com quem publica um conjunto inteiro.
+    """
     registro = IndicadorOperacional.query.filter_by(
         chave_resultado=campos["chave_resultado"]).one_or_none()
     if registro is None:
@@ -246,7 +249,10 @@ def gravar_indicador(campos):
         db.session.add(registro)
     for nome, valor in campos.items():
         setattr(registro, nome, valor)
-    db.session.commit()
+    if commit:
+        db.session.commit()
+    else:
+        db.session.flush()
     return registro
 
 
