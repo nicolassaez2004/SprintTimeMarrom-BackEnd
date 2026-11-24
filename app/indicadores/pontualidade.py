@@ -9,6 +9,9 @@ import json
 from typing import Iterable
 
 from app import db
+from app.indicadores.cumprimento import (
+    COBERTURA_MINIMA, programacao_da_janela, viagens_observadas,
+)
 from app.models import IndicadorOperacional, PartidaProgramada
 from app.viagens.separacao import ViagemObservada
 
@@ -125,8 +128,15 @@ def publicar_pontualidade(
     *, linha: str, sentido: str, inicio: datetime, fim: datetime,
     versao_gtfs_id: str, versao_correspondencia: str,
     versao_reconstrucao: str, versao_calculo: str = VERSAO_ALGORITMO_PONTUALIDADE,
+    versoes_programacao: list[dict] | None = None, qualidade_extra: dict | None = None,
 ) -> IndicadorOperacional:
-    """Persiste o agregado versionado na tabela consumida por GET /indicadores."""
+    """Persiste o agregado versionado na tabela consumida por GET /indicadores.
+
+    Toda viagem com programação precisa pertencer à linha, ao sentido, à versão
+    GTFS e à janela (pela saída prevista) declarados; viagem CALCULADA sem
+    programação é rejeitada. Assim o registro publicado não pode atribuir a um
+    contexto resultados de outro.
+    """
     if sentido not in ("0", "1"):
         raise ValueError("sentido deve ser '0' (ida) ou '1' (volta)")
     if not all(isinstance(valor, str) and valor.strip() for valor in (
@@ -137,12 +147,33 @@ def publicar_pontualidade(
     if fim_utc <= inicio_utc:
         raise ValueError("fim deve ser posterior a inicio")
 
+    # SEM_PAREAMENTO só entra nas exclusões; sua referência (se houver) é a
+    # divergente, mantida para auditoria, e não define contexto nem captura.
+    pareadas = [v for v in resultado.viagens
+                if v.programacao is not None and v.status != "SEM_PAREAMENTO"]
+    for item in resultado.viagens:
+        if item.programacao is None and item.status == "CALCULADA":
+            raise ValueError("viagem CALCULADA precisa da programação de referência")
+    for item in pareadas:
+        ref = item.programacao
+        if (ref.linha_codigo, ref.sentido_gtfs, ref.versao_gtfs_id) != (linha, sentido, versao_gtfs_id) \
+                or not inicio_utc <= ref.saida_prevista < fim_utc:
+            raise ValueError(f"viagem {item.viagem_id} não pertence à linha/sentido/versão/janela publicada")
     agregado = calcular_percentual_pontualidade(resultado)
-    versoes_programacao = sorted({
-        (item.programacao.importacao_id, item.programacao.fonte,
-         item.programacao.versao_fonte)
-        for item in resultado.viagens if item.programacao is not None
-    })
+    if versoes_programacao is None:
+        versoes_programacao = [
+            {"importacao_id": item[0], "fonte": item[1], "versao_fonte": item[2],
+             "data_operacao": item[3]}
+            for item in sorted({
+                (v.programacao.importacao_id, v.programacao.fonte, v.programacao.versao_fonte,
+                 v.programacao.data_operacao.isoformat())
+                for v in pareadas
+            })
+        ]
+    elif {v.programacao.importacao_id for v in pareadas} - {
+        item["importacao_id"] for item in versoes_programacao
+    }:
+        raise ValueError("viagem referencia captura de programação não declarada")
     identidade = {
         "tipo": "PONTUALIDADE_VIAGENS", "linha": linha, "sentido": sentido,
         "inicio": inicio_utc.isoformat(), "fim": fim_utc.isoformat(),
@@ -150,7 +181,10 @@ def publicar_pontualidade(
         "versao_correspondencia": versao_correspondencia,
         "versao_reconstrucao": versao_reconstrucao,
         "versao_calculo": versao_calculo,
-        "versoes_programacao": versoes_programacao,
+        "versoes_programacao": [
+            [item["importacao_id"], item["fonte"], item["versao_fonte"]]
+            for item in versoes_programacao
+        ],
     }
     chave = sha256(json.dumps(identidade, sort_keys=True, separators=(",", ":")).encode()).hexdigest()
     registro = IndicadorOperacional.query.filter_by(chave_resultado=chave).one_or_none()
@@ -184,13 +218,69 @@ def publicar_pontualidade(
         "limites_inclusivos": True,
         "oferta_por_frequencia_excluida": True,
         "versao_reconstrucao": versao_reconstrucao,
-        "capturas_programacao": [
-            {"importacao_id": item[0], "fonte": item[1], "versao_fonte": item[2]}
-            for item in versoes_programacao
-        ],
+        "capturas_programacao": versoes_programacao,
+        **(qualidade_extra or {}),
     }
     db.session.commit()
     return registro
+
+
+def calcular_e_publicar_pontualidade(
+    *, linha: str, sentido: str, inicio: datetime, fim: datetime,
+    versao_gtfs_id: str, versao_correspondencia: str, versao_reconstrucao: str,
+    versao_calculo: str = VERSAO_ALGORITMO_PONTUALIDADE,
+) -> IndicadorOperacional:
+    """Calcula a partir das ``ViagemObservada`` persistidas e publica (US16-T02).
+
+    Usa a mesma grade e janela do cumprimento (US14). Cada registro persistido
+    já é pareado por chave estrangeira a uma única partida por versão de
+    reconstrução, e sua ``saida_observada`` é a saída confirmada pela
+    reconstrução. Viagens sem pareamento não existem nesse modelo; a qualidade
+    declara isso em vez de reportar zero como se tivessem sido contadas.
+    """
+    if not versao_correspondencia or not versao_reconstrucao:
+        raise ValueError("versões de correspondência e reconstrução são obrigatórias")
+    _, programadas, versoes_programacao = programacao_da_janela(
+        linha=linha, sentido=sentido, inicio=inicio, fim=fim, versao_gtfs_id=versao_gtfs_id,
+    )
+    por_id = {p.id: p for p in programadas}
+    observadas = viagens_observadas(programadas, versao_reconstrucao, versao_correspondencia)
+    itens = []
+    for viagem in sorted(observadas, key=lambda v: (por_id[v.partida_programada_id].saida_prevista, v.id)):
+        ref = _referencia(por_id[viagem.partida_programada_id])
+        saida = _utc(viagem.saida_observada, "saida_observada")
+        if ref.tipo_oferta == "FREQUENCIA":
+            itens.append(DiferencaSaida(viagem.id, ref.data_operacao, "FREQUENCIA",
+                                        "OFERTA_POR_FREQUENCIA", saida, ref))
+        else:
+            itens.append(DiferencaSaida(viagem.id, ref.data_operacao, "CALCULADA", "FIXA_PAREADA",
+                                        saida, ref, (saida - ref.saida_prevista).total_seconds()))
+    fixas = sum(p.tipo_oferta == "FIXA" for p in programadas)
+    frequencia = len(programadas) - fixas
+    extra = {
+        "origem_viagens": "viagens_observadas",
+        "sem_pareamento_contabilizado": False,
+        "partidas_fixas_programadas": fixas,
+        "partidas_frequencia_programadas": frequencia,
+        "realizadas_com_cobertura_abaixo_minima": sum(
+            v.cobertura_tracado < COBERTURA_MINIMA for v in observadas
+            if por_id[v.partida_programada_id].tipo_oferta == "FIXA"
+        ),
+    }
+    if not any(item.status == "CALCULADA" for item in itens):
+        # Só rotula a ausência; o valor continua NULL em todos os casos.
+        extra["motivo_insuficiencia"] = (
+            "NAO_APLICAVEL_OFERTA_POR_FREQUENCIA" if fixas == 0 and frequencia
+            else "SEM_PARTIDAS_FIXAS_PROGRAMADAS" if fixas == 0
+            else "SEM_VIAGENS_FIXAS_OBSERVADAS"
+        )
+    return publicar_pontualidade(
+        ResultadoPontualidade(tuple(itens)), linha=linha, sentido=sentido, inicio=inicio,
+        fim=fim, versao_gtfs_id=versao_gtfs_id, versao_correspondencia=versao_correspondencia,
+        versao_reconstrucao=versao_reconstrucao, versao_calculo=versao_calculo,
+        versoes_programacao=versoes_programacao,
+        qualidade_extra=extra,
+    )
 
 
 def _utc(instante: datetime, campo: str) -> datetime:

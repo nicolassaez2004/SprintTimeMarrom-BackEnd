@@ -26,7 +26,12 @@ def consultar_indicadores(filtros, *, serie=False):
     if filtros["inicio"] is not None:
         consulta = consulta.filter(IndicadorOperacional.periodo_fim > filtros["inicio"])
     if filtros["fim"] is not None:
-        consulta = consulta.filter(IndicadorOperacional.periodo_inicio <= filtros["fim"])
+        # Janelas são [inicio, fim): uma janela que começa em `fim` não cruza a
+        # faixa. Com inicio == fim (consulta pontual) o instante é incluído.
+        if filtros["inicio"] is not None and filtros["fim"] == filtros["inicio"]:
+            consulta = consulta.filter(IndicadorOperacional.periodo_inicio <= filtros["fim"])
+        else:
+            consulta = consulta.filter(IndicadorOperacional.periodo_inicio < filtros["fim"])
 
     total = consulta.count()
     registros = (

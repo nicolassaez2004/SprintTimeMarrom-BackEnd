@@ -241,7 +241,7 @@ components:
       name: fim
       in: query
       required: false
-      description: Limite superior do período, ISO 8601 com fuso; deve ser igual ou posterior a inicio.
+      description: Limite superior (exclusivo) do período, ISO 8601 com fuso; deve ser igual ou posterior a inicio. Janelas que começam exatamente em fim não são retornadas; com fim igual a inicio, retorna as janelas que contêm esse instante.
       schema: { type: string, format: date-time }
       example: '2026-11-24T00:00:00Z'
     page:
