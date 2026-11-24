@@ -32,7 +32,13 @@ flask --app app db upgrade   # aplica as migrações em migrations/versions/
 python app.py
 ```
 
-Coletor contínuo (processo separado): [docs/COLETOR.md](docs/COLETOR.md). Migrações
+Com o ambiente e o `.env` configurados, abra `app.py` no VS Code e clique em
+**Executar Arquivo Python**. A API e a coleta de ônibus começam juntas usando
+o MySQL definido no `.env`. Depois, execute `servidor.py` no frontend.
+O mapa consulta o último ciclo com posições gravadas por meio de
+`GET /posicoes/atuais?modo=ultima_coleta`.
+
+Execução separada do coletor: [docs/COLETOR.md](docs/COLETOR.md). Migrações
 pendentes na Aiven: [docs/AIVEN-MIGRACOES-MVP.md](docs/AIVEN-MIGRACOES-MVP.md).
 
 O servidor inicia em `http://127.0.0.1:5000`. Verifique com `GET /health`, que

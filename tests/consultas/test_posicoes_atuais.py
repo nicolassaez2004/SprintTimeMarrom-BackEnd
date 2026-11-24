@@ -178,6 +178,29 @@ def test_review_um_registro_por_veiculo_mesmo_com_empate_no_ciclo(app):
     assert veiculos["11001"]["linha"]["codigo_olho_vivo"] == "200"  # maior id
     assert veiculos["11002"]["recente"] is False and veiculos["11002"]["idade_segundos"] == 4000
 
+def test_mapa_le_apenas_ultimo_ciclo_que_gravou_posicoes(client):
+    agora_real = datetime.now(timezone.utc)
+    ajuste = AGORA.timestamp() - agora_real.timestamp()
+    anterior = bruto("11001", "100", ajuste + 90)
+    ultimo = bruto("22002", "200", ajuste + 60)
+    bruto("33003", "300", ajuste + 30)  # ciclo repetido, sem novos registros.
+    for registro in (anterior, ultimo):
+        db.session.get(ExecucaoColeta, registro.execucao_id).novos_persistidos = 1
+    db.session.add(RegistroBrutoGPS(
+        execucao_id=ultimo.execucao_id, veiculo_prefixo="22002", prefixo_origem="22002",
+        linha_origem="210", latitude=-23.55, longitude=-46.63,
+        horario_gps=ultimo.horario_gps - timedelta(seconds=1), coletado_em=ultimo.coletado_em,
+    ))
+    db.session.commit()
+
+    resposta = client.get("/posicoes/atuais?modo=ultima_coleta")
+    assert resposta.status_code == 200
+    veiculos = por_prefixo(resposta.get_json())
+    assert set(veiculos) == {"22002"}
+    assert veiculos["22002"]["linha"]["codigo_olho_vivo"] == "210"
+    assert client.get("/posicoes/atuais?modo=ultima_coleta&linha=200").get_json()["total"] == 0
+    assert client.get("/posicoes/atuais?modo=desconhecido").status_code == 400
+
 
 def test_etag_responde_304_sem_ciclo_novo_e_200_apos_ciclo(client):
     bruto("11001", "100", 20)
@@ -206,3 +229,20 @@ def test_etag_depende_do_filtro_e_ignora_ciclo_com_falha(client):
     assert todas != linha
     bruto("22002", "200", 5, estado="FALHA")
     assert client.get("/posicoes/atuais", headers={"If-None-Match": todas}).status_code == 304
+
+
+
+def test_etag_do_ultimo_ciclo_expira_com_a_janela_de_posicoes(client):
+    registro = bruto("11001", "100", 60)
+    db.session.get(ExecucaoColeta, registro.execucao_id).novos_persistidos = 1
+    db.session.commit()
+    url = "/posicoes/atuais?modo=ultima_coleta"
+    with patch("app.consultas.posicoes.agora_utc", return_value=AGORA):
+        primeira = client.get(url)
+        assert primeira.get_json()["total"] == 1
+        headers = {"If-None-Match": primeira.headers["ETag"]}
+        assert client.get(url, headers=headers).status_code == 304
+    with patch("app.consultas.posicoes.agora_utc", return_value=AGORA + timedelta(days=1)):
+        expirada = client.get(url, headers=headers)
+        assert expirada.status_code == 200
+        assert expirada.get_json()["total"] == 0
