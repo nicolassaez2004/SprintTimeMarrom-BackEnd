@@ -1,5 +1,12 @@
 # SprintTimeMarrom-BackEnd
 
+## Diferença entre saídas observadas e programadas — US16-T01
+
+O serviço de [pontualidade por viagem](docs/US16-T01.md) calcula a diferença
+assinada para oferta fixa com saída confirmada e pareamento explícito. Separa
+frequência e viagens sem evidência suficiente, preservando fonte e versão.
+O denominador proposto aguarda confirmação do PO.
+
 ## API pública — US11
 
 `GET /indicadores` e `GET /series`: [contrato da T01](docs/US11-T01.md) e
