@@ -255,7 +255,8 @@ def _consulta_territorios(filtros, escopo, base, codigo, versao_territorial):
     consulta = consulta.order_by(IndicadorOperacional.periodo_inicio,
                                 IndicadorOperacional.id)
     grupos = defaultdict(lambda: {"numerador": 0, "denominador": 0,
-                                  "tem_contagens": True, "registros": 0})
+                                  "tem_contagens": True, "insuficiente": False,
+                                  "registros": 0})
     unidades = {}
     for indicador, unidade, _ in consulta.yield_per(1000):
         chave = (unidade.id,) + tuple(getattr(indicador, nome) for nome in _CHAVES_AGREGACAO)
@@ -265,6 +266,12 @@ def _consulta_territorios(filtros, escopo, base, codigo, versao_territorial):
         else:
             agregado["numerador"] += indicador.contagem_numerador
             agregado["denominador"] += indicador.contagem_denominador
+        # Valor publicado como ausente não pode entrar como zero na soma.
+        if indicador.valor is None and (
+            indicador.contagem_denominador != 0
+            or (indicador.qualidade or {}).get("dados_insuficientes")
+        ):
+            agregado["insuficiente"] = True
         agregado["registros"] += 1
         unidades[unidade.id] = unidade
 
@@ -274,7 +281,17 @@ def _consulta_territorios(filtros, escopo, base, codigo, versao_territorial):
         valores = dict(zip(_CHAVES_AGREGACAO, chave[1:]))
         n = agregado["numerador"] if agregado["tem_contagens"] else None
         d = agregado["denominador"] if agregado["tem_contagens"] else None
-        valor = (100 * n / d) if n is not None and d else None
+        # Só percentuais são recalculados por Σnumerador/Σdenominador.
+        if valores["unidade"] != "%":
+            valor, ausencia = None, "AGREGACAO_NAO_SUPORTADA"
+        elif agregado["insuficiente"]:
+            valor, ausencia = None, "DADOS_INSUFICIENTES"
+        elif d is None:
+            valor, ausencia = None, "CONTAGENS_INDISPONIVEIS"
+        elif d == 0:
+            valor, ausencia = None, "DENOMINADOR_ZERO"
+        else:
+            valor, ausencia = 100 * n / d, None
         props = {
             "codigo": unidade.codigo,
             "nome": unidade.nome,
@@ -294,7 +311,7 @@ def _consulta_territorios(filtros, escopo, base, codigo, versao_territorial):
             "versao_correspondencia": valores["versao_correspondencia"],
             "versao_calculo": valores["versao_calculo"],
             "qualidade": {"registros_agregados": agregado["registros"]},
-            "ausencia": "DENOMINADOR_ZERO" if d == 0 else ("CONTAGENS_INDISPONIVEIS" if d is None else None),
+            "ausencia": ausencia,
         }
         features.append(_feature(unidade.geometria, props))
     # Se há ao menos uma medida, incluir também unidades sem observação para
@@ -366,6 +383,8 @@ def consultar_mapa_indicadores():
         return _erro("PARAMETRO_INVALIDO", "Informe versao_gtfs_id para fixar a rede e evitar misturar versões.", 400, "versao_gtfs_id")
     try:
         versao = _versao_territorial(versao_id)
+        if versao_id and versao is None:
+            return _erro("PARAMETRO_INVALIDO", "Versão territorial não encontrada.", 400, "versao_territorial_id")
         codigo = request.args.get("codigo", "").strip() or None
         if escopo == "parada":
             features, total = _consulta_paradas(filtros, codigo, versao)
@@ -383,6 +402,8 @@ def consultar_mapa_indicadores():
                 "DENOMINADOR_ZERO": "denominador zero; valor null",
                 "CONTAGENS_INDISPONIVEIS": "contagens insuficientes para agregar",
                 "DADOS_INSUFICIENTES": "publicação sinalizou insuficiência de dados",
+                "VALOR_INDISPONIVEL": "indicador publicado sem valor",
+                "AGREGACAO_NAO_SUPORTADA": "unidade não é percentual; não há regra de agregação territorial",
                 "VERSAO_TERRITORIAL_INDISPONIVEL": "não há versão de limites disponível",
                 "SEM_DADOS": "nenhum indicador publicado atende aos filtros",
             },
