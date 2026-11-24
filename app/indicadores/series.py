@@ -3,7 +3,7 @@
 from datetime import datetime, time, timedelta, timezone
 from zoneinfo import ZoneInfo
 
-from sqlalchemy import and_, func, or_
+from sqlalchemy import and_, false, func, or_
 from sqlalchemy.sql.expression import Grouping
 
 from app import db
@@ -54,21 +54,22 @@ def consultar_series(filtros):
     ).one()
     limites_inicio = [i for i in (primeiro, coleta_inicio) if i is not None]
     limites_fim = [i for i in (ultimo, coleta_ultimo) if i is not None]
-    inicio = filtros["inicio"] or (min(limites_inicio) if limites_inicio else None)
-    fim = filtros["fim"] or (max(limites_fim) if limites_fim else None)
-    if inicio is not None and fim is not None and inicio > fim:
-        if filtros["fim"] is None:
-            fim = inicio
-        elif filtros["inicio"] is None:
-            inicio = fim
-    consulta = base
-    if inicio is not None:
-        consulta = consulta.filter(Indicador.periodo_inicio >= inicio)
-    if fim is not None:
-        consulta = consulta.filter(Indicador.periodo_fim <= fim, Indicador.periodo_inicio < fim)
+    inicio = fim = None
+    if limites_inicio:
+        # O período efetivo é recortado ao histórico: antes da primeira coleta e
+        # depois do último ciclo/indicador não há ausência a declarar.
+        inicio = max(filtros["inicio"] or min(limites_inicio), min(limites_inicio))
+        fim = min(filtros["fim"] or max(limites_fim), max(limites_fim))
+        if inicio >= fim:
+            inicio = fim = None
+    if inicio is None:
+        consulta = base.filter(false())
+    else:
+        consulta = base.filter(Indicador.periodo_inicio >= inicio,
+                               Indicador.periodo_fim <= fim, Indicador.periodo_inicio < fim)
 
     janelas = None
-    if filtros["hora_inicio"] is not None and primeiro is not None:
+    if filtros["hora_inicio"] is not None and inicio is not None and primeiro is not None:
         # A expansão é limitada ao histórico persistido, mesmo com filtros muito amplos.
         a, b = max(inicio, primeiro), min(fim, ultimo)
         janelas = list(_janelas_horarias(a, b, filtros["hora_inicio"], filtros["hora_fim"])) if a < b else []

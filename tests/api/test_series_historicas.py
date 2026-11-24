@@ -123,19 +123,75 @@ def test_lacunas_entre_paginas_e_sobreposicao_nao_inventam_ausencia(cliente):
 
 def test_sem_publicacao_sem_historico_e_periodo_fora_da_base(cliente):
     assert consultar(cliente)["historico"]["inicio_indicadores"] is None
+    # Sem coleta nem indicador, não há período a declarar como ausente.
     corpo = consultar(cliente, inicio=D0.isoformat(), fim=(D0 + timedelta(days=1)).isoformat())
-    assert corpo["dados"] == [] and len(corpo["lacunas"]) == 1
+    assert corpo["dados"] == [] and corpo["lacunas"] == []
+    assert (corpo["consulta"]["inicio"], corpo["consulta"]["fim"]) == (None, None)
+    db.session.add(ExecucaoColeta(iniciada_em=D0, estado="OK"))
+    db.session.add(ExecucaoColeta(iniciada_em=D0 + timedelta(hours=12), estado="OK"))
+    db.session.commit()
+    corpo = consultar(cliente, inicio=D0.isoformat(), fim=(D0 + timedelta(days=1)).isoformat())
+    assert corpo["dados"] == []
+    assert [(l["inicio"], l["fim"]) for l in corpo["lacunas"]] == [
+        (D0.isoformat(), (D0 + timedelta(hours=12)).isoformat())]
     gravar()
-    assert consultar(cliente, inicio=(D0 + timedelta(days=1)).isoformat())["dados"] == []
+    corpo = consultar(cliente, inicio=(D0 + timedelta(days=1)).isoformat())
+    assert corpo["dados"] == [] and corpo["lacunas"] == []
+
+
+def test_periodo_anterior_a_coleta_ou_futuro_nao_vira_lacuna(cliente):
+    db.session.add(ExecucaoColeta(iniciada_em=D0 + timedelta(hours=6), estado="OK"))
+    db.session.commit()
+    gravar(8)
+    corpo = consultar(cliente, inicio="2026-01-01T00:00:00Z", fim="2027-01-01T00:00:00Z")
+    assert corpo["consulta"]["inicio"] == (D0 + timedelta(hours=6)).isoformat()
+    assert corpo["consulta"]["fim"] == (D0 + timedelta(hours=9)).isoformat()
+    assert [(l["inicio"], l["fim"]) for l in corpo["lacunas"]] == [
+        ((D0 + timedelta(hours=6)).isoformat(), (D0 + timedelta(hours=8)).isoformat())]
+    antes = consultar(cliente, inicio="2026-01-01T00:00:00Z", fim="2026-02-01T00:00:00Z")
+    assert antes["dados"] == [] and antes["lacunas"] == []
+    assert antes["consulta"]["inicio"] is None
+
+
+def test_filtros_combinados_e_datas_limite_inclusivas_no_fim(cliente):
+    for hora in (6, 7, 8, 9):
+        gravar(hora)
+    gravar(7, sentido="1")
+    gravar(7, indicador="CUMPRIMENTO_VIAGENS")
+    gravar(7, linha_codigo="outra")
+    corpo = consultar(cliente, tipo="PONTUALIDADE_VIAGENS",
+                      inicio=(D0 + timedelta(hours=7)).isoformat(),
+                      fim=(D0 + timedelta(hours=9)).isoformat(),
+                      hora_inicio="07:00", hora_fim="09:00")
+    # [07,08) e [08,09) cabem; [09,10) começa no fim exclusivo; [06,07) fica antes.
+    assert [(p["inicio"], p["linha"], p["sentido"], p["tipo"]) for p in corpo["dados"]] == [
+        ((D0 + timedelta(hours=h)).isoformat(), "8000-10", "0", "PONTUALIDADE_VIAGENS") for h in (7, 8)]
+    assert corpo["lacunas"] == []
+
+
+def test_zero_e_null_preservam_contagens_publicadas(cliente):
+    gravar(8, valor=0, contagem_numerador=0, contagem_denominador=12)
+    gravar(9, valor=None, contagem_numerador=0, contagem_denominador=0,
+           qualidade={"dados_insuficientes": True})
+    dados = consultar(cliente)["dados"]
+    assert [(p["valor"], p["status"], p["contagens"]) for p in dados] == [
+        (0, "DISPONIVEL", {"numerador": 0, "denominador": 12}),
+        (None, "SEM_RESULTADO", {"numerador": 0, "denominador": 0}),
+    ]
+    assert dados[1]["qualidade"]["dados_insuficientes"] is True
 
 
 def test_query_de_horas_nao_explode_com_periodo_de_seculos_sem_dados(cliente):
+    db.session.add(ExecucaoColeta(iniciada_em=D0 - timedelta(days=300), estado="OK"))
+    db.session.commit()
     gravar()
     corpo = consultar(cliente, inicio="1900-01-01T00:00:00Z", fim="2100-01-01T00:00:00Z",
                       hora_inicio="06:00", hora_fim="10:00")
     assert corpo["paginacao"]["total"] == 1
+    assert corpo["consulta"]["inicio"] == (D0 - timedelta(days=300)).isoformat()
     assert len(corpo["lacunas"]) == 200
     assert corpo["consulta"]["lacunas_truncadas"] is True
+    assert min(l["inicio"] for l in corpo["lacunas"]) >= (D0 - timedelta(days=300)).isoformat()
 
 
 @pytest.mark.parametrize("query", [
