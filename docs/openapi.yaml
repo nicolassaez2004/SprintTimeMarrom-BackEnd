@@ -8,7 +8,7 @@ info:
     uma página vazia. Valores devem declarar unidade, janela, versão do conjunto
     e qualidade; os serviços produtores das dependências US14-T03B e US16-T02
     são responsáveis por gravar os valores calculados.
-    GET e HEAD de /indicadores e /series compartilham 60 chamadas por IP por
+    GET e HEAD de /indicadores, /series e /mapas/indicadores compartilham 60 chamadas por IP por
     minuto UTC (janela fixa). A 61ª chamada retorna 429 com Retry-After em
     segundos. Parâmetros inválidos também consomem a cota; OPTIONS não consome.
     O IP vem da conexão; X-Forwarded-For só é considerado atrás de proxies
@@ -165,10 +165,111 @@ paths:
         '400': { $ref: '#/components/responses/ParametroInvalido' }
         '429': { $ref: '#/components/responses/LimiteExcedido' }
         '503': { $ref: '#/components/responses/Indisponivel' }
+  /mapas/indicadores:
+    get:
+      operationId: consultarIndicadoresComGeometria
+      summary: Consultar indicadores como GeoJSON e agregar por distrito ou subprefeitura
+      description: >-
+        Retorna FeatureCollection GeoJSON em EPSG:4326. `escopo` aceita parada,
+        trecho, distrito ou subprefeitura. Informe `versao_gtfs_id` para fixar
+        a rede e evitar mistura entre versões; para unidades territoriais, informe
+        `base=parada` ou `base=trecho`. Agregações somam numeradores e
+        denominadores por tipo, janela, sentido e versões compatíveis antes de
+        calcular o percentual. Não calcula média de valores percentuais. Em
+        trechos fronteiriços, US24-T01 atribui o trecho à unidade com maior
+        extensão sobreposta; a geometria permanece a linha completa. Uma versão
+        territorial é escolhida pela captura mais recente ou fixada por ID.
+        Dados sem território aparecem nas consultas por parada/trecho com os
+        IDs territoriais nulos; denominador zero resulta em valor null. Se há
+        resultados em parte do mapa, unidades sem observações também são
+        incluídas com valor null e ausencia SEM_DADOS.
+      security: []
+      parameters:
+        - name: escopo
+          in: query
+          required: true
+          schema: { type: string, enum: [parada, trecho, distrito, subprefeitura] }
+        - name: base
+          in: query
+          required: false
+          description: Obrigatória para distrito/subprefeitura; qual dimensão espacial será somada.
+          schema: { type: string, enum: [parada, trecho] }
+        - name: codigo
+          in: query
+          required: false
+          description: Código da parada, ID do trecho ou código da unidade territorial segundo escopo.
+          schema: { type: string, maxLength: 64 }
+        - name: versao_territorial_id
+          in: query
+          required: false
+          description: UUID da versão dos limites; omitido, usa a captura mais recente.
+          schema: { type: string, format: uuid }
+        - $ref: '#/components/parameters/linha'
+        - $ref: '#/components/parameters/sentido'
+        - $ref: '#/components/parameters/tipo'
+        - $ref: '#/components/parameters/indicador'
+        - name: versao_gtfs_id
+          in: query
+          required: true
+          description: UUID da rede consultada; evita misturar entidades entre versões GTFS.
+          schema: { type: string, format: uuid }
+        - $ref: '#/components/parameters/inicio'
+        - $ref: '#/components/parameters/fim'
+        - $ref: '#/components/parameters/page'
+        - $ref: '#/components/parameters/page_size'
+      responses:
+        '200':
+          description: FeatureCollection GeoJSON; `ausencia` e valor null explicitam lacunas ou ausência de denominador.
+          headers:
+            X-RateLimit-Limit: { $ref: '#/components/headers/Limite' }
+            X-RateLimit-Remaining: { $ref: '#/components/headers/Restantes' }
+            X-RateLimit-Reset: { $ref: '#/components/headers/Reinicio' }
+          content:
+            application/geo+json:
+              schema:
+                type: object
+                required: [type, features, legenda, paginacao]
+                properties:
+                  type: { type: string, enum: [FeatureCollection] }
+                  features:
+                    type: array
+                    items:
+                      type: object
+                      required: [type, geometry, properties]
+                      properties:
+                        type: { type: string, enum: [Feature] }
+                        geometry: { type: object, description: Geometria GeoJSON EPSG:4326. }
+                        properties: { type: object, additionalProperties: true }
+                  legenda: { type: object, additionalProperties: true }
+                  versao_territorial: { type: object, nullable: true, additionalProperties: true }
+                  ausencia: { type: string, nullable: true }
+                  paginacao: { $ref: '#/components/schemas/Paginacao' }
+              example:
+                type: FeatureCollection
+                features:
+                  - type: Feature
+                    geometry: { type: Polygon, coordinates: [[[ -46.64, -23.56 ], [ -46.63, -23.56 ], [ -46.63, -23.55 ], [ -46.64, -23.56 ]]] }
+                    properties:
+                      codigo: '78'
+                      nome: SE
+                      escopo: distrito
+                      base_agregacao: parada
+                      tipo: PONTUALIDADE_VIAGENS
+                      unidade: '%'
+                      valor: 87.5
+                      contagens: { numerador: 7, denominador: 8 }
+                      ausencia: null
+                legenda: { unidade: unidade original do indicador, agregacao: somar contagens antes de calcular o percentual }
+                versao_territorial: { id: 'a3d25d94-686b-4ee8-b364-c73997d8724c', fonte: GeoSampa, versao_fonte: '2026-11-16' }
+                ausencia: null
+                paginacao: { page: 1, page_size: 100, total: 1 }
+        '400': { $ref: '#/components/responses/ParametroInvalido' }
+        '429': { $ref: '#/components/responses/LimiteExcedido' }
+        '503': { $ref: '#/components/responses/Indisponivel' }
 components:
   headers:
     Limite:
-      description: Cota conjunta de /indicadores e /series por IP e janela.
+      description: Cota conjunta de /indicadores, /series e /mapas/indicadores por IP e janela.
       schema: { type: integer, enum: [60] }
     Restantes:
       description: Chamadas restantes na janela atual, após este pedido.

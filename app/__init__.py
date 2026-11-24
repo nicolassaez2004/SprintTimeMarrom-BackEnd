@@ -71,6 +71,7 @@ def create_app(config_extra=None):
             r"/downloads/.*": {"origins": origens_frontend},
             r"/indicadores": {"origins": origens_frontend},
             r"/series": {"origins": origens_frontend},
+            r"/mapas/indicadores": {"origins": origens_frontend},
         }
     )
 
@@ -91,6 +92,8 @@ def create_app(config_extra=None):
     from app.indicadores.routes import indicadores_bp
 
     app.register_blueprint(indicadores_bp)
+    from app.api.mapas import mapas_bp
+    app.register_blueprint(mapas_bp)
     from app.correspondencia.routes import qualidade_bp
 
     app.register_blueprint(qualidade_bp)

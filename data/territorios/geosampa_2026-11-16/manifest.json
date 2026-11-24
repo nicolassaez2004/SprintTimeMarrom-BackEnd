@@ -1,0 +1,26 @@
+{
+  "versao_fonte": "2026-11-16",
+  "fonte": "GeoSampa / Prefeitura de São Paulo / SMUL / GEOINFO",
+  "crs_origem": "EPSG:31983",
+  "data_captura": "2026-11-24",
+  "metadados_fonte": {
+    "distrito": "https://metadados.geosampa.prefeitura.sp.gov.br/geonetwork/srv/api/records/51f75eab-6d90-451e-9f80-c21c1ac72630",
+    "subprefeitura": "https://metadados.geosampa.prefeitura.sp.gov.br/geonetwork/srv/api/records/289e684e-b2be-453d-8d2d-68ec629cd3dc"
+  },
+  "camadas": {
+    "distritos": {
+      "type_name": "geoportal:distrito_municipal",
+      "url": "https://wfs.geosampa.prefeitura.sp.gov.br/geoserver/geoportal/wfs",
+      "arquivo": "distritos.geojson.gz",
+      "sha256": "d04bbe9041ed9b438c238122e879f498d072918a53f4aeda3f2173f5fac3afee",
+      "tamanho_bytes_descompactado": 4930102
+    },
+    "subprefeituras": {
+      "type_name": "geoportal:subprefeitura",
+      "url": "https://wfs.geosampa.prefeitura.sp.gov.br/geoserver/geoportal/wfs",
+      "arquivo": "subprefeituras.geojson.gz",
+      "sha256": "9020de5f242e75a60608bde3daa14f8e0b94430419fadd4a98b7ef9205ab5e67",
+      "tamanho_bytes_descompactado": 2940134
+    }
+  }
+}

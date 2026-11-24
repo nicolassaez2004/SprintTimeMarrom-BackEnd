@@ -12,6 +12,7 @@ import pytest
 
 from app.indicadores.pontualidade import (
     DiferencaSaida,
+    ReferenciaProgramacao,
     ResultadoPontualidade,
     SaidaObservada,
     calcular_diferencas,
@@ -51,10 +52,13 @@ CASOS = (
 )
 
 
-def partida(caso_id, tipo="FIXA"):
+def partida(
+    caso_id, tipo="FIXA", *, linha_codigo="8000-10", versao_gtfs_id="gtfs-v1",
+    importacao_id=None,
+):
     lote = ImportacaoProgramacao(
-        id=f"import-{caso_id}", linha_codigo="8000-10", sentido="0",
-        data_operacao=DIA_OPERACIONAL, versao_gtfs_id="gtfs-v1",
+        id=importacao_id or f"import-{caso_id}", linha_codigo=linha_codigo, sentido="0",
+        data_operacao=DIA_OPERACIONAL, versao_gtfs_id=versao_gtfs_id,
         tipo_dia="UTIL", fonte="OFICIAL", versao_fonte="captura-v1",
         fonte_url="https://example.invalid/grade", capturada_em=PREVISTA,
         verificada_em=PREVISTA, arquivo_id=f"arquivo-{caso_id}",
@@ -66,40 +70,49 @@ def partida(caso_id, tipo="FIXA"):
     )
 
 
-def entrada(caso_id, delta=None):
+def entrada(caso_id, delta=None, *, linha_codigo="8000-10", versao_gtfs_id="gtfs-v1"):
     inicio = PREVISTA if delta is None else PREVISTA + timedelta(seconds=delta)
     viagem = ViagemObservada(
-        prefixo=f"bus-{caso_id}", linha_codigo="8000-10", sentido_gtfs="0",
+        prefixo=f"bus-{caso_id}", linha_codigo=linha_codigo, sentido_gtfs="0",
         inicio=PREVISTA, fim=PREVISTA + timedelta(minutes=20),
         motivo_encerramento="fim_da_amostra",
     )
     return SaidaObservada(
-        f"v-{caso_id}", viagem, DIA_OPERACIONAL, "gtfs-v1", inicio, f"p-{caso_id}",
+        f"v-{caso_id}", viagem, DIA_OPERACIONAL, versao_gtfs_id, inicio, f"p-{caso_id}",
     )
 
 
-def executar_caso(caso_id, dado):
+def executar_caso(
+    caso_id, dado, *, linha_codigo="8000-10", versao_gtfs_id="gtfs-v1",
+    importacao_id=None,
+):
+    opcoes_partida = {
+        "linha_codigo": linha_codigo,
+        "versao_gtfs_id": versao_gtfs_id,
+        "importacao_id": importacao_id,
+    }
+    opcoes_entrada = {"linha_codigo": linha_codigo, "versao_gtfs_id": versao_gtfs_id}
     if isinstance(dado, (int, float)):
-        grade = partida(caso_id)
-        observada = entrada(caso_id, dado)
+        grade = partida(caso_id, **opcoes_partida)
+        observada = entrada(caso_id, dado, **opcoes_entrada)
     elif dado == "FREQUENCIA_PAREADA":
-        grade = partida(caso_id, "FREQUENCIA")
-        observada = entrada(caso_id, 0)
+        grade = partida(caso_id, "FREQUENCIA", **opcoes_partida)
+        observada = entrada(caso_id, 0, **opcoes_entrada)
     elif dado == "FREQUENCIA_SEM_PAREAMENTO":
-        grade = partida(caso_id, "FREQUENCIA")
-        observada = replace(entrada(caso_id, 0), partida_programada_id=None)
+        grade = partida(caso_id, "FREQUENCIA", **opcoes_partida)
+        observada = replace(entrada(caso_id, 0, **opcoes_entrada), partida_programada_id=None)
     elif dado == "SEM_PAREAMENTO":
-        grade = partida(caso_id)
-        observada = replace(entrada(caso_id, 0), partida_programada_id=None)
+        grade = partida(caso_id, **opcoes_partida)
+        observada = replace(entrada(caso_id, 0, **opcoes_entrada), partida_programada_id=None)
     elif dado == "ID_DESCONHECIDO":
-        grade = partida(caso_id)
-        observada = replace(entrada(caso_id, 0), partida_programada_id="inexistente")
+        grade = partida(caso_id, **opcoes_partida)
+        observada = replace(entrada(caso_id, 0, **opcoes_entrada), partida_programada_id="inexistente")
     elif dado == "SEM_SAIDA_CONFIRMADA":
-        grade = partida(caso_id)
-        observada = replace(entrada(caso_id, 0), saida_observada=None)
+        grade = partida(caso_id, **opcoes_partida)
+        observada = replace(entrada(caso_id, 0, **opcoes_entrada), saida_observada=None)
     else:
-        grade = partida(caso_id)
-        observada = entrada(caso_id, 0)
+        grade = partida(caso_id, **opcoes_partida)
+        observada = entrada(caso_id, 0, **opcoes_entrada)
         if dado == "LINHA_DIVERGENTE":
             observada = replace(observada, viagem=replace(observada.viagem, linha_codigo="8001-10"))
         elif dado == "SENTIDO_DIVERGENTE":
@@ -130,7 +143,14 @@ def test_20_casos_comparam_calculo_manual_e_resultado_do_sistema(
 
 
 def test_agregacao_dos_20_casos_usa_contagens_e_registra_exclusoes(app, programacao):
-    itens = [executar_caso(caso_id, dado) for caso_id, dado, _, _ in CASOS]
+    versao, linha, _, _ = programacao
+    itens = [
+        executar_caso(
+            caso_id, dado, linha_codigo=linha.codigo,
+            versao_gtfs_id=versao.id, importacao_id="import-batch",
+        )
+        for caso_id, dado, _, _ in CASOS
+    ]
     agregado = calcular_percentual_pontualidade(itens)
 
     # Manual: 7 pontuais / 11 viagens fixas classificáveis = 63,64%.
@@ -144,7 +164,6 @@ def test_agregacao_dos_20_casos_usa_contagens_e_registra_exclusoes(app, programa
     }
     assert agregado.classificadas == 20
 
-    versao, linha, _, _ = programacao
     # Verifica que percentuais combinados vêm das contagens: 1/1 e 1/3
     # resultam em 2/4 = 50%, não na média simples de 66,67%.
     particionais = ResultadoPontualidade(tuple(
@@ -183,21 +202,33 @@ def test_janelas_de_15_minutos_e_agregacao_por_contagens_no_limite_do_mes(app, p
     assert fim_janela_1 - inicio_janela_1 == timedelta(minutes=15)
     assert fim_janela_2 - inicio_janela_2 == timedelta(minutes=15)
 
+    def referencia(partida_id, prevista, versao, linha):
+        return ReferenciaProgramacao(
+            partida_id=partida_id, importacao_id="import-dia-operacional",
+            linha_codigo=linha.codigo, sentido_gtfs="0",
+            data_operacao=date(2026, 1, 31), versao_gtfs_id=versao.id,
+            tipo_oferta="FIXA", fonte="OFICIAL", versao_fonte="captura-teste",
+            fonte_url="https://example.invalid/grade", saida_prevista=prevista,
+        )
+
     # Operação de 31/jan pode ter saída após a meia-noite civil.
     primeira_janela = ResultadoPontualidade((
         DiferencaSaida(
             "j1-v1", date(2026, 1, 31), "CALCULADA", "FIXA_PAREADA",
-            datetime(2026, 1, 31, 23, 50, tzinfo=UTC), None, 0,
+            datetime(2026, 1, 31, 23, 50, tzinfo=UTC),
+            referencia("p-j1-v1", datetime(2026, 1, 31, 23, 50, tzinfo=UTC), versao, linha), 0,
         ),
         DiferencaSaida(
             "j1-v2", date(2026, 1, 31), "CALCULADA", "FIXA_PAREADA",
-            datetime(2026, 1, 31, 23, 55, tzinfo=UTC), None, 301,
+            datetime(2026, 1, 31, 23, 55, tzinfo=UTC),
+            referencia("p-j1-v2", datetime(2026, 1, 31, 23, 55, tzinfo=UTC), versao, linha), 301,
         ),
     ))
     segunda_janela = ResultadoPontualidade((
         DiferencaSaida(
             "j2-v1", date(2026, 1, 31), "CALCULADA", "FIXA_PAREADA",
-            datetime(2026, 2, 1, 0, 5, tzinfo=UTC), None, 0,
+            datetime(2026, 2, 1, 0, 5, tzinfo=UTC),
+            referencia("p-j2-v1", datetime(2026, 2, 1, 0, 5, tzinfo=UTC), versao, linha), 0,
         ),
     ))
     registro_janela_1 = publicar_pontualidade(
