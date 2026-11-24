@@ -437,6 +437,8 @@ components:
         versao_calculo: { type: string, nullable: true }
         contagens: { $ref: '#/components/schemas/Contagens' }
         qualidade: { $ref: '#/components/schemas/Qualidade' }
+        consolidado: { type: boolean, description: "US23-T03: a janela pertence a um dia já consolidado; false = valor provisório da atualização de 15 min." }
+        consolidado_em: { type: string, format: date-time, nullable: true }
     Paginacao:
       type: object
       required: [page, page_size, total]
@@ -452,7 +454,7 @@ components:
         paginacao: { $ref: '#/components/schemas/Paginacao' }
     PaginaSeries:
       type: object
-      required: [dados, paginacao, lacunas, historico, consulta]
+      required: [dados, paginacao, lacunas, historico, consulta, atualizacao]
       properties:
         dados: { type: array, items: { $ref: '#/components/schemas/PontoSerie' } }
         paginacao: { $ref: '#/components/schemas/Paginacao' }
@@ -490,6 +492,33 @@ components:
             lacunas_escopo: { type: string, enum: [PAGINA] }
             lacunas_truncadas: { type: boolean }
             criterio_periodo: { type: string, enum: [JANELAS_INTEIRAMENTE_CONTIDAS] }
+        atualizacao:
+          type: object
+          description: >-
+            US23-T03. Agenda dos indicadores: a cada 15 min a última janela fechada é
+            publicada; o dia D é consolidado a partir de 04:00 e até 06:00 de D+1
+            (America/Sao_Paulo). Cada publicação é um conjunto gravado numa só
+            transação, lido junto com os dados: a resposta nunca mistura uma
+            atualização parcial com a anterior.
+          required: [intervalo_minutos, ultima_atualizacao, proxima_atualizacao_prevista, consolidacao]
+          properties:
+            intervalo_minutos: { type: integer, enum: [15] }
+            ultima_atualizacao:
+              type: object
+              nullable: true
+              properties:
+                janela_inicio: { type: string, format: date-time }
+                janela_fim: { type: string, format: date-time }
+                publicada_em: { type: string, format: date-time }
+            proxima_atualizacao_prevista: { type: string, format: date-time, nullable: true }
+            consolidacao:
+              type: object
+              properties:
+                dia: { type: string, format: date, nullable: true }
+                consolidado_ate: { type: string, format: date-time, nullable: true }
+                consolidado_em: { type: string, format: date-time, nullable: true }
+                no_prazo: { type: boolean, nullable: true }
+                regra: { type: string }
     Erro:
       type: object
       required: [erro]
