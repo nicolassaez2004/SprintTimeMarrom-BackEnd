@@ -10,12 +10,14 @@ import pytest
 from app import create_app, db
 from app.indicadores.pontualidade import (
     DiferencaSaida, ResultadoPontualidade, SaidaObservada,
-    calcular_diferencas, calcular_percentual_pontualidade,
+    calcular_diferencas, calcular_e_publicar_pontualidade, calcular_percentual_pontualidade,
     publicar_pontualidade,
 )
 from app.models import (
-    ArquivoArmazenado, ImportacaoProgramacao, Linha, PartidaProgramada, VersaoGTFS,
+    ArquivoArmazenado, ImportacaoProgramacao, IndicadorOperacional, Linha, PartidaProgramada,
+    VersaoGTFS,
 )
+from app.models import ViagemObservada as ModeloViagemObservada
 from app.repositories import programacao as repositorio
 from app.viagens.separacao import ObservacaoViagem, SeparadorViagens, ViagemObservada
 
@@ -295,37 +297,131 @@ def test_denominador_zero_indica_insuficiencia_e_nao_inventa_percentual():
     assert resultado.dados_insuficientes
 
 
+def _viagem_persistida(partida, segundos, cobertura=1.0, reconstrucao="recon-v1"):
+    return ModeloViagemObservada(
+        partida_programada_id=partida.id,
+        saida_observada=partida.saida_prevista + timedelta(seconds=segundos),
+        cobertura_tracado=cobertura, versao_reconstrucao=reconstrucao,
+        versao_correspondencia="match-v3", qualidade={},
+    )
+
+
+ARGUMENTOS_JANELA = {
+    "sentido": "0", "inicio": AGORA, "fim": AGORA + timedelta(hours=1),
+    "versao_correspondencia": "match-v3", "versao_reconstrucao": "recon-v1",
+}
+
+
 def test_publicacao_versionada_idempotente_e_consultavel_na_rota_publica(app, programacao):
-    versao, linha, _, _ = programacao
-    agregado = ResultadoPontualidade((DiferencaSaida(
-        "v1", DIA, "CALCULADA", "FIXA_PAREADA", PREVISTA, None, -60,
-    ), DiferencaSaida(
-        "v2", DIA, "CALCULADA", "FIXA_PAREADA", PREVISTA, None, 301,
-    ), DiferencaSaida(
-        "v3", DIA, "FREQUENCIA", "OFERTA_POR_FREQUENCIA", PREVISTA, None,
-    )))
-    argumentos = {
-        "linha": linha.codigo, "sentido": "0", "inicio": AGORA,
-        "fim": AGORA + timedelta(hours=1), "versao_gtfs_id": versao.id,
-        "versao_correspondencia": "match-v3", "versao_reconstrucao": "recon-v1",
-    }
-    indicador = publicar_pontualidade(agregado, **argumentos)
+    versao, linha, _, partidas = programacao  # 12:00, 12:15 e 12:30 UTC, FIXA
+    db.session.add_all([
+        _viagem_persistida(partidas[0], -60),
+        _viagem_persistida(partidas[1], 301, cobertura=0.5),
+        _viagem_persistida(partidas[2], 0, reconstrucao="recon-v0"),  # outra versão: ignorada
+    ])
+    db.session.commit()
+    argumentos = {**ARGUMENTOS_JANELA, "linha": linha.codigo, "versao_gtfs_id": versao.id}
+    indicador = calcular_e_publicar_pontualidade(**argumentos)
     assert indicador.indicador == "PONTUALIDADE_VIAGENS"
     assert indicador.valor == 50.0
     assert (indicador.contagem_numerador, indicador.contagem_denominador) == (1, 2)
     assert indicador.versao_calculo == "pontualidade-1.0"
-    assert indicador.qualidade["excluidas"]["frequencia"] == 1
-    repetido = publicar_pontualidade(agregado, **argumentos)
+    assert indicador.qualidade["partidas_fixas_programadas"] == 3
+    assert indicador.qualidade["realizadas_com_cobertura_abaixo_minima"] == 1
+    assert indicador.qualidade["sem_pareamento_contabilizado"] is False
+    assert indicador.qualidade["capturas_programacao"][0]["fonte"] == "OFICIAL"
+    repetido = calcular_e_publicar_pontualidade(**argumentos)
     assert repetido.id == indicador.id
+    assert IndicadorOperacional.query.count() == 1
 
     response = app.test_client().get(
-        f"/indicadores?linha={linha.codigo}&tipo=PONTUALIDADE_VIAGENS"
+        f"/indicadores?linha={linha.codigo}&sentido=ida&tipo=PONTUALIDADE_VIAGENS"
+        "&inicio=2026-11-24T12:00:00Z&fim=2026-11-24T13:00:00Z"
     )
     assert response.status_code == 200
     publicado = response.json["dados"][0]
     assert publicado["valor"] == 50.0
+    assert publicado["unidade"] == "%"
     assert publicado["contagens"] == {"numerador": 1, "denominador": 2}
+    assert publicado["versao_calculo"] == "pontualidade-1.0"
+    assert publicado["versao_correspondencia"] == "match-v3"
+    assert publicado["qualidade"]["versao_reconstrucao"] == "recon-v1"
     assert publicado["qualidade"]["limites_inclusivos"] is True
+
+
+@pytest.mark.parametrize("segundos,pontual", [
+    (-60, True), (300, True), (-61, False), (301, False), (0, True), (-1, True), (299, True),
+])
+def test_limites_no_caminho_persistido(app, programacao, segundos, pontual):
+    versao, linha, _, partidas = programacao
+    db.session.add(_viagem_persistida(partidas[0], segundos))
+    db.session.commit()
+    registro = calcular_e_publicar_pontualidade(
+        **ARGUMENTOS_JANELA, linha=linha.codigo, versao_gtfs_id=versao.id,
+    )
+    assert (registro.contagem_numerador, registro.contagem_denominador) == (int(pontual), 1)
+    assert registro.valor == (100.0 if pontual else 0.0)
+
+
+def test_frequencia_nao_recebe_pontualidade_no_caminho_persistido(app, programacao):
+    versao, linha, _, partidas = programacao
+    for partida in partidas:
+        partida.tipo_oferta, partida.intervalo_seg = "FREQUENCIA", 900
+        db.session.add(_viagem_persistida(partida, 0))
+    db.session.commit()
+    registro = calcular_e_publicar_pontualidade(
+        **ARGUMENTOS_JANELA, linha=linha.codigo, versao_gtfs_id=versao.id,
+    )
+    assert registro.valor is None
+    assert (registro.contagem_numerador, registro.contagem_denominador) == (0, 0)
+    assert registro.qualidade["dados_insuficientes"] is True
+    assert registro.qualidade["excluidas"]["frequencia"] == 3
+    assert registro.qualidade["partidas_fixas_programadas"] == 0
+    assert registro.qualidade["motivo_insuficiencia"] == "NAO_APLICAVEL_OFERTA_POR_FREQUENCIA"
+
+
+def test_fixas_sem_viagem_observada_publicam_null_com_motivo(app, programacao):
+    versao, linha, _, _ = programacao
+    registro = calcular_e_publicar_pontualidade(
+        **ARGUMENTOS_JANELA, linha=linha.codigo, versao_gtfs_id=versao.id,
+    )
+    assert registro.valor is None
+    assert (registro.contagem_numerador, registro.contagem_denominador) == (0, 0)
+    assert registro.qualidade["motivo_insuficiencia"] == "SEM_VIAGENS_FIXAS_OBSERVADAS"
+    assert registro.qualidade["partidas_fixas_programadas"] == 3
+
+
+def test_pareamento_com_outro_contexto_vira_exclusao_sem_bloquear_publicacao(app, programacao):
+    """Viagem desta linha pareada por engano a partida de outra linha."""
+    versao, linha, importacao, partidas = programacao
+    errada = observada("v-errada")
+    errada = replace(errada, viagem=replace(errada.viagem, linha_codigo=linha.codigo),
+                     versao_gtfs_id=versao.id)
+    certa = SaidaObservada("v-certa", replace(errada.viagem, inicio=AGORA, fim=AGORA),
+                           partidas[0].data_operacao, versao.id,
+                           partidas[0].saida_prevista + timedelta(seconds=30), partidas[0].id)
+    resultado = calcular_diferencas([errada, certa], [partida(), *partidas])
+    assert [v.motivo for v in resultado.viagens] == ["CONTEXTO_DIVERGENTE", "FIXA_PAREADA"]
+    registro = publicar_pontualidade(resultado, **{
+        **ARGUMENTOS_JANELA, "linha": linha.codigo, "versao_gtfs_id": versao.id})
+    assert (registro.contagem_numerador, registro.contagem_denominador) == (1, 1)
+    assert registro.qualidade["excluidas"]["sem_pareamento"] == 1
+    assert [c["importacao_id"] for c in registro.qualidade["capturas_programacao"]] == [importacao.id]
+
+
+def test_publicacao_rejeita_viagem_de_outro_contexto(app, programacao):
+    versao, linha, _, _ = programacao
+    calculada = calcular_diferencas([observada()], [partida()])  # linha 8000-10, 08:00 SP
+    assert calculada.viagens[0].status == "CALCULADA"
+    with pytest.raises(ValueError, match="não pertence"):
+        publicar_pontualidade(calculada, **{**ARGUMENTOS_JANELA, "linha": linha.codigo,
+                                            "versao_gtfs_id": versao.id})
+    sem_ref = ResultadoPontualidade((DiferencaSaida(
+        "v1", DIA, "CALCULADA", "FIXA_PAREADA", PREVISTA, None, 0),))
+    with pytest.raises(ValueError, match="programação de referência"):
+        publicar_pontualidade(sem_ref, **{**ARGUMENTOS_JANELA, "linha": linha.codigo,
+                                          "versao_gtfs_id": versao.id})
+    assert IndicadorOperacional.query.count() == 0
 
 
 def test_publicacao_sem_viagens_guarda_null_e_dados_insuficientes(app, programacao):

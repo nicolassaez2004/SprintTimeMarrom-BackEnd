@@ -13,10 +13,13 @@ from app.models import (
     PartidaProgramada,
     ViagemObservada,
 )
+from app.repositories.programacao import consultar_por_dia
 
 COBERTURA_MINIMA = 0.80
 TOLERANCIA_MAXIMA_SEGUNDOS = 15 * 60
-VERSAO_ALGORITMO = "cumprimento-1.0"
+# 1.1: intervalo fixo inferido da grade completa do dia (não da janela) e
+# seleção de grade pela política da US04 (captura OFICIAL vazia prevalece).
+VERSAO_ALGORITMO = "cumprimento-1.1"
 
 
 @dataclass(frozen=True)
@@ -42,18 +45,14 @@ def _tolerancia_saida(partida, programadas):
              and p.tipo_oferta == "FIXA"),
             key=lambda p: (p.saida_prevista, p.ordem, p.id),
         )
-        posicoes = [i for i, item in enumerate(mesma_grade) if item.id == partida.id]
-        if not posicoes:
+        if not any(item.id == partida.id for item in mesma_grade):
             return None
-        indice = posicoes[0]
-        vizinhos = []
-        for outro in (mesma_grade[indice - 1] if indice > 0 else None,
-                      mesma_grade[indice + 1] if indice + 1 < len(mesma_grade) else None):
-            if outro is None:
-                continue
-            diferenca = abs((outro.saida_prevista - partida.saida_prevista).total_seconds())
-            if diferenca > 0:
-                vizinhos.append(diferenca)
+        # Partidas simultâneas (mesmo horário) não definem intervalo: usa-se a
+        # partida mais próxima com horário diferente, de cada lado.
+        vizinhos = [
+            abs((outro.saida_prevista - partida.saida_prevista).total_seconds())
+            for outro in mesma_grade if outro.saida_prevista != partida.saida_prevista
+        ]
         if not vizinhos:
             return None
         intervalo = min(vizinhos)
@@ -74,15 +73,20 @@ def viagem_cumprida(partida, observada, programadas):
     return diferenca <= tolerancia
 
 
-def calcular_cumprimento(programadas, observadas):
-    """Return numerator, denominator and percent; no denominator means NULL."""
+def calcular_cumprimento(programadas, observadas, grade=None):
+    """Return numerator, denominator and percent; no denominator means NULL.
+
+    ``grade`` is the full timetable used to infer fixed-schedule headways; the
+    window must not change a trip's tolerance. Defaults to ``programadas``.
+    """
     programadas = list(programadas)
+    grade = programadas if grade is None else list(grade)
     por_partida = (
         observadas if isinstance(observadas, dict)
         else {item.partida_programada_id: item for item in observadas}
     )
     cumpridas = sum(
-        viagem_cumprida(partida, por_partida.get(partida.id), programadas)
+        viagem_cumprida(partida, por_partida.get(partida.id), grade)
         for partida in programadas
     )
     quantidade = len(programadas)
@@ -91,6 +95,72 @@ def calcular_cumprimento(programadas, observadas):
         .quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
     )
     return ResultadoCumprimento(cumpridas, quantidade, percentual)
+
+
+def programacao_da_janela(*, linha, sentido, inicio, fim, versao_gtfs_id):
+    """Select one timetable per service day and the departures inside the window.
+
+    Returns ``(grade, programadas, versoes_programacao)``: every departure of the
+    selected captures (for headways), those with ``inicio <= saida < fim``, and
+    the captures' provenance. Selection reuses the US04 policy: OFICIAL beats
+    GTFS even when empty, then the latest verification. Two day types for the
+    same service date are ambiguous and raise instead of being summed.
+    """
+    if sentido not in ("0", "1"):
+        raise ValueError("sentido deve ser '0' (ida) ou '1' (volta)")
+    if not linha or not versao_gtfs_id:
+        raise ValueError("linha e versão GTFS são obrigatórias")
+    for nome, instante in (("inicio", inicio), ("fim", fim)):
+        if not isinstance(instante, datetime) or instante.utcoffset() is None:
+            raise ValueError(f"{nome} deve conter fuso horário")
+    inicio, fim = inicio.astimezone(timezone.utc), fim.astimezone(timezone.utc)
+    if fim <= inicio:
+        raise ValueError("fim deve ser posterior a inicio")
+
+    datas = [item[0] for item in (
+        db.session.query(ImportacaoProgramacao.data_operacao)
+        .join(PartidaProgramada, PartidaProgramada.importacao_id == ImportacaoProgramacao.id)
+        .filter(
+            ImportacaoProgramacao.versao_gtfs_id == versao_gtfs_id,
+            ImportacaoProgramacao.linha_codigo == linha,
+            ImportacaoProgramacao.sentido == sentido,
+            PartidaProgramada.saida_prevista >= inicio,
+            PartidaProgramada.saida_prevista < fim,
+        )
+        .distinct().order_by(ImportacaoProgramacao.data_operacao).all()
+    )]
+    grade, versoes_programacao = [], []
+    for data in datas:
+        importacao, tipos = consultar_por_dia(versao_gtfs_id, linha, sentido, data)
+        if importacao is None:
+            raise ValueError(
+                f"programação ambígua em {data.isoformat()}: tipos de dia {sorted(tipos)}"
+            )
+        grade.extend(importacao.partidas)
+        versoes_programacao.append({
+            "importacao_id": importacao.id, "fonte": importacao.fonte,
+            "versao_fonte": importacao.versao_fonte,
+            "data_operacao": importacao.data_operacao.isoformat(),
+        })
+    versoes_programacao.sort(key=lambda item: (item["importacao_id"], item["fonte"], item["versao_fonte"]))
+    grade.sort(key=lambda p: (p.saida_prevista, p.ordem, p.id))
+    programadas = [p for p in grade if inicio <= p.saida_prevista < fim]
+    return grade, programadas, versoes_programacao
+
+
+def viagens_observadas(programadas, versao_reconstrucao, versao_correspondencia):
+    """Persisted trips of exactly these departures and versions."""
+    ids = [p.id for p in programadas]
+    if not ids:
+        return []
+    return (
+        ViagemObservada.query
+        .filter(ViagemObservada.partida_programada_id.in_(ids))
+        .filter(ViagemObservada.versao_reconstrucao == versao_reconstrucao)
+        .filter(ViagemObservada.versao_correspondencia == versao_correspondencia)
+        .order_by(ViagemObservada.partida_programada_id, ViagemObservada.id)
+        .all()
+    )
 
 
 def _chave_publicacao(*, linha, sentido, inicio, fim, versao_gtfs_id,
@@ -113,67 +183,15 @@ def calcular_e_publicar_cumprimento(
     versao_correspondencia, versao_reconstrucao,
     versao_calculo=VERSAO_ALGORITMO,
 ):
-    """Calculate for one line/direction/window and persist the versioned result.
-
-    GTFS is already canonicalized to direction ``0``/``1``. For duplicate
-    captures of a service-day timetable, prefer official data, then the most
-    recently verified capture (the same policy used by GET /partidas).
-    """
-    if sentido not in ("0", "1"):
-        raise ValueError("sentido deve ser '0' (ida) ou '1' (volta)")
-    if not linha or not versao_gtfs_id or not versao_correspondencia or not versao_reconstrucao:
-        raise ValueError("linha e versões GTFS, correspondência e reconstrução são obrigatórias")
-    for nome, instante in (("inicio", inicio), ("fim", fim)):
-        if not isinstance(instante, datetime) or instante.tzinfo is None or instante.utcoffset() is None:
-            raise ValueError(f"{nome} deve conter fuso horário")
-    inicio = inicio.astimezone(timezone.utc)
-    fim = fim.astimezone(timezone.utc)
-    if fim <= inicio:
-        raise ValueError("fim deve ser posterior a inicio")
-
-    capturas = (
-        db.session.query(PartidaProgramada, ImportacaoProgramacao)
-        .join(ImportacaoProgramacao, PartidaProgramada.importacao_id == ImportacaoProgramacao.id)
-        .filter(
-            ImportacaoProgramacao.versao_gtfs_id == versao_gtfs_id,
-            ImportacaoProgramacao.linha_codigo == linha,
-            ImportacaoProgramacao.sentido == sentido,
-            PartidaProgramada.saida_prevista >= inicio,
-            PartidaProgramada.saida_prevista < fim,
-        )
-        .order_by(PartidaProgramada.saida_prevista, PartidaProgramada.ordem)
-        .all()
+    """Calculate for one line/direction/window and persist the versioned result."""
+    if not versao_correspondencia or not versao_reconstrucao:
+        raise ValueError("versões de correspondência e reconstrução são obrigatórias")
+    grade, programadas, versoes_programacao = programacao_da_janela(
+        linha=linha, sentido=sentido, inicio=inicio, fim=fim, versao_gtfs_id=versao_gtfs_id,
     )
-    preferidas = {}
-    for partida, importacao in capturas:
-        contexto = (importacao.data_operacao, importacao.tipo_dia)
-        atual = preferidas.get(contexto)
-        prioridade = (importacao.fonte == "OFICIAL", importacao.verificada_em,
-                      importacao.capturada_em, importacao.id)
-        if atual is None or prioridade > atual[0]:
-            preferidas[contexto] = (prioridade, importacao.id)
-    ids_importacoes = {item[1] for item in preferidas.values()}
-    programadas = [p for p, _ in capturas if p.importacao_id in ids_importacoes]
-    fontes_programacao = sorted({
-        (importacao.id, importacao.fonte, importacao.versao_fonte)
-        for _, importacao in capturas if importacao.id in ids_importacoes
-    })
-    versoes_programacao = [
-        {"importacao_id": item[0], "fonte": item[1], "versao_fonte": item[2]}
-        for item in fontes_programacao
-    ]
-
-    ids_partidas = [p.id for p in programadas]
-    observadas = []
-    if ids_partidas:
-        observadas = (
-            ViagemObservada.query
-            .filter(ViagemObservada.partida_programada_id.in_(ids_partidas))
-            .filter(ViagemObservada.versao_reconstrucao == versao_reconstrucao)
-            .filter(ViagemObservada.versao_correspondencia == versao_correspondencia)
-            .all()
-        )
-    resultado = calcular_cumprimento(programadas, observadas)
+    inicio, fim = inicio.astimezone(timezone.utc), fim.astimezone(timezone.utc)
+    observadas = viagens_observadas(programadas, versao_reconstrucao, versao_correspondencia)
+    resultado = calcular_cumprimento(programadas, observadas, grade)
 
     chave = _chave_publicacao(
         linha=linha, sentido=sentido, inicio=inicio, fim=fim,
@@ -206,8 +224,11 @@ def calcular_e_publicar_cumprimento(
         "partidas_programadas": resultado.programadas,
         "cobertura_tracado_minima": COBERTURA_MINIMA,
         "tolerancia_saida_maxima_segundos": TOLERANCIA_MAXIMA_SEGUNDOS,
-        "intervalo_horario_fixo": "menor intervalo positivo até partida vizinha da mesma grade; uma vizinha nas extremidades",
-        "origem_programacao": "OFICIAL preferencial; GTFS como fallback",
+        "intervalo_horario_fixo": (
+            "menor intervalo positivo até a partida vizinha na grade completa do dia "
+            "operacional (independe da janela); uma vizinha nas extremidades"
+        ),
+        "origem_programacao": "OFICIAL preferencial, inclusive captura vazia; GTFS como fallback",
         "capturas_programacao": versoes_programacao,
         "versao_reconstrucao": versao_reconstrucao,
     }
