@@ -1,0 +1,2901 @@
+{
+  "tarefa": "US17-T03B",
+  "origem": "SINTETICA_CONTROLADA",
+  "executado_em": "2026-11-24T17:24:24.343564+00:00",
+  "aceite_institucional": "PENDENTE",
+  "envio_instituicao_parceira": "NAO_ENVIADO_PELO_SCRIPT",
+  "fonte_casos": "docs/validacoes/US17-T03B-casos.json",
+  "sha256_caderno": "558ce963b95756eb53f8a5a4d845fb90b11f5b41ee535f8e4045bb01d960ea5a",
+  "codigo_base": "e606ea1424b89a736c2174fd440a5eab50e6a4b7",
+  "banco": "SQLite em memória; FK ON; sem Aiven",
+  "relogio_ensaio": "2026-12-03T00:00:00+00:00",
+  "resumo": {
+    "CONFERIU_EXEMPLO": 20
+  },
+  "casos": [
+    {
+      "id": "C01",
+      "titulo": "Intervalos iguais: CV 0 é regularidade real",
+      "escala": "janela",
+      "status": "CONFERIU_EXEMPLO",
+      "aceite_institucional": "PENDENTE",
+      "calculo_manual": "Janela 09:00–09:15: passagens posteriores 09:00, 09:05, 09:10 → intervalos 300, 300, 300 s. Média 300, desvio 0, CV 0/300 = 0. Sem agrupamento.",
+      "consulta": {
+        "tipo": "REGULARIDADE_INTERVALOS",
+        "linha": "SINT-US17",
+        "sentido": "0",
+        "parada": "B",
+        "inicio": "2026-11-24T12:00:00+00:00",
+        "fim": "2026-11-24T12:00:00+00:00"
+      },
+      "comparacoes": [
+        {
+          "campo": "http_status",
+          "manual": 200,
+          "obtido": 200,
+          "confere": true
+        },
+        {
+          "campo": "quantidade_itens",
+          "manual": 1,
+          "obtido": 1,
+          "confere": true
+        },
+        {
+          "campo": "cv",
+          "manual": 0,
+          "obtido": 0.0,
+          "confere": true
+        },
+        {
+          "campo": "agrupamento",
+          "manual": false,
+          "obtido": false,
+          "confere": true
+        },
+        {
+          "campo": "motivo_ausencia",
+          "manual": null,
+          "obtido": null,
+          "confere": true
+        },
+        {
+          "campo": "intervalos",
+          "manual": 3,
+          "obtido": 3,
+          "confere": true
+        },
+        {
+          "campo": "unidade",
+          "manual": "CV (adimensional)",
+          "obtido": "CV (adimensional)",
+          "confere": true
+        },
+        {
+          "campo": "valor_nulo_nao_e_zero",
+          "manual": false,
+          "obtido": false,
+          "confere": true
+        }
+      ],
+      "resposta_api": {
+        "dados": [
+          {
+            "agregacao": "janela",
+            "agrupamento": false,
+            "contagens": {
+              "denominador": null,
+              "numerador": 3
+            },
+            "desvio_padrao_seg": 0.0,
+            "duracao_horas": 0.25,
+            "fim": "2026-11-24T12:15:00+00:00",
+            "indicador": "REGULARIDADE_INTERVALOS",
+            "inicio": "2026-11-24T12:00:00+00:00",
+            "intervalos": 3,
+            "limite_agrupamento": 0.5,
+            "linha": "SINT-US17",
+            "media_intervalo_seg": 300.0,
+            "motivo_ausencia": null,
+            "motivos": [],
+            "parada": "B",
+            "qualidade": {
+              "cobertura": {
+                "janelas": 1,
+                "lacunas": []
+              },
+              "convencao": "CV = desvio padrão populacional (divisor n) ÷ média dos intervalos entre passagens sucessivas, em segundos",
+              "datas_operacao": [
+                "2026-11-24"
+              ],
+              "faixa": null,
+              "minimo_passagens": 3,
+              "oferta": "FREQUENCIA",
+              "regra_agregacao": "CV recalculado sobre a união dos intervalos das janelas; NULL se houver janela não confiável, lacuna de publicação ou janelas sobrepostas",
+              "regra_fronteira": "cada intervalo pertence à janela [início, fim) da sua passagem posterior",
+              "versoes": {
+                "capturas_programacao": [
+                  {
+                    "fonte": "GTFS",
+                    "importacao_id": "8582d70e-ead7-54f1-8eba-1d9668f7158a",
+                    "tipo_dia": "UTIL",
+                    "versao_fonte": "controle-2026-11-24-0"
+                  }
+                ],
+                "versao_calculo": "regularidade-1.0",
+                "versao_correspondencia": "correspondencia-controlada-us17",
+                "versao_estimativa": "us15-t01-v1-lacuna120s",
+                "versao_gtfs_id": "e4c4ce91-9217-52af-ba88-8214056e6cb5",
+                "versao_reconstrucao": "recon-controle-us17",
+                "versoes_conjunto": [
+                  "e09fc2e4e7faabe38a22841978958949"
+                ]
+              }
+            },
+            "referencia": "2026-11-24",
+            "sentido": "0",
+            "situacao": "CALCULADA",
+            "tipo": "REGULARIDADE_INTERVALOS",
+            "trecho": null,
+            "unidade": "CV (adimensional)",
+            "valor": 0.0,
+            "versao_calculo": "regularidade-1.0",
+            "versao_conjunto": "e09fc2e4e7faabe38a22841978958949",
+            "versao_correspondencia": "correspondencia-controlada-us17",
+            "versao_gtfs_id": "e4c4ce91-9217-52af-ba88-8214056e6cb5"
+          }
+        ],
+        "paginacao": {
+          "page": 1,
+          "page_size": 100,
+          "total": 1
+        }
+      }
+    },
+    {
+      "id": "C02",
+      "titulo": "Exemplo manual da US17-T01",
+      "escala": "janela",
+      "status": "CONFERIU_EXEMPLO",
+      "aceite_institucional": "PENDENTE",
+      "calculo_manual": "Passagens 09:00, 09:04, 09:10, 09:13: intervalos 240, 360, 180 s (09:00 não tem anterior). Média 260; desvios −20, 100, −80; variância (400 + 10000 + 6400)/3 = 5600; desvio √5600 = 74,8331; CV = 74,8331/260 = 0,287820.",
+      "consulta": {
+        "tipo": "REGULARIDADE_INTERVALOS",
+        "linha": "SINT-US17",
+        "sentido": "0",
+        "parada": "B",
+        "inicio": "2026-11-24T12:00:00+00:00",
+        "fim": "2026-11-24T12:00:00+00:00"
+      },
+      "comparacoes": [
+        {
+          "campo": "http_status",
+          "manual": 200,
+          "obtido": 200,
+          "confere": true
+        },
+        {
+          "campo": "quantidade_itens",
+          "manual": 1,
+          "obtido": 1,
+          "confere": true
+        },
+        {
+          "campo": "cv",
+          "manual": 0.28782,
+          "obtido": 0.28782,
+          "confere": true
+        },
+        {
+          "campo": "agrupamento",
+          "manual": false,
+          "obtido": false,
+          "confere": true
+        },
+        {
+          "campo": "motivo_ausencia",
+          "manual": null,
+          "obtido": null,
+          "confere": true
+        },
+        {
+          "campo": "intervalos",
+          "manual": 3,
+          "obtido": 3,
+          "confere": true
+        },
+        {
+          "campo": "unidade",
+          "manual": "CV (adimensional)",
+          "obtido": "CV (adimensional)",
+          "confere": true
+        },
+        {
+          "campo": "valor_nulo_nao_e_zero",
+          "manual": false,
+          "obtido": false,
+          "confere": true
+        }
+      ],
+      "resposta_api": {
+        "dados": [
+          {
+            "agregacao": "janela",
+            "agrupamento": false,
+            "contagens": {
+              "denominador": null,
+              "numerador": 3
+            },
+            "desvio_padrao_seg": 74.833148,
+            "duracao_horas": 0.25,
+            "fim": "2026-11-24T12:15:00+00:00",
+            "indicador": "REGULARIDADE_INTERVALOS",
+            "inicio": "2026-11-24T12:00:00+00:00",
+            "intervalos": 3,
+            "limite_agrupamento": 0.5,
+            "linha": "SINT-US17",
+            "media_intervalo_seg": 260.0,
+            "motivo_ausencia": null,
+            "motivos": [],
+            "parada": "B",
+            "qualidade": {
+              "cobertura": {
+                "janelas": 1,
+                "lacunas": []
+              },
+              "convencao": "CV = desvio padrão populacional (divisor n) ÷ média dos intervalos entre passagens sucessivas, em segundos",
+              "datas_operacao": [
+                "2026-11-24"
+              ],
+              "faixa": null,
+              "minimo_passagens": 3,
+              "oferta": "FREQUENCIA",
+              "regra_agregacao": "CV recalculado sobre a união dos intervalos das janelas; NULL se houver janela não confiável, lacuna de publicação ou janelas sobrepostas",
+              "regra_fronteira": "cada intervalo pertence à janela [início, fim) da sua passagem posterior",
+              "versoes": {
+                "capturas_programacao": [
+                  {
+                    "fonte": "GTFS",
+                    "importacao_id": "a9ae7eed-2159-50eb-8a5b-3339d19f8e70",
+                    "tipo_dia": "UTIL",
+                    "versao_fonte": "controle-2026-11-24-0"
+                  }
+                ],
+                "versao_calculo": "regularidade-1.0",
+                "versao_correspondencia": "correspondencia-controlada-us17",
+                "versao_estimativa": "us15-t01-v1-lacuna120s",
+                "versao_gtfs_id": "b4302232-2ea1-547a-969f-4ba12fe08e3a",
+                "versao_reconstrucao": "recon-controle-us17",
+                "versoes_conjunto": [
+                  "c5ea246efbfd5c4187785bf654e670f5"
+                ]
+              }
+            },
+            "referencia": "2026-11-24",
+            "sentido": "0",
+            "situacao": "CALCULADA",
+            "tipo": "REGULARIDADE_INTERVALOS",
+            "trecho": null,
+            "unidade": "CV (adimensional)",
+            "valor": 0.28782,
+            "versao_calculo": "regularidade-1.0",
+            "versao_conjunto": "c5ea246efbfd5c4187785bf654e670f5",
+            "versao_correspondencia": "correspondencia-controlada-us17",
+            "versao_gtfs_id": "b4302232-2ea1-547a-969f-4ba12fe08e3a"
+          }
+        ],
+        "paginacao": {
+          "page": 1,
+          "page_size": 100,
+          "total": 1
+        }
+      }
+    },
+    {
+      "id": "C03",
+      "titulo": "Limite exato 0,5 não é agrupamento",
+      "escala": "janela",
+      "status": "CONFERIU_EXEMPLO",
+      "aceite_institucional": "PENDENTE",
+      "calculo_manual": "Passagens 09:00:00, 09:01:40, 09:06:40: intervalos 100 e 300 s. Média 200; desvio √((100² + 100²)/2) = 100; CV = 100/200 = 0,5 → não é agrupamento (exige CV > 0,5).",
+      "consulta": {
+        "tipo": "REGULARIDADE_INTERVALOS",
+        "linha": "SINT-US17",
+        "sentido": "0",
+        "parada": "B",
+        "inicio": "2026-11-24T12:00:00+00:00",
+        "fim": "2026-11-24T12:00:00+00:00"
+      },
+      "comparacoes": [
+        {
+          "campo": "http_status",
+          "manual": 200,
+          "obtido": 200,
+          "confere": true
+        },
+        {
+          "campo": "quantidade_itens",
+          "manual": 1,
+          "obtido": 1,
+          "confere": true
+        },
+        {
+          "campo": "cv",
+          "manual": 0.5,
+          "obtido": 0.5,
+          "confere": true
+        },
+        {
+          "campo": "agrupamento",
+          "manual": false,
+          "obtido": false,
+          "confere": true
+        },
+        {
+          "campo": "motivo_ausencia",
+          "manual": null,
+          "obtido": null,
+          "confere": true
+        },
+        {
+          "campo": "intervalos",
+          "manual": 2,
+          "obtido": 2,
+          "confere": true
+        },
+        {
+          "campo": "unidade",
+          "manual": "CV (adimensional)",
+          "obtido": "CV (adimensional)",
+          "confere": true
+        },
+        {
+          "campo": "valor_nulo_nao_e_zero",
+          "manual": false,
+          "obtido": false,
+          "confere": true
+        }
+      ],
+      "resposta_api": {
+        "dados": [
+          {
+            "agregacao": "janela",
+            "agrupamento": false,
+            "contagens": {
+              "denominador": null,
+              "numerador": 2
+            },
+            "desvio_padrao_seg": 100.0,
+            "duracao_horas": 0.25,
+            "fim": "2026-11-24T12:15:00+00:00",
+            "indicador": "REGULARIDADE_INTERVALOS",
+            "inicio": "2026-11-24T12:00:00+00:00",
+            "intervalos": 2,
+            "limite_agrupamento": 0.5,
+            "linha": "SINT-US17",
+            "media_intervalo_seg": 200.0,
+            "motivo_ausencia": null,
+            "motivos": [],
+            "parada": "B",
+            "qualidade": {
+              "cobertura": {
+                "janelas": 1,
+                "lacunas": []
+              },
+              "convencao": "CV = desvio padrão populacional (divisor n) ÷ média dos intervalos entre passagens sucessivas, em segundos",
+              "datas_operacao": [
+                "2026-11-24"
+              ],
+              "faixa": null,
+              "minimo_passagens": 3,
+              "oferta": "FREQUENCIA",
+              "regra_agregacao": "CV recalculado sobre a união dos intervalos das janelas; NULL se houver janela não confiável, lacuna de publicação ou janelas sobrepostas",
+              "regra_fronteira": "cada intervalo pertence à janela [início, fim) da sua passagem posterior",
+              "versoes": {
+                "capturas_programacao": [
+                  {
+                    "fonte": "GTFS",
+                    "importacao_id": "83dd504a-1f03-5c78-80f9-61d230a0b6bc",
+                    "tipo_dia": "UTIL",
+                    "versao_fonte": "controle-2026-11-24-0"
+                  }
+                ],
+                "versao_calculo": "regularidade-1.0",
+                "versao_correspondencia": "correspondencia-controlada-us17",
+                "versao_estimativa": "us15-t01-v1-lacuna120s",
+                "versao_gtfs_id": "53e0cbfb-a8a2-50b0-99bf-ca261f867774",
+                "versao_reconstrucao": "recon-controle-us17",
+                "versoes_conjunto": [
+                  "6acdee46a016f3ea669b25e198ec4ca4"
+                ]
+              }
+            },
+            "referencia": "2026-11-24",
+            "sentido": "0",
+            "situacao": "CALCULADA",
+            "tipo": "REGULARIDADE_INTERVALOS",
+            "trecho": null,
+            "unidade": "CV (adimensional)",
+            "valor": 0.5,
+            "versao_calculo": "regularidade-1.0",
+            "versao_conjunto": "6acdee46a016f3ea669b25e198ec4ca4",
+            "versao_correspondencia": "correspondencia-controlada-us17",
+            "versao_gtfs_id": "53e0cbfb-a8a2-50b0-99bf-ca261f867774"
+          }
+        ],
+        "paginacao": {
+          "page": 1,
+          "page_size": 100,
+          "total": 1
+        }
+      }
+    },
+    {
+      "id": "C04",
+      "titulo": "Acima de 0,5 marca agrupamento",
+      "escala": "janela",
+      "status": "CONFERIU_EXEMPLO",
+      "aceite_institucional": "PENDENTE",
+      "calculo_manual": "Passagens 09:00:00, 09:01:40, 09:06:50: intervalos 100 e 310 s. Média 205; desvio √((105² + 105²)/2) = 105; CV = 105/205 = 0,512195 > 0,5 → agrupamento.",
+      "consulta": {
+        "tipo": "REGULARIDADE_INTERVALOS",
+        "linha": "SINT-US17",
+        "sentido": "0",
+        "parada": "B",
+        "inicio": "2026-11-24T12:00:00+00:00",
+        "fim": "2026-11-24T12:00:00+00:00"
+      },
+      "comparacoes": [
+        {
+          "campo": "http_status",
+          "manual": 200,
+          "obtido": 200,
+          "confere": true
+        },
+        {
+          "campo": "quantidade_itens",
+          "manual": 1,
+          "obtido": 1,
+          "confere": true
+        },
+        {
+          "campo": "cv",
+          "manual": 0.512195,
+          "obtido": 0.512195,
+          "confere": true
+        },
+        {
+          "campo": "agrupamento",
+          "manual": true,
+          "obtido": true,
+          "confere": true
+        },
+        {
+          "campo": "motivo_ausencia",
+          "manual": null,
+          "obtido": null,
+          "confere": true
+        },
+        {
+          "campo": "intervalos",
+          "manual": 2,
+          "obtido": 2,
+          "confere": true
+        },
+        {
+          "campo": "unidade",
+          "manual": "CV (adimensional)",
+          "obtido": "CV (adimensional)",
+          "confere": true
+        },
+        {
+          "campo": "valor_nulo_nao_e_zero",
+          "manual": false,
+          "obtido": false,
+          "confere": true
+        }
+      ],
+      "resposta_api": {
+        "dados": [
+          {
+            "agregacao": "janela",
+            "agrupamento": true,
+            "contagens": {
+              "denominador": null,
+              "numerador": 2
+            },
+            "desvio_padrao_seg": 105.0,
+            "duracao_horas": 0.25,
+            "fim": "2026-11-24T12:15:00+00:00",
+            "indicador": "REGULARIDADE_INTERVALOS",
+            "inicio": "2026-11-24T12:00:00+00:00",
+            "intervalos": 2,
+            "limite_agrupamento": 0.5,
+            "linha": "SINT-US17",
+            "media_intervalo_seg": 205.0,
+            "motivo_ausencia": null,
+            "motivos": [],
+            "parada": "B",
+            "qualidade": {
+              "cobertura": {
+                "janelas": 1,
+                "lacunas": []
+              },
+              "convencao": "CV = desvio padrão populacional (divisor n) ÷ média dos intervalos entre passagens sucessivas, em segundos",
+              "datas_operacao": [
+                "2026-11-24"
+              ],
+              "faixa": null,
+              "minimo_passagens": 3,
+              "oferta": "FREQUENCIA",
+              "regra_agregacao": "CV recalculado sobre a união dos intervalos das janelas; NULL se houver janela não confiável, lacuna de publicação ou janelas sobrepostas",
+              "regra_fronteira": "cada intervalo pertence à janela [início, fim) da sua passagem posterior",
+              "versoes": {
+                "capturas_programacao": [
+                  {
+                    "fonte": "GTFS",
+                    "importacao_id": "1862969f-7320-5fed-8202-40996d813c52",
+                    "tipo_dia": "UTIL",
+                    "versao_fonte": "controle-2026-11-24-0"
+                  }
+                ],
+                "versao_calculo": "regularidade-1.0",
+                "versao_correspondencia": "correspondencia-controlada-us17",
+                "versao_estimativa": "us15-t01-v1-lacuna120s",
+                "versao_gtfs_id": "2773adcd-288b-5bfe-a6ef-dfb38c8512d5",
+                "versao_reconstrucao": "recon-controle-us17",
+                "versoes_conjunto": [
+                  "4ce6a8b356637932b02898e6816b598c"
+                ]
+              }
+            },
+            "referencia": "2026-11-24",
+            "sentido": "0",
+            "situacao": "CALCULADA",
+            "tipo": "REGULARIDADE_INTERVALOS",
+            "trecho": null,
+            "unidade": "CV (adimensional)",
+            "valor": 0.512195,
+            "versao_calculo": "regularidade-1.0",
+            "versao_conjunto": "4ce6a8b356637932b02898e6816b598c",
+            "versao_correspondencia": "correspondencia-controlada-us17",
+            "versao_gtfs_id": "2773adcd-288b-5bfe-a6ef-dfb38c8512d5"
+          }
+        ],
+        "paginacao": {
+          "page": 1,
+          "page_size": 100,
+          "total": 1
+        }
+      }
+    },
+    {
+      "id": "C05",
+      "titulo": "Menos de três passagens: NULL, não zero",
+      "escala": "janela",
+      "status": "CONFERIU_EXEMPLO",
+      "aceite_institucional": "PENDENTE",
+      "calculo_manual": "Passagens 09:00 e 09:07: um intervalo (420 s), menos de três passagens → sem CV; nunca CV 0.",
+      "consulta": {
+        "tipo": "REGULARIDADE_INTERVALOS",
+        "linha": "SINT-US17",
+        "sentido": "0",
+        "parada": "B",
+        "inicio": "2026-11-24T12:00:00+00:00",
+        "fim": "2026-11-24T12:00:00+00:00"
+      },
+      "comparacoes": [
+        {
+          "campo": "http_status",
+          "manual": 200,
+          "obtido": 200,
+          "confere": true
+        },
+        {
+          "campo": "quantidade_itens",
+          "manual": 1,
+          "obtido": 1,
+          "confere": true
+        },
+        {
+          "campo": "cv",
+          "manual": null,
+          "obtido": null,
+          "confere": true
+        },
+        {
+          "campo": "agrupamento",
+          "manual": null,
+          "obtido": null,
+          "confere": true
+        },
+        {
+          "campo": "motivo_ausencia",
+          "manual": "passagens_insuficientes",
+          "obtido": "passagens_insuficientes",
+          "confere": true
+        },
+        {
+          "campo": "intervalos",
+          "manual": 1,
+          "obtido": 1,
+          "confere": true
+        },
+        {
+          "campo": "unidade",
+          "manual": "CV (adimensional)",
+          "obtido": "CV (adimensional)",
+          "confere": true
+        },
+        {
+          "campo": "valor_nulo_nao_e_zero",
+          "manual": true,
+          "obtido": true,
+          "confere": true
+        }
+      ],
+      "resposta_api": {
+        "dados": [
+          {
+            "agregacao": "janela",
+            "agrupamento": null,
+            "contagens": {
+              "denominador": null,
+              "numerador": 1
+            },
+            "desvio_padrao_seg": 0.0,
+            "duracao_horas": 0.25,
+            "fim": "2026-11-24T12:15:00+00:00",
+            "indicador": "REGULARIDADE_INTERVALOS",
+            "inicio": "2026-11-24T12:00:00+00:00",
+            "intervalos": 1,
+            "limite_agrupamento": 0.5,
+            "linha": "SINT-US17",
+            "media_intervalo_seg": 420.0,
+            "motivo_ausencia": "passagens_insuficientes",
+            "motivos": [
+              "passagens_insuficientes"
+            ],
+            "parada": "B",
+            "qualidade": {
+              "cobertura": {
+                "janelas": 1,
+                "lacunas": []
+              },
+              "convencao": "CV = desvio padrão populacional (divisor n) ÷ média dos intervalos entre passagens sucessivas, em segundos",
+              "datas_operacao": [
+                "2026-11-24"
+              ],
+              "faixa": null,
+              "minimo_passagens": 3,
+              "oferta": "FREQUENCIA",
+              "regra_agregacao": "CV recalculado sobre a união dos intervalos das janelas; NULL se houver janela não confiável, lacuna de publicação ou janelas sobrepostas",
+              "regra_fronteira": "cada intervalo pertence à janela [início, fim) da sua passagem posterior",
+              "versoes": {
+                "capturas_programacao": [
+                  {
+                    "fonte": "GTFS",
+                    "importacao_id": "4356a4fb-a8a9-5df9-94e8-dcbdcda02bd6",
+                    "tipo_dia": "UTIL",
+                    "versao_fonte": "controle-2026-11-24-0"
+                  }
+                ],
+                "versao_calculo": "regularidade-1.0",
+                "versao_correspondencia": "correspondencia-controlada-us17",
+                "versao_estimativa": "us15-t01-v1-lacuna120s",
+                "versao_gtfs_id": "b384983a-d3d9-5989-b5ab-1c5fd3e02345",
+                "versao_reconstrucao": "recon-controle-us17",
+                "versoes_conjunto": [
+                  "5367af1fcf7fc5eebbdc12e4a4cca2d5"
+                ]
+              }
+            },
+            "referencia": "2026-11-24",
+            "sentido": "0",
+            "situacao": "DADOS_INSUFICIENTES",
+            "tipo": "REGULARIDADE_INTERVALOS",
+            "trecho": null,
+            "unidade": "CV (adimensional)",
+            "valor": null,
+            "versao_calculo": "regularidade-1.0",
+            "versao_conjunto": "5367af1fcf7fc5eebbdc12e4a4cca2d5",
+            "versao_correspondencia": "correspondencia-controlada-us17",
+            "versao_gtfs_id": "b384983a-d3d9-5989-b5ab-1c5fd3e02345"
+          }
+        ],
+        "paginacao": {
+          "page": 1,
+          "page_size": 100,
+          "total": 1
+        }
+      }
+    },
+    {
+      "id": "C06",
+      "titulo": "Faixa une os intervalos das janelas",
+      "escala": "faixa",
+      "status": "CONFERIU_EXEMPLO",
+      "aceite_institucional": "PENDENTE",
+      "calculo_manual": "Dez passagens a cada 6 min entre 09:00 e 09:54: nove intervalos de 360 s, distribuídos em quatro janelas. União: média 360, desvio 0, CV 0.",
+      "consulta": {
+        "tipo": "REGULARIDADE_INTERVALOS",
+        "linha": "SINT-US17",
+        "sentido": "0",
+        "parada": "B",
+        "inicio": "2026-11-24T03:00:00+00:00",
+        "fim": "2026-11-25T03:00:00+00:00",
+        "agregacao": "faixa",
+        "hora_inicio": "09:00",
+        "hora_fim": "10:00"
+      },
+      "comparacoes": [
+        {
+          "campo": "http_status",
+          "manual": 200,
+          "obtido": 200,
+          "confere": true
+        },
+        {
+          "campo": "quantidade_itens",
+          "manual": 1,
+          "obtido": 1,
+          "confere": true
+        },
+        {
+          "campo": "cv",
+          "manual": 0,
+          "obtido": 0.0,
+          "confere": true
+        },
+        {
+          "campo": "agrupamento",
+          "manual": false,
+          "obtido": false,
+          "confere": true
+        },
+        {
+          "campo": "motivo_ausencia",
+          "manual": null,
+          "obtido": null,
+          "confere": true
+        },
+        {
+          "campo": "intervalos",
+          "manual": 9,
+          "obtido": 9,
+          "confere": true
+        },
+        {
+          "campo": "unidade",
+          "manual": "CV (adimensional)",
+          "obtido": "CV (adimensional)",
+          "confere": true
+        },
+        {
+          "campo": "valor_nulo_nao_e_zero",
+          "manual": false,
+          "obtido": false,
+          "confere": true
+        }
+      ],
+      "resposta_api": {
+        "dados": [
+          {
+            "agregacao": "faixa",
+            "agrupamento": false,
+            "contagens": {
+              "denominador": null,
+              "numerador": 9
+            },
+            "desvio_padrao_seg": 0.0,
+            "duracao_horas": 1.0,
+            "fim": "2026-11-24T13:00:00+00:00",
+            "indicador": "REGULARIDADE_INTERVALOS",
+            "inicio": "2026-11-24T12:00:00+00:00",
+            "intervalos": 9,
+            "limite_agrupamento": 0.5,
+            "linha": "SINT-US17",
+            "media_intervalo_seg": 360.0,
+            "motivo_ausencia": null,
+            "motivos": [],
+            "parada": "B",
+            "qualidade": {
+              "cobertura": {
+                "janelas": 4,
+                "lacunas": []
+              },
+              "convencao": "CV = desvio padrão populacional (divisor n) ÷ média dos intervalos entre passagens sucessivas, em segundos",
+              "datas_operacao": [
+                "2026-11-24"
+              ],
+              "faixa": {
+                "fuso": "America/Sao_Paulo",
+                "hora_fim": "10:00",
+                "hora_inicio": "09:00"
+              },
+              "minimo_passagens": 3,
+              "oferta": "FREQUENCIA",
+              "regra_agregacao": "CV recalculado sobre a união dos intervalos das janelas; NULL se houver janela não confiável, lacuna de publicação ou janelas sobrepostas",
+              "regra_fronteira": "cada intervalo pertence à janela [início, fim) da sua passagem posterior",
+              "versoes": {
+                "capturas_programacao": [
+                  {
+                    "fonte": "GTFS",
+                    "importacao_id": "121e7b19-1a62-5396-8554-42ecedf1b774",
+                    "tipo_dia": "UTIL",
+                    "versao_fonte": "controle-2026-11-24-0"
+                  }
+                ],
+                "versao_calculo": "regularidade-1.0",
+                "versao_correspondencia": "correspondencia-controlada-us17",
+                "versao_estimativa": "us15-t01-v1-lacuna120s",
+                "versao_gtfs_id": "cebda149-1f77-5576-9193-efd2da80d185",
+                "versao_reconstrucao": "recon-controle-us17",
+                "versoes_conjunto": [
+                  "2b04f0078ff40d3b2c51aec95d52ae8c"
+                ]
+              }
+            },
+            "referencia": "2026-11-24",
+            "sentido": "0",
+            "situacao": "CALCULADA",
+            "tipo": "REGULARIDADE_INTERVALOS",
+            "trecho": null,
+            "unidade": "CV (adimensional)",
+            "valor": 0.0,
+            "versao_calculo": "regularidade-1.0",
+            "versao_conjunto": "2b04f0078ff40d3b2c51aec95d52ae8c",
+            "versao_correspondencia": "correspondencia-controlada-us17",
+            "versao_gtfs_id": "cebda149-1f77-5576-9193-efd2da80d185"
+          }
+        ],
+        "paginacao": {
+          "page": 1,
+          "page_size": 100,
+          "total": 1
+        }
+      }
+    },
+    {
+      "id": "C07",
+      "titulo": "Ônibus em comboio na faixa",
+      "escala": "faixa",
+      "status": "CONFERIU_EXEMPLO",
+      "aceite_institucional": "PENDENTE",
+      "calculo_manual": "Pares 09:00/09:01, 09:12/09:13, 09:24/09:25: intervalos 60, 660, 60, 660, 60 s. Média 300; desvios −240, 360, −240, 360, −240; variância (3 × 57600 + 2 × 129600)/5 = 86400; desvio 293,9388; CV = 0,979796 → agrupamento.",
+      "consulta": {
+        "tipo": "REGULARIDADE_INTERVALOS",
+        "linha": "SINT-US17",
+        "sentido": "0",
+        "parada": "B",
+        "inicio": "2026-11-24T03:00:00+00:00",
+        "fim": "2026-11-25T03:00:00+00:00",
+        "agregacao": "faixa",
+        "hora_inicio": "09:00",
+        "hora_fim": "10:00"
+      },
+      "comparacoes": [
+        {
+          "campo": "http_status",
+          "manual": 200,
+          "obtido": 200,
+          "confere": true
+        },
+        {
+          "campo": "quantidade_itens",
+          "manual": 1,
+          "obtido": 1,
+          "confere": true
+        },
+        {
+          "campo": "cv",
+          "manual": 0.979796,
+          "obtido": 0.979796,
+          "confere": true
+        },
+        {
+          "campo": "agrupamento",
+          "manual": true,
+          "obtido": true,
+          "confere": true
+        },
+        {
+          "campo": "motivo_ausencia",
+          "manual": null,
+          "obtido": null,
+          "confere": true
+        },
+        {
+          "campo": "intervalos",
+          "manual": 5,
+          "obtido": 5,
+          "confere": true
+        },
+        {
+          "campo": "unidade",
+          "manual": "CV (adimensional)",
+          "obtido": "CV (adimensional)",
+          "confere": true
+        },
+        {
+          "campo": "valor_nulo_nao_e_zero",
+          "manual": false,
+          "obtido": false,
+          "confere": true
+        }
+      ],
+      "resposta_api": {
+        "dados": [
+          {
+            "agregacao": "faixa",
+            "agrupamento": true,
+            "contagens": {
+              "denominador": null,
+              "numerador": 5
+            },
+            "desvio_padrao_seg": 293.938769,
+            "duracao_horas": 1.0,
+            "fim": "2026-11-24T13:00:00+00:00",
+            "indicador": "REGULARIDADE_INTERVALOS",
+            "inicio": "2026-11-24T12:00:00+00:00",
+            "intervalos": 5,
+            "limite_agrupamento": 0.5,
+            "linha": "SINT-US17",
+            "media_intervalo_seg": 300.0,
+            "motivo_ausencia": null,
+            "motivos": [],
+            "parada": "B",
+            "qualidade": {
+              "cobertura": {
+                "janelas": 4,
+                "lacunas": []
+              },
+              "convencao": "CV = desvio padrão populacional (divisor n) ÷ média dos intervalos entre passagens sucessivas, em segundos",
+              "datas_operacao": [
+                "2026-11-24"
+              ],
+              "faixa": {
+                "fuso": "America/Sao_Paulo",
+                "hora_fim": "10:00",
+                "hora_inicio": "09:00"
+              },
+              "minimo_passagens": 3,
+              "oferta": "FREQUENCIA",
+              "regra_agregacao": "CV recalculado sobre a união dos intervalos das janelas; NULL se houver janela não confiável, lacuna de publicação ou janelas sobrepostas",
+              "regra_fronteira": "cada intervalo pertence à janela [início, fim) da sua passagem posterior",
+              "versoes": {
+                "capturas_programacao": [
+                  {
+                    "fonte": "GTFS",
+                    "importacao_id": "f75a06ef-5d7c-53e3-987c-007ad0afa2a1",
+                    "tipo_dia": "UTIL",
+                    "versao_fonte": "controle-2026-11-24-0"
+                  }
+                ],
+                "versao_calculo": "regularidade-1.0",
+                "versao_correspondencia": "correspondencia-controlada-us17",
+                "versao_estimativa": "us15-t01-v1-lacuna120s",
+                "versao_gtfs_id": "25c81ee0-f765-5673-a218-91c34bad5e9b",
+                "versao_reconstrucao": "recon-controle-us17",
+                "versoes_conjunto": [
+                  "2387101e43407c4c078a30668f279bdf"
+                ]
+              }
+            },
+            "referencia": "2026-11-24",
+            "sentido": "0",
+            "situacao": "CALCULADA",
+            "tipo": "REGULARIDADE_INTERVALOS",
+            "trecho": null,
+            "unidade": "CV (adimensional)",
+            "valor": 0.979796,
+            "versao_calculo": "regularidade-1.0",
+            "versao_conjunto": "2387101e43407c4c078a30668f279bdf",
+            "versao_correspondencia": "correspondencia-controlada-us17",
+            "versao_gtfs_id": "25c81ee0-f765-5673-a218-91c34bad5e9b"
+          }
+        ],
+        "paginacao": {
+          "page": 1,
+          "page_size": 100,
+          "total": 1
+        }
+      }
+    },
+    {
+      "id": "C08",
+      "titulo": "Sentidos não se misturam",
+      "escala": "faixa",
+      "status": "CONFERIU_EXEMPLO",
+      "aceite_institucional": "PENDENTE",
+      "calculo_manual": "Ida em 09:00, 09:10, 09:20, 09:30: intervalos 600, 600, 600 s; CV 0. Misturar a volta (09:05, 09:15, 09:25) daria intervalos de 300 s, o que não pode ocorrer.",
+      "consulta": {
+        "tipo": "REGULARIDADE_INTERVALOS",
+        "linha": "SINT-US17",
+        "sentido": "0",
+        "parada": "B",
+        "inicio": "2026-11-24T03:00:00+00:00",
+        "fim": "2026-11-25T03:00:00+00:00",
+        "agregacao": "faixa",
+        "hora_inicio": "09:00",
+        "hora_fim": "10:00"
+      },
+      "comparacoes": [
+        {
+          "campo": "http_status",
+          "manual": 200,
+          "obtido": 200,
+          "confere": true
+        },
+        {
+          "campo": "quantidade_itens",
+          "manual": 1,
+          "obtido": 1,
+          "confere": true
+        },
+        {
+          "campo": "cv",
+          "manual": 0,
+          "obtido": 0.0,
+          "confere": true
+        },
+        {
+          "campo": "agrupamento",
+          "manual": false,
+          "obtido": false,
+          "confere": true
+        },
+        {
+          "campo": "motivo_ausencia",
+          "manual": null,
+          "obtido": null,
+          "confere": true
+        },
+        {
+          "campo": "intervalos",
+          "manual": 3,
+          "obtido": 3,
+          "confere": true
+        },
+        {
+          "campo": "unidade",
+          "manual": "CV (adimensional)",
+          "obtido": "CV (adimensional)",
+          "confere": true
+        },
+        {
+          "campo": "valor_nulo_nao_e_zero",
+          "manual": false,
+          "obtido": false,
+          "confere": true
+        }
+      ],
+      "resposta_api": {
+        "dados": [
+          {
+            "agregacao": "faixa",
+            "agrupamento": false,
+            "contagens": {
+              "denominador": null,
+              "numerador": 3
+            },
+            "desvio_padrao_seg": 0.0,
+            "duracao_horas": 1.0,
+            "fim": "2026-11-24T13:00:00+00:00",
+            "indicador": "REGULARIDADE_INTERVALOS",
+            "inicio": "2026-11-24T12:00:00+00:00",
+            "intervalos": 3,
+            "limite_agrupamento": 0.5,
+            "linha": "SINT-US17",
+            "media_intervalo_seg": 600.0,
+            "motivo_ausencia": null,
+            "motivos": [],
+            "parada": "B",
+            "qualidade": {
+              "cobertura": {
+                "janelas": 4,
+                "lacunas": []
+              },
+              "convencao": "CV = desvio padrão populacional (divisor n) ÷ média dos intervalos entre passagens sucessivas, em segundos",
+              "datas_operacao": [
+                "2026-11-24"
+              ],
+              "faixa": {
+                "fuso": "America/Sao_Paulo",
+                "hora_fim": "10:00",
+                "hora_inicio": "09:00"
+              },
+              "minimo_passagens": 3,
+              "oferta": "FREQUENCIA",
+              "regra_agregacao": "CV recalculado sobre a união dos intervalos das janelas; NULL se houver janela não confiável, lacuna de publicação ou janelas sobrepostas",
+              "regra_fronteira": "cada intervalo pertence à janela [início, fim) da sua passagem posterior",
+              "versoes": {
+                "capturas_programacao": [
+                  {
+                    "fonte": "GTFS",
+                    "importacao_id": "ca44a005-ee2d-5fce-bcad-b5b481e18cae",
+                    "tipo_dia": "UTIL",
+                    "versao_fonte": "controle-2026-11-24-0"
+                  }
+                ],
+                "versao_calculo": "regularidade-1.0",
+                "versao_correspondencia": "correspondencia-controlada-us17",
+                "versao_estimativa": "us15-t01-v1-lacuna120s",
+                "versao_gtfs_id": "f79cd7f4-ad63-58be-a325-8023e2c9dc5c",
+                "versao_reconstrucao": "recon-controle-us17",
+                "versoes_conjunto": [
+                  "f7a9d11d05da2fe4ffb8aa8ec50feadb"
+                ]
+              }
+            },
+            "referencia": "2026-11-24",
+            "sentido": "0",
+            "situacao": "CALCULADA",
+            "tipo": "REGULARIDADE_INTERVALOS",
+            "trecho": null,
+            "unidade": "CV (adimensional)",
+            "valor": 0.0,
+            "versao_calculo": "regularidade-1.0",
+            "versao_conjunto": "f7a9d11d05da2fe4ffb8aa8ec50feadb",
+            "versao_correspondencia": "correspondencia-controlada-us17",
+            "versao_gtfs_id": "f79cd7f4-ad63-58be-a325-8023e2c9dc5c"
+          }
+        ],
+        "paginacao": {
+          "page": 1,
+          "page_size": 100,
+          "total": 1
+        }
+      }
+    },
+    {
+      "id": "C09",
+      "titulo": "Só passagens da oferta por frequência",
+      "escala": "faixa",
+      "status": "CONFERIU_EXEMPLO",
+      "aceite_institucional": "PENDENTE",
+      "calculo_manual": "Viagens da oferta por frequência em 09:00, 09:10, 09:20, 09:30 → intervalos 600, 600, 600 s; CV 0. As viagens de horário fixo (09:05 e 09:25) ficam fora.",
+      "consulta": {
+        "tipo": "REGULARIDADE_INTERVALOS",
+        "linha": "SINT-US17",
+        "sentido": "0",
+        "parada": "B",
+        "inicio": "2026-11-24T03:00:00+00:00",
+        "fim": "2026-11-25T03:00:00+00:00",
+        "agregacao": "faixa",
+        "hora_inicio": "09:00",
+        "hora_fim": "10:00"
+      },
+      "comparacoes": [
+        {
+          "campo": "http_status",
+          "manual": 200,
+          "obtido": 200,
+          "confere": true
+        },
+        {
+          "campo": "quantidade_itens",
+          "manual": 1,
+          "obtido": 1,
+          "confere": true
+        },
+        {
+          "campo": "cv",
+          "manual": 0,
+          "obtido": 0.0,
+          "confere": true
+        },
+        {
+          "campo": "agrupamento",
+          "manual": false,
+          "obtido": false,
+          "confere": true
+        },
+        {
+          "campo": "motivo_ausencia",
+          "manual": null,
+          "obtido": null,
+          "confere": true
+        },
+        {
+          "campo": "intervalos",
+          "manual": 3,
+          "obtido": 3,
+          "confere": true
+        },
+        {
+          "campo": "unidade",
+          "manual": "CV (adimensional)",
+          "obtido": "CV (adimensional)",
+          "confere": true
+        },
+        {
+          "campo": "valor_nulo_nao_e_zero",
+          "manual": false,
+          "obtido": false,
+          "confere": true
+        }
+      ],
+      "resposta_api": {
+        "dados": [
+          {
+            "agregacao": "faixa",
+            "agrupamento": false,
+            "contagens": {
+              "denominador": null,
+              "numerador": 3
+            },
+            "desvio_padrao_seg": 0.0,
+            "duracao_horas": 1.0,
+            "fim": "2026-11-24T13:00:00+00:00",
+            "indicador": "REGULARIDADE_INTERVALOS",
+            "inicio": "2026-11-24T12:00:00+00:00",
+            "intervalos": 3,
+            "limite_agrupamento": 0.5,
+            "linha": "SINT-US17",
+            "media_intervalo_seg": 600.0,
+            "motivo_ausencia": null,
+            "motivos": [],
+            "parada": "B",
+            "qualidade": {
+              "cobertura": {
+                "janelas": 4,
+                "lacunas": []
+              },
+              "convencao": "CV = desvio padrão populacional (divisor n) ÷ média dos intervalos entre passagens sucessivas, em segundos",
+              "datas_operacao": [
+                "2026-11-24"
+              ],
+              "faixa": {
+                "fuso": "America/Sao_Paulo",
+                "hora_fim": "10:00",
+                "hora_inicio": "09:00"
+              },
+              "minimo_passagens": 3,
+              "oferta": "FREQUENCIA",
+              "regra_agregacao": "CV recalculado sobre a união dos intervalos das janelas; NULL se houver janela não confiável, lacuna de publicação ou janelas sobrepostas",
+              "regra_fronteira": "cada intervalo pertence à janela [início, fim) da sua passagem posterior",
+              "versoes": {
+                "capturas_programacao": [
+                  {
+                    "fonte": "GTFS",
+                    "importacao_id": "ff7c089e-c759-592b-bda6-2ddc4220096a",
+                    "tipo_dia": "UTIL",
+                    "versao_fonte": "controle-2026-11-24-0"
+                  }
+                ],
+                "versao_calculo": "regularidade-1.0",
+                "versao_correspondencia": "correspondencia-controlada-us17",
+                "versao_estimativa": "us15-t01-v1-lacuna120s",
+                "versao_gtfs_id": "21f6b776-be1c-5d23-912d-70f0a3013047",
+                "versao_reconstrucao": "recon-controle-us17",
+                "versoes_conjunto": [
+                  "ed04e89db1c7f477a81375582b6d9dcb"
+                ]
+              }
+            },
+            "referencia": "2026-11-24",
+            "sentido": "0",
+            "situacao": "CALCULADA",
+            "tipo": "REGULARIDADE_INTERVALOS",
+            "trecho": null,
+            "unidade": "CV (adimensional)",
+            "valor": 0.0,
+            "versao_calculo": "regularidade-1.0",
+            "versao_conjunto": "ed04e89db1c7f477a81375582b6d9dcb",
+            "versao_correspondencia": "correspondencia-controlada-us17",
+            "versao_gtfs_id": "21f6b776-be1c-5d23-912d-70f0a3013047"
+          }
+        ],
+        "paginacao": {
+          "page": 1,
+          "page_size": 100,
+          "total": 1
+        }
+      }
+    },
+    {
+      "id": "C10",
+      "titulo": "Coleta incompleta na faixa: NULL com motivo",
+      "escala": "faixa",
+      "status": "CONFERIU_EXEMPLO",
+      "aceite_institucional": "PENDENTE",
+      "calculo_manual": "Coleta só até 09:30: um ônibus perdido entre 09:30 e 10:00 dobraria um intervalo sem aviso. A faixa fica sem CV (coleta não confiável).",
+      "consulta": {
+        "tipo": "REGULARIDADE_INTERVALOS",
+        "linha": "SINT-US17",
+        "sentido": "0",
+        "parada": "B",
+        "inicio": "2026-11-24T03:00:00+00:00",
+        "fim": "2026-11-25T03:00:00+00:00",
+        "agregacao": "faixa",
+        "hora_inicio": "09:00",
+        "hora_fim": "10:00"
+      },
+      "comparacoes": [
+        {
+          "campo": "http_status",
+          "manual": 200,
+          "obtido": 200,
+          "confere": true
+        },
+        {
+          "campo": "quantidade_itens",
+          "manual": 1,
+          "obtido": 1,
+          "confere": true
+        },
+        {
+          "campo": "cv",
+          "manual": null,
+          "obtido": null,
+          "confere": true
+        },
+        {
+          "campo": "agrupamento",
+          "manual": null,
+          "obtido": null,
+          "confere": true
+        },
+        {
+          "campo": "motivo_ausencia",
+          "manual": "coleta_sem_dados",
+          "obtido": "coleta_sem_dados",
+          "confere": true
+        },
+        {
+          "campo": "intervalos",
+          "manual": null,
+          "obtido": null,
+          "confere": true
+        },
+        {
+          "campo": "unidade",
+          "manual": "CV (adimensional)",
+          "obtido": "CV (adimensional)",
+          "confere": true
+        },
+        {
+          "campo": "valor_nulo_nao_e_zero",
+          "manual": true,
+          "obtido": true,
+          "confere": true
+        }
+      ],
+      "resposta_api": {
+        "dados": [
+          {
+            "agregacao": "faixa",
+            "agrupamento": null,
+            "contagens": {
+              "denominador": null,
+              "numerador": null
+            },
+            "desvio_padrao_seg": null,
+            "duracao_horas": 1.0,
+            "fim": "2026-11-24T13:00:00+00:00",
+            "indicador": "REGULARIDADE_INTERVALOS",
+            "inicio": "2026-11-24T12:00:00+00:00",
+            "intervalos": null,
+            "limite_agrupamento": 0.5,
+            "linha": "SINT-US17",
+            "media_intervalo_seg": null,
+            "motivo_ausencia": "coleta_sem_dados",
+            "motivos": [
+              "coleta_sem_dados"
+            ],
+            "parada": "B",
+            "qualidade": {
+              "cobertura": {
+                "janelas": 4,
+                "lacunas": []
+              },
+              "convencao": "CV = desvio padrão populacional (divisor n) ÷ média dos intervalos entre passagens sucessivas, em segundos",
+              "datas_operacao": [
+                "2026-11-24"
+              ],
+              "faixa": {
+                "fuso": "America/Sao_Paulo",
+                "hora_fim": "10:00",
+                "hora_inicio": "09:00"
+              },
+              "minimo_passagens": 3,
+              "oferta": "FREQUENCIA",
+              "regra_agregacao": "CV recalculado sobre a união dos intervalos das janelas; NULL se houver janela não confiável, lacuna de publicação ou janelas sobrepostas",
+              "regra_fronteira": "cada intervalo pertence à janela [início, fim) da sua passagem posterior",
+              "versoes": {
+                "capturas_programacao": [
+                  {
+                    "fonte": "GTFS",
+                    "importacao_id": "565b79d5-39bd-51b1-b8ab-6953110a174f",
+                    "tipo_dia": "UTIL",
+                    "versao_fonte": "controle-2026-11-24-0"
+                  }
+                ],
+                "versao_calculo": "regularidade-1.0",
+                "versao_correspondencia": "correspondencia-controlada-us17",
+                "versao_estimativa": "us15-t01-v1-lacuna120s",
+                "versao_gtfs_id": "c8a87fb6-82f4-5597-9945-76d3e62a56a3",
+                "versao_reconstrucao": "recon-controle-us17",
+                "versoes_conjunto": [
+                  "a18e3230f7eccaf72dff1c8051d44057"
+                ]
+              }
+            },
+            "referencia": "2026-11-24",
+            "sentido": "0",
+            "situacao": "DADOS_AUSENTES",
+            "tipo": "REGULARIDADE_INTERVALOS",
+            "trecho": null,
+            "unidade": "CV (adimensional)",
+            "valor": null,
+            "versao_calculo": "regularidade-1.0",
+            "versao_conjunto": "a18e3230f7eccaf72dff1c8051d44057",
+            "versao_correspondencia": "correspondencia-controlada-us17",
+            "versao_gtfs_id": "c8a87fb6-82f4-5597-9945-76d3e62a56a3"
+          }
+        ],
+        "paginacao": {
+          "page": 1,
+          "page_size": 100,
+          "total": 1
+        }
+      }
+    },
+    {
+      "id": "C11",
+      "titulo": "Dia inteiro: o vão entre os picos conta",
+      "escala": "dia",
+      "status": "CONFERIU_EXEMPLO",
+      "aceite_institucional": "PENDENTE",
+      "calculo_manual": "06:00–07:00 e 18:00–19:00 a cada 10 min: 12 intervalos de 600 s e um de 39600 s (07:00→18:00). Média 46800/13 = 3600; variância (12 × 3000² + 36000²)/13 = 108000000; desvio 10392,3048; CV 2,886751 → agrupamento.",
+      "consulta": {
+        "tipo": "REGULARIDADE_INTERVALOS",
+        "linha": "SINT-US17",
+        "sentido": "0",
+        "parada": "B",
+        "inicio": "2026-11-24T03:00:00+00:00",
+        "fim": "2026-11-25T03:00:00+00:00",
+        "agregacao": "dia"
+      },
+      "comparacoes": [
+        {
+          "campo": "http_status",
+          "manual": 200,
+          "obtido": 200,
+          "confere": true
+        },
+        {
+          "campo": "quantidade_itens",
+          "manual": 1,
+          "obtido": 1,
+          "confere": true
+        },
+        {
+          "campo": "cv",
+          "manual": 2.886751,
+          "obtido": 2.886751,
+          "confere": true
+        },
+        {
+          "campo": "agrupamento",
+          "manual": true,
+          "obtido": true,
+          "confere": true
+        },
+        {
+          "campo": "motivo_ausencia",
+          "manual": null,
+          "obtido": null,
+          "confere": true
+        },
+        {
+          "campo": "intervalos",
+          "manual": 13,
+          "obtido": 13,
+          "confere": true
+        },
+        {
+          "campo": "unidade",
+          "manual": "CV (adimensional)",
+          "obtido": "CV (adimensional)",
+          "confere": true
+        },
+        {
+          "campo": "valor_nulo_nao_e_zero",
+          "manual": false,
+          "obtido": false,
+          "confere": true
+        }
+      ],
+      "resposta_api": {
+        "dados": [
+          {
+            "agregacao": "dia",
+            "agrupamento": true,
+            "contagens": {
+              "denominador": null,
+              "numerador": 13
+            },
+            "desvio_padrao_seg": 10392.304845,
+            "duracao_horas": 24.0,
+            "fim": "2026-11-25T03:00:00+00:00",
+            "indicador": "REGULARIDADE_INTERVALOS",
+            "inicio": "2026-11-24T03:00:00+00:00",
+            "intervalos": 13,
+            "limite_agrupamento": 0.5,
+            "linha": "SINT-US17",
+            "media_intervalo_seg": 3600.0,
+            "motivo_ausencia": null,
+            "motivos": [],
+            "parada": "B",
+            "qualidade": {
+              "cobertura": {
+                "janelas": 96,
+                "lacunas": []
+              },
+              "convencao": "CV = desvio padrão populacional (divisor n) ÷ média dos intervalos entre passagens sucessivas, em segundos",
+              "datas_operacao": [
+                "2026-11-24"
+              ],
+              "faixa": null,
+              "minimo_passagens": 3,
+              "oferta": "FREQUENCIA",
+              "regra_agregacao": "CV recalculado sobre a união dos intervalos das janelas; NULL se houver janela não confiável, lacuna de publicação ou janelas sobrepostas",
+              "regra_fronteira": "cada intervalo pertence à janela [início, fim) da sua passagem posterior",
+              "versoes": {
+                "capturas_programacao": [
+                  {
+                    "fonte": "GTFS",
+                    "importacao_id": "4a7af463-6c43-583c-b23b-96e9d0808cb9",
+                    "tipo_dia": "UTIL",
+                    "versao_fonte": "controle-2026-11-24-0"
+                  }
+                ],
+                "versao_calculo": "regularidade-1.0",
+                "versao_correspondencia": "correspondencia-controlada-us17",
+                "versao_estimativa": "us15-t01-v1-lacuna120s",
+                "versao_gtfs_id": "0ee65909-fdf9-50e9-b134-1448245a8607",
+                "versao_reconstrucao": "recon-controle-us17",
+                "versoes_conjunto": [
+                  "ec92d8c4883553d2cda352ca891deb79"
+                ]
+              }
+            },
+            "referencia": "2026-11-24",
+            "sentido": "0",
+            "situacao": "CALCULADA",
+            "tipo": "REGULARIDADE_INTERVALOS",
+            "trecho": null,
+            "unidade": "CV (adimensional)",
+            "valor": 2.886751,
+            "versao_calculo": "regularidade-1.0",
+            "versao_conjunto": "ec92d8c4883553d2cda352ca891deb79",
+            "versao_correspondencia": "correspondencia-controlada-us17",
+            "versao_gtfs_id": "0ee65909-fdf9-50e9-b134-1448245a8607"
+          }
+        ],
+        "paginacao": {
+          "page": 1,
+          "page_size": 100,
+          "total": 1
+        }
+      }
+    },
+    {
+      "id": "C12",
+      "titulo": "Dia com duas passagens: NULL",
+      "escala": "dia",
+      "status": "CONFERIU_EXEMPLO",
+      "aceite_institucional": "PENDENTE",
+      "calculo_manual": "Duas passagens no dia (06:00 e 06:40): um intervalo; sem CV.",
+      "consulta": {
+        "tipo": "REGULARIDADE_INTERVALOS",
+        "linha": "SINT-US17",
+        "sentido": "0",
+        "parada": "B",
+        "inicio": "2026-11-24T03:00:00+00:00",
+        "fim": "2026-11-25T03:00:00+00:00",
+        "agregacao": "dia"
+      },
+      "comparacoes": [
+        {
+          "campo": "http_status",
+          "manual": 200,
+          "obtido": 200,
+          "confere": true
+        },
+        {
+          "campo": "quantidade_itens",
+          "manual": 1,
+          "obtido": 1,
+          "confere": true
+        },
+        {
+          "campo": "cv",
+          "manual": null,
+          "obtido": null,
+          "confere": true
+        },
+        {
+          "campo": "agrupamento",
+          "manual": null,
+          "obtido": null,
+          "confere": true
+        },
+        {
+          "campo": "motivo_ausencia",
+          "manual": "passagens_insuficientes",
+          "obtido": "passagens_insuficientes",
+          "confere": true
+        },
+        {
+          "campo": "intervalos",
+          "manual": 1,
+          "obtido": 1,
+          "confere": true
+        },
+        {
+          "campo": "unidade",
+          "manual": "CV (adimensional)",
+          "obtido": "CV (adimensional)",
+          "confere": true
+        },
+        {
+          "campo": "valor_nulo_nao_e_zero",
+          "manual": true,
+          "obtido": true,
+          "confere": true
+        }
+      ],
+      "resposta_api": {
+        "dados": [
+          {
+            "agregacao": "dia",
+            "agrupamento": null,
+            "contagens": {
+              "denominador": null,
+              "numerador": 1
+            },
+            "desvio_padrao_seg": 0.0,
+            "duracao_horas": 24.0,
+            "fim": "2026-11-25T03:00:00+00:00",
+            "indicador": "REGULARIDADE_INTERVALOS",
+            "inicio": "2026-11-24T03:00:00+00:00",
+            "intervalos": 1,
+            "limite_agrupamento": 0.5,
+            "linha": "SINT-US17",
+            "media_intervalo_seg": 2400.0,
+            "motivo_ausencia": "passagens_insuficientes",
+            "motivos": [
+              "passagens_insuficientes"
+            ],
+            "parada": "B",
+            "qualidade": {
+              "cobertura": {
+                "janelas": 96,
+                "lacunas": []
+              },
+              "convencao": "CV = desvio padrão populacional (divisor n) ÷ média dos intervalos entre passagens sucessivas, em segundos",
+              "datas_operacao": [
+                "2026-11-24"
+              ],
+              "faixa": null,
+              "minimo_passagens": 3,
+              "oferta": "FREQUENCIA",
+              "regra_agregacao": "CV recalculado sobre a união dos intervalos das janelas; NULL se houver janela não confiável, lacuna de publicação ou janelas sobrepostas",
+              "regra_fronteira": "cada intervalo pertence à janela [início, fim) da sua passagem posterior",
+              "versoes": {
+                "capturas_programacao": [
+                  {
+                    "fonte": "GTFS",
+                    "importacao_id": "53866d35-afcb-5dc5-8f22-b1500033c308",
+                    "tipo_dia": "UTIL",
+                    "versao_fonte": "controle-2026-11-24-0"
+                  }
+                ],
+                "versao_calculo": "regularidade-1.0",
+                "versao_correspondencia": "correspondencia-controlada-us17",
+                "versao_estimativa": "us15-t01-v1-lacuna120s",
+                "versao_gtfs_id": "d1819120-4c32-5288-8de8-744410c94524",
+                "versao_reconstrucao": "recon-controle-us17",
+                "versoes_conjunto": [
+                  "6b2696cbd0ecaff1283bb9102b2d33d7"
+                ]
+              }
+            },
+            "referencia": "2026-11-24",
+            "sentido": "0",
+            "situacao": "DADOS_INSUFICIENTES",
+            "tipo": "REGULARIDADE_INTERVALOS",
+            "trecho": null,
+            "unidade": "CV (adimensional)",
+            "valor": null,
+            "versao_calculo": "regularidade-1.0",
+            "versao_conjunto": "6b2696cbd0ecaff1283bb9102b2d33d7",
+            "versao_correspondencia": "correspondencia-controlada-us17",
+            "versao_gtfs_id": "d1819120-4c32-5288-8de8-744410c94524"
+          }
+        ],
+        "paginacao": {
+          "page": 1,
+          "page_size": 100,
+          "total": 1
+        }
+      }
+    },
+    {
+      "id": "C13",
+      "titulo": "Passagem sem evidência GPS anula o dia",
+      "escala": "dia",
+      "status": "CONFERIU_EXEMPLO",
+      "aceite_institucional": "PENDENTE",
+      "calculo_manual": "Uma viagem passou por B entre 06:12 e 06:14 sem par GPS válido: o intervalo 06:10→06:20 pode ter um ônibus a mais. Sem CV.",
+      "consulta": {
+        "tipo": "REGULARIDADE_INTERVALOS",
+        "linha": "SINT-US17",
+        "sentido": "0",
+        "parada": "B",
+        "inicio": "2026-11-24T03:00:00+00:00",
+        "fim": "2026-11-25T03:00:00+00:00",
+        "agregacao": "dia"
+      },
+      "comparacoes": [
+        {
+          "campo": "http_status",
+          "manual": 200,
+          "obtido": 200,
+          "confere": true
+        },
+        {
+          "campo": "quantidade_itens",
+          "manual": 1,
+          "obtido": 1,
+          "confere": true
+        },
+        {
+          "campo": "cv",
+          "manual": null,
+          "obtido": null,
+          "confere": true
+        },
+        {
+          "campo": "agrupamento",
+          "manual": null,
+          "obtido": null,
+          "confere": true
+        },
+        {
+          "campo": "motivo_ausencia",
+          "manual": "sem_evidencia_gps",
+          "obtido": "sem_evidencia_gps",
+          "confere": true
+        },
+        {
+          "campo": "intervalos",
+          "manual": null,
+          "obtido": null,
+          "confere": true
+        },
+        {
+          "campo": "unidade",
+          "manual": "CV (adimensional)",
+          "obtido": "CV (adimensional)",
+          "confere": true
+        },
+        {
+          "campo": "valor_nulo_nao_e_zero",
+          "manual": true,
+          "obtido": true,
+          "confere": true
+        }
+      ],
+      "resposta_api": {
+        "dados": [
+          {
+            "agregacao": "dia",
+            "agrupamento": null,
+            "contagens": {
+              "denominador": null,
+              "numerador": null
+            },
+            "desvio_padrao_seg": null,
+            "duracao_horas": 24.0,
+            "fim": "2026-11-25T03:00:00+00:00",
+            "indicador": "REGULARIDADE_INTERVALOS",
+            "inicio": "2026-11-24T03:00:00+00:00",
+            "intervalos": null,
+            "limite_agrupamento": 0.5,
+            "linha": "SINT-US17",
+            "media_intervalo_seg": null,
+            "motivo_ausencia": "sem_evidencia_gps",
+            "motivos": [
+              "sem_evidencia_gps"
+            ],
+            "parada": "B",
+            "qualidade": {
+              "cobertura": {
+                "janelas": 96,
+                "lacunas": []
+              },
+              "convencao": "CV = desvio padrão populacional (divisor n) ÷ média dos intervalos entre passagens sucessivas, em segundos",
+              "datas_operacao": [
+                "2026-11-24"
+              ],
+              "faixa": null,
+              "minimo_passagens": 3,
+              "oferta": "FREQUENCIA",
+              "regra_agregacao": "CV recalculado sobre a união dos intervalos das janelas; NULL se houver janela não confiável, lacuna de publicação ou janelas sobrepostas",
+              "regra_fronteira": "cada intervalo pertence à janela [início, fim) da sua passagem posterior",
+              "versoes": {
+                "capturas_programacao": [
+                  {
+                    "fonte": "GTFS",
+                    "importacao_id": "172f513c-0166-548b-93b4-e5d8d6803cfc",
+                    "tipo_dia": "UTIL",
+                    "versao_fonte": "controle-2026-11-24-0"
+                  }
+                ],
+                "versao_calculo": "regularidade-1.0",
+                "versao_correspondencia": "correspondencia-controlada-us17",
+                "versao_estimativa": "us15-t01-v1-lacuna120s",
+                "versao_gtfs_id": "953c997d-c44c-5d29-9344-5b4f4adeb239",
+                "versao_reconstrucao": "recon-controle-us17",
+                "versoes_conjunto": [
+                  "58bd06ccd9dc99768830c7de944732b7"
+                ]
+              }
+            },
+            "referencia": "2026-11-24",
+            "sentido": "0",
+            "situacao": "DADOS_AUSENTES",
+            "tipo": "REGULARIDADE_INTERVALOS",
+            "trecho": null,
+            "unidade": "CV (adimensional)",
+            "valor": null,
+            "versao_calculo": "regularidade-1.0",
+            "versao_conjunto": "58bd06ccd9dc99768830c7de944732b7",
+            "versao_correspondencia": "correspondencia-controlada-us17",
+            "versao_gtfs_id": "953c997d-c44c-5d29-9344-5b4f4adeb239"
+          }
+        ],
+        "paginacao": {
+          "page": 1,
+          "page_size": 100,
+          "total": 1
+        }
+      }
+    },
+    {
+      "id": "C14",
+      "titulo": "Estimativa não executada anula o dia",
+      "escala": "dia",
+      "status": "CONFERIU_EXEMPLO",
+      "aceite_institucional": "PENDENTE",
+      "calculo_manual": "Uma viagem saiu às 06:15 e a estimativa de passagens não rodou para ela: não se sabe se passou por B. Sem CV.",
+      "consulta": {
+        "tipo": "REGULARIDADE_INTERVALOS",
+        "linha": "SINT-US17",
+        "sentido": "0",
+        "parada": "B",
+        "inicio": "2026-11-24T03:00:00+00:00",
+        "fim": "2026-11-25T03:00:00+00:00",
+        "agregacao": "dia"
+      },
+      "comparacoes": [
+        {
+          "campo": "http_status",
+          "manual": 200,
+          "obtido": 200,
+          "confere": true
+        },
+        {
+          "campo": "quantidade_itens",
+          "manual": 1,
+          "obtido": 1,
+          "confere": true
+        },
+        {
+          "campo": "cv",
+          "manual": null,
+          "obtido": null,
+          "confere": true
+        },
+        {
+          "campo": "agrupamento",
+          "manual": null,
+          "obtido": null,
+          "confere": true
+        },
+        {
+          "campo": "motivo_ausencia",
+          "manual": "estimativa_nao_executada",
+          "obtido": "estimativa_nao_executada",
+          "confere": true
+        },
+        {
+          "campo": "intervalos",
+          "manual": null,
+          "obtido": null,
+          "confere": true
+        },
+        {
+          "campo": "unidade",
+          "manual": "CV (adimensional)",
+          "obtido": "CV (adimensional)",
+          "confere": true
+        },
+        {
+          "campo": "valor_nulo_nao_e_zero",
+          "manual": true,
+          "obtido": true,
+          "confere": true
+        }
+      ],
+      "resposta_api": {
+        "dados": [
+          {
+            "agregacao": "dia",
+            "agrupamento": null,
+            "contagens": {
+              "denominador": null,
+              "numerador": null
+            },
+            "desvio_padrao_seg": null,
+            "duracao_horas": 24.0,
+            "fim": "2026-11-25T03:00:00+00:00",
+            "indicador": "REGULARIDADE_INTERVALOS",
+            "inicio": "2026-11-24T03:00:00+00:00",
+            "intervalos": null,
+            "limite_agrupamento": 0.5,
+            "linha": "SINT-US17",
+            "media_intervalo_seg": null,
+            "motivo_ausencia": "estimativa_nao_executada",
+            "motivos": [
+              "estimativa_nao_executada"
+            ],
+            "parada": "B",
+            "qualidade": {
+              "cobertura": {
+                "janelas": 96,
+                "lacunas": []
+              },
+              "convencao": "CV = desvio padrão populacional (divisor n) ÷ média dos intervalos entre passagens sucessivas, em segundos",
+              "datas_operacao": [
+                "2026-11-24"
+              ],
+              "faixa": null,
+              "minimo_passagens": 3,
+              "oferta": "FREQUENCIA",
+              "regra_agregacao": "CV recalculado sobre a união dos intervalos das janelas; NULL se houver janela não confiável, lacuna de publicação ou janelas sobrepostas",
+              "regra_fronteira": "cada intervalo pertence à janela [início, fim) da sua passagem posterior",
+              "versoes": {
+                "capturas_programacao": [
+                  {
+                    "fonte": "GTFS",
+                    "importacao_id": "fb9b90c5-80f0-5946-9aa1-c40fdfbf8d6d",
+                    "tipo_dia": "UTIL",
+                    "versao_fonte": "controle-2026-11-24-0"
+                  }
+                ],
+                "versao_calculo": "regularidade-1.0",
+                "versao_correspondencia": "correspondencia-controlada-us17",
+                "versao_estimativa": "us15-t01-v1-lacuna120s",
+                "versao_gtfs_id": "ec1ab760-0ba5-51be-871b-2dc52059c52c",
+                "versao_reconstrucao": "recon-controle-us17",
+                "versoes_conjunto": [
+                  "886652251d5e93692f17446ef9420570"
+                ]
+              }
+            },
+            "referencia": "2026-11-24",
+            "sentido": "0",
+            "situacao": "DADOS_AUSENTES",
+            "tipo": "REGULARIDADE_INTERVALOS",
+            "trecho": null,
+            "unidade": "CV (adimensional)",
+            "valor": null,
+            "versao_calculo": "regularidade-1.0",
+            "versao_conjunto": "886652251d5e93692f17446ef9420570",
+            "versao_correspondencia": "correspondencia-controlada-us17",
+            "versao_gtfs_id": "ec1ab760-0ba5-51be-871b-2dc52059c52c"
+          }
+        ],
+        "paginacao": {
+          "page": 1,
+          "page_size": 100,
+          "total": 1
+        }
+      }
+    },
+    {
+      "id": "C15",
+      "titulo": "Linha só com horário fixo não tem regularidade",
+      "escala": "dia",
+      "status": "CONFERIU_EXEMPLO",
+      "aceite_institucional": "PENDENTE",
+      "calculo_manual": "A programação da data é de horário fixo: a regularidade da US17 vale só para a oferta por frequência.",
+      "consulta": {
+        "tipo": "REGULARIDADE_INTERVALOS",
+        "linha": "SINT-US17",
+        "sentido": "0",
+        "parada": "B",
+        "inicio": "2026-11-24T03:00:00+00:00",
+        "fim": "2026-11-25T03:00:00+00:00",
+        "agregacao": "dia"
+      },
+      "comparacoes": [
+        {
+          "campo": "http_status",
+          "manual": 200,
+          "obtido": 200,
+          "confere": true
+        },
+        {
+          "campo": "quantidade_itens",
+          "manual": 1,
+          "obtido": 1,
+          "confere": true
+        },
+        {
+          "campo": "cv",
+          "manual": null,
+          "obtido": null,
+          "confere": true
+        },
+        {
+          "campo": "agrupamento",
+          "manual": null,
+          "obtido": null,
+          "confere": true
+        },
+        {
+          "campo": "motivo_ausencia",
+          "manual": "oferta_sem_frequencia",
+          "obtido": "oferta_sem_frequencia",
+          "confere": true
+        },
+        {
+          "campo": "intervalos",
+          "manual": null,
+          "obtido": null,
+          "confere": true
+        },
+        {
+          "campo": "unidade",
+          "manual": "CV (adimensional)",
+          "obtido": "CV (adimensional)",
+          "confere": true
+        },
+        {
+          "campo": "valor_nulo_nao_e_zero",
+          "manual": true,
+          "obtido": true,
+          "confere": true
+        }
+      ],
+      "resposta_api": {
+        "dados": [
+          {
+            "agregacao": "dia",
+            "agrupamento": null,
+            "contagens": {
+              "denominador": null,
+              "numerador": null
+            },
+            "desvio_padrao_seg": null,
+            "duracao_horas": 24.0,
+            "fim": "2026-11-25T03:00:00+00:00",
+            "indicador": "REGULARIDADE_INTERVALOS",
+            "inicio": "2026-11-24T03:00:00+00:00",
+            "intervalos": null,
+            "limite_agrupamento": 0.5,
+            "linha": "SINT-US17",
+            "media_intervalo_seg": null,
+            "motivo_ausencia": "oferta_sem_frequencia",
+            "motivos": [
+              "oferta_sem_frequencia"
+            ],
+            "parada": "B",
+            "qualidade": {
+              "cobertura": {
+                "janelas": 96,
+                "lacunas": []
+              },
+              "convencao": "CV = desvio padrão populacional (divisor n) ÷ média dos intervalos entre passagens sucessivas, em segundos",
+              "datas_operacao": [
+                "2026-11-24"
+              ],
+              "faixa": null,
+              "minimo_passagens": 3,
+              "oferta": "FREQUENCIA",
+              "regra_agregacao": "CV recalculado sobre a união dos intervalos das janelas; NULL se houver janela não confiável, lacuna de publicação ou janelas sobrepostas",
+              "regra_fronteira": "cada intervalo pertence à janela [início, fim) da sua passagem posterior",
+              "versoes": {
+                "capturas_programacao": [
+                  {
+                    "fonte": "GTFS",
+                    "importacao_id": "990fb4ec-2bb1-5bfe-a31f-e9c20f7a09c8",
+                    "tipo_dia": "UTIL",
+                    "versao_fonte": "controle-2026-11-24-0"
+                  }
+                ],
+                "versao_calculo": "regularidade-1.0",
+                "versao_correspondencia": "correspondencia-controlada-us17",
+                "versao_estimativa": "us15-t01-v1-lacuna120s",
+                "versao_gtfs_id": "caf3f185-0cf6-5211-a326-652b68eb1d5b",
+                "versao_reconstrucao": "recon-controle-us17",
+                "versoes_conjunto": [
+                  "43144d90daa675b567e5a62f342601ca"
+                ]
+              }
+            },
+            "referencia": "2026-11-24",
+            "sentido": "0",
+            "situacao": "DADOS_AUSENTES",
+            "tipo": "REGULARIDADE_INTERVALOS",
+            "trecho": null,
+            "unidade": "CV (adimensional)",
+            "valor": null,
+            "versao_calculo": "regularidade-1.0",
+            "versao_conjunto": "43144d90daa675b567e5a62f342601ca",
+            "versao_correspondencia": "correspondencia-controlada-us17",
+            "versao_gtfs_id": "caf3f185-0cf6-5211-a326-652b68eb1d5b"
+          }
+        ],
+        "paginacao": {
+          "page": 1,
+          "page_size": 100,
+          "total": 1
+        }
+      }
+    },
+    {
+      "id": "C16",
+      "titulo": "Mês: união dos intervalos de dois dias",
+      "escala": "mes",
+      "status": "CONFERIU_EXEMPLO",
+      "aceite_institucional": "PENDENTE",
+      "calculo_manual": "24/11: 600, 600 s; 25/11: 900, 900 s (não há intervalo entre dias operacionais). União: média 750; desvio 150; CV = 0,2.",
+      "consulta": {
+        "tipo": "REGULARIDADE_INTERVALOS",
+        "linha": "SINT-US17",
+        "sentido": "0",
+        "parada": "B",
+        "inicio": "2026-11-24T03:00:00+00:00",
+        "fim": "2026-11-26T03:00:00+00:00",
+        "agregacao": "mes"
+      },
+      "comparacoes": [
+        {
+          "campo": "http_status",
+          "manual": 200,
+          "obtido": 200,
+          "confere": true
+        },
+        {
+          "campo": "quantidade_itens",
+          "manual": 1,
+          "obtido": 1,
+          "confere": true
+        },
+        {
+          "campo": "cv",
+          "manual": 0.2,
+          "obtido": 0.2,
+          "confere": true
+        },
+        {
+          "campo": "agrupamento",
+          "manual": false,
+          "obtido": false,
+          "confere": true
+        },
+        {
+          "campo": "motivo_ausencia",
+          "manual": null,
+          "obtido": null,
+          "confere": true
+        },
+        {
+          "campo": "intervalos",
+          "manual": 4,
+          "obtido": 4,
+          "confere": true
+        },
+        {
+          "campo": "unidade",
+          "manual": "CV (adimensional)",
+          "obtido": "CV (adimensional)",
+          "confere": true
+        },
+        {
+          "campo": "valor_nulo_nao_e_zero",
+          "manual": false,
+          "obtido": false,
+          "confere": true
+        }
+      ],
+      "resposta_api": {
+        "dados": [
+          {
+            "agregacao": "mes",
+            "agrupamento": false,
+            "contagens": {
+              "denominador": null,
+              "numerador": 4
+            },
+            "desvio_padrao_seg": 150.0,
+            "duracao_horas": 48.0,
+            "fim": "2026-11-26T03:00:00+00:00",
+            "indicador": "REGULARIDADE_INTERVALOS",
+            "inicio": "2026-11-24T03:00:00+00:00",
+            "intervalos": 4,
+            "limite_agrupamento": 0.5,
+            "linha": "SINT-US17",
+            "media_intervalo_seg": 750.0,
+            "motivo_ausencia": null,
+            "motivos": [],
+            "parada": "B",
+            "qualidade": {
+              "cobertura": {
+                "janelas": 192,
+                "lacunas": []
+              },
+              "convencao": "CV = desvio padrão populacional (divisor n) ÷ média dos intervalos entre passagens sucessivas, em segundos",
+              "datas_operacao": [
+                "2026-11-24",
+                "2026-11-25"
+              ],
+              "faixa": null,
+              "minimo_passagens": 3,
+              "oferta": "FREQUENCIA",
+              "regra_agregacao": "CV recalculado sobre a união dos intervalos das janelas; NULL se houver janela não confiável, lacuna de publicação ou janelas sobrepostas",
+              "regra_fronteira": "cada intervalo pertence à janela [início, fim) da sua passagem posterior",
+              "versoes": {
+                "capturas_programacao": [
+                  {
+                    "fonte": "GTFS",
+                    "importacao_id": "826eb6bf-2b93-5ddd-b1e0-7619c0e98d5d",
+                    "tipo_dia": "UTIL",
+                    "versao_fonte": "controle-2026-11-25-0"
+                  },
+                  {
+                    "fonte": "GTFS",
+                    "importacao_id": "e4afb764-c2d1-517e-a605-b8990a654570",
+                    "tipo_dia": "UTIL",
+                    "versao_fonte": "controle-2026-11-24-0"
+                  }
+                ],
+                "versao_calculo": "regularidade-1.0",
+                "versao_correspondencia": "correspondencia-controlada-us17",
+                "versao_estimativa": "us15-t01-v1-lacuna120s",
+                "versao_gtfs_id": "f64da5bd-c361-5753-8447-a6651b138cd9",
+                "versao_reconstrucao": "recon-controle-us17",
+                "versoes_conjunto": [
+                  "ec45921addb919b684f3f79e42a5dbaa",
+                  "f8912628de284bb02d4c4302a4b742f2"
+                ]
+              }
+            },
+            "referencia": "2026-11",
+            "sentido": "0",
+            "situacao": "CALCULADA",
+            "tipo": "REGULARIDADE_INTERVALOS",
+            "trecho": null,
+            "unidade": "CV (adimensional)",
+            "valor": 0.2,
+            "versao_calculo": "regularidade-1.0",
+            "versao_conjunto": "f6d1a5061c34762f0858c97388f4079a",
+            "versao_correspondencia": "correspondencia-controlada-us17",
+            "versao_gtfs_id": "f64da5bd-c361-5753-8447-a6651b138cd9"
+          }
+        ],
+        "paginacao": {
+          "page": 1,
+          "page_size": 100,
+          "total": 1
+        }
+      }
+    },
+    {
+      "id": "C17",
+      "titulo": "Dia sem publicação: NULL",
+      "escala": "mes",
+      "status": "CONFERIU_EXEMPLO",
+      "aceite_institucional": "PENDENTE",
+      "calculo_manual": "25/11 não foi publicado: o recorte não tem todos os intervalos. Sem CV.",
+      "consulta": {
+        "tipo": "REGULARIDADE_INTERVALOS",
+        "linha": "SINT-US17",
+        "sentido": "0",
+        "parada": "B",
+        "inicio": "2026-11-24T03:00:00+00:00",
+        "fim": "2026-11-26T03:00:00+00:00",
+        "agregacao": "mes"
+      },
+      "comparacoes": [
+        {
+          "campo": "http_status",
+          "manual": 200,
+          "obtido": 200,
+          "confere": true
+        },
+        {
+          "campo": "quantidade_itens",
+          "manual": 1,
+          "obtido": 1,
+          "confere": true
+        },
+        {
+          "campo": "cv",
+          "manual": null,
+          "obtido": null,
+          "confere": true
+        },
+        {
+          "campo": "agrupamento",
+          "manual": null,
+          "obtido": null,
+          "confere": true
+        },
+        {
+          "campo": "motivo_ausencia",
+          "manual": "sem_publicacao",
+          "obtido": "sem_publicacao",
+          "confere": true
+        },
+        {
+          "campo": "intervalos",
+          "manual": null,
+          "obtido": null,
+          "confere": true
+        },
+        {
+          "campo": "unidade",
+          "manual": "CV (adimensional)",
+          "obtido": "CV (adimensional)",
+          "confere": true
+        },
+        {
+          "campo": "valor_nulo_nao_e_zero",
+          "manual": true,
+          "obtido": true,
+          "confere": true
+        }
+      ],
+      "resposta_api": {
+        "dados": [
+          {
+            "agregacao": "mes",
+            "agrupamento": null,
+            "contagens": {
+              "denominador": null,
+              "numerador": null
+            },
+            "desvio_padrao_seg": null,
+            "duracao_horas": 24.0,
+            "fim": "2026-11-26T03:00:00+00:00",
+            "indicador": "REGULARIDADE_INTERVALOS",
+            "inicio": "2026-11-24T03:00:00+00:00",
+            "intervalos": null,
+            "limite_agrupamento": 0.5,
+            "linha": "SINT-US17",
+            "media_intervalo_seg": null,
+            "motivo_ausencia": "sem_publicacao",
+            "motivos": [
+              "sem_publicacao"
+            ],
+            "parada": "B",
+            "qualidade": {
+              "cobertura": {
+                "janelas": 96,
+                "lacunas": [
+                  {
+                    "fim": "2026-11-26T03:00:00+00:00",
+                    "inicio": "2026-11-25T03:00:00+00:00"
+                  }
+                ]
+              },
+              "convencao": "CV = desvio padrão populacional (divisor n) ÷ média dos intervalos entre passagens sucessivas, em segundos",
+              "datas_operacao": [
+                "2026-11-24"
+              ],
+              "faixa": null,
+              "minimo_passagens": 3,
+              "oferta": "FREQUENCIA",
+              "regra_agregacao": "CV recalculado sobre a união dos intervalos das janelas; NULL se houver janela não confiável, lacuna de publicação ou janelas sobrepostas",
+              "regra_fronteira": "cada intervalo pertence à janela [início, fim) da sua passagem posterior",
+              "versoes": {
+                "capturas_programacao": [
+                  {
+                    "fonte": "GTFS",
+                    "importacao_id": "2afab817-d994-50b4-9e96-f6988fb1c4f3",
+                    "tipo_dia": "UTIL",
+                    "versao_fonte": "controle-2026-11-24-0"
+                  }
+                ],
+                "versao_calculo": "regularidade-1.0",
+                "versao_correspondencia": "correspondencia-controlada-us17",
+                "versao_estimativa": "us15-t01-v1-lacuna120s",
+                "versao_gtfs_id": "1a268129-f3e5-5bd4-8607-3c6e70962a4d",
+                "versao_reconstrucao": "recon-controle-us17",
+                "versoes_conjunto": [
+                  "17a5be16d2afc9154b5cf7cb2872bb04"
+                ]
+              }
+            },
+            "referencia": "2026-11",
+            "sentido": "0",
+            "situacao": "DADOS_AUSENTES",
+            "tipo": "REGULARIDADE_INTERVALOS",
+            "trecho": null,
+            "unidade": "CV (adimensional)",
+            "valor": null,
+            "versao_calculo": "regularidade-1.0",
+            "versao_conjunto": "17a5be16d2afc9154b5cf7cb2872bb04",
+            "versao_correspondencia": "correspondencia-controlada-us17",
+            "versao_gtfs_id": "1a268129-f3e5-5bd4-8607-3c6e70962a4d"
+          }
+        ],
+        "paginacao": {
+          "page": 1,
+          "page_size": 100,
+          "total": 1
+        }
+      }
+    },
+    {
+      "id": "C18",
+      "titulo": "Dias insuficientes somam intervalos no mês",
+      "escala": "mes",
+      "status": "CONFERIU_EXEMPLO",
+      "aceite_institucional": "PENDENTE",
+      "calculo_manual": "Cada dia tem um intervalo (600 e 1200 s) e fica sem CV; no mês são dois intervalos: média 900, desvio 300, CV = 0,333333.",
+      "consulta": {
+        "tipo": "REGULARIDADE_INTERVALOS",
+        "linha": "SINT-US17",
+        "sentido": "0",
+        "parada": "B",
+        "inicio": "2026-11-24T03:00:00+00:00",
+        "fim": "2026-11-26T03:00:00+00:00",
+        "agregacao": "mes"
+      },
+      "comparacoes": [
+        {
+          "campo": "http_status",
+          "manual": 200,
+          "obtido": 200,
+          "confere": true
+        },
+        {
+          "campo": "quantidade_itens",
+          "manual": 1,
+          "obtido": 1,
+          "confere": true
+        },
+        {
+          "campo": "cv",
+          "manual": 0.333333,
+          "obtido": 0.333333,
+          "confere": true
+        },
+        {
+          "campo": "agrupamento",
+          "manual": false,
+          "obtido": false,
+          "confere": true
+        },
+        {
+          "campo": "motivo_ausencia",
+          "manual": null,
+          "obtido": null,
+          "confere": true
+        },
+        {
+          "campo": "intervalos",
+          "manual": 2,
+          "obtido": 2,
+          "confere": true
+        },
+        {
+          "campo": "unidade",
+          "manual": "CV (adimensional)",
+          "obtido": "CV (adimensional)",
+          "confere": true
+        },
+        {
+          "campo": "valor_nulo_nao_e_zero",
+          "manual": false,
+          "obtido": false,
+          "confere": true
+        }
+      ],
+      "resposta_api": {
+        "dados": [
+          {
+            "agregacao": "mes",
+            "agrupamento": false,
+            "contagens": {
+              "denominador": null,
+              "numerador": 2
+            },
+            "desvio_padrao_seg": 300.0,
+            "duracao_horas": 48.0,
+            "fim": "2026-11-26T03:00:00+00:00",
+            "indicador": "REGULARIDADE_INTERVALOS",
+            "inicio": "2026-11-24T03:00:00+00:00",
+            "intervalos": 2,
+            "limite_agrupamento": 0.5,
+            "linha": "SINT-US17",
+            "media_intervalo_seg": 900.0,
+            "motivo_ausencia": null,
+            "motivos": [],
+            "parada": "B",
+            "qualidade": {
+              "cobertura": {
+                "janelas": 192,
+                "lacunas": []
+              },
+              "convencao": "CV = desvio padrão populacional (divisor n) ÷ média dos intervalos entre passagens sucessivas, em segundos",
+              "datas_operacao": [
+                "2026-11-24",
+                "2026-11-25"
+              ],
+              "faixa": null,
+              "minimo_passagens": 3,
+              "oferta": "FREQUENCIA",
+              "regra_agregacao": "CV recalculado sobre a união dos intervalos das janelas; NULL se houver janela não confiável, lacuna de publicação ou janelas sobrepostas",
+              "regra_fronteira": "cada intervalo pertence à janela [início, fim) da sua passagem posterior",
+              "versoes": {
+                "capturas_programacao": [
+                  {
+                    "fonte": "GTFS",
+                    "importacao_id": "4ee6c0aa-3fd8-5a51-b3b6-b07d5ac98323",
+                    "tipo_dia": "UTIL",
+                    "versao_fonte": "controle-2026-11-25-0"
+                  },
+                  {
+                    "fonte": "GTFS",
+                    "importacao_id": "7f67ed4f-6ca5-5dac-b1a3-6cdb2cb93b5c",
+                    "tipo_dia": "UTIL",
+                    "versao_fonte": "controle-2026-11-24-0"
+                  }
+                ],
+                "versao_calculo": "regularidade-1.0",
+                "versao_correspondencia": "correspondencia-controlada-us17",
+                "versao_estimativa": "us15-t01-v1-lacuna120s",
+                "versao_gtfs_id": "23f90508-fa6c-5e60-b0d0-3e2d155558bb",
+                "versao_reconstrucao": "recon-controle-us17",
+                "versoes_conjunto": [
+                  "b7e8d9cec28510a013204e646e977a97",
+                  "d324a20f5b7d8cf02d175c3c0b489fab"
+                ]
+              }
+            },
+            "referencia": "2026-11",
+            "sentido": "0",
+            "situacao": "CALCULADA",
+            "tipo": "REGULARIDADE_INTERVALOS",
+            "trecho": null,
+            "unidade": "CV (adimensional)",
+            "valor": 0.333333,
+            "versao_calculo": "regularidade-1.0",
+            "versao_conjunto": "d903d4ea1e551601ab261a3baf001100",
+            "versao_correspondencia": "correspondencia-controlada-us17",
+            "versao_gtfs_id": "23f90508-fa6c-5e60-b0d0-3e2d155558bb"
+          }
+        ],
+        "paginacao": {
+          "page": 1,
+          "page_size": 100,
+          "total": 1
+        }
+      }
+    },
+    {
+      "id": "C19",
+      "titulo": "Mês com faixa diária",
+      "escala": "mes",
+      "status": "CONFERIU_EXEMPLO",
+      "aceite_institucional": "PENDENTE",
+      "calculo_manual": "Faixa 06:00–07:00: 24/11 360, 360 s; 25/11 720, 720 s (a passagem das 13:20 fica fora da faixa). Média 540; desvio 180; CV = 0,333333.",
+      "consulta": {
+        "tipo": "REGULARIDADE_INTERVALOS",
+        "linha": "SINT-US17",
+        "sentido": "0",
+        "parada": "B",
+        "inicio": "2026-11-24T03:00:00+00:00",
+        "fim": "2026-11-26T03:00:00+00:00",
+        "agregacao": "mes",
+        "hora_inicio": "06:00",
+        "hora_fim": "07:00"
+      },
+      "comparacoes": [
+        {
+          "campo": "http_status",
+          "manual": 200,
+          "obtido": 200,
+          "confere": true
+        },
+        {
+          "campo": "quantidade_itens",
+          "manual": 1,
+          "obtido": 1,
+          "confere": true
+        },
+        {
+          "campo": "cv",
+          "manual": 0.333333,
+          "obtido": 0.333333,
+          "confere": true
+        },
+        {
+          "campo": "agrupamento",
+          "manual": false,
+          "obtido": false,
+          "confere": true
+        },
+        {
+          "campo": "motivo_ausencia",
+          "manual": null,
+          "obtido": null,
+          "confere": true
+        },
+        {
+          "campo": "intervalos",
+          "manual": 4,
+          "obtido": 4,
+          "confere": true
+        },
+        {
+          "campo": "unidade",
+          "manual": "CV (adimensional)",
+          "obtido": "CV (adimensional)",
+          "confere": true
+        },
+        {
+          "campo": "valor_nulo_nao_e_zero",
+          "manual": false,
+          "obtido": false,
+          "confere": true
+        }
+      ],
+      "resposta_api": {
+        "dados": [
+          {
+            "agregacao": "mes",
+            "agrupamento": false,
+            "contagens": {
+              "denominador": null,
+              "numerador": 4
+            },
+            "desvio_padrao_seg": 180.0,
+            "duracao_horas": 2.0,
+            "fim": "2026-11-25T10:00:00+00:00",
+            "indicador": "REGULARIDADE_INTERVALOS",
+            "inicio": "2026-11-24T09:00:00+00:00",
+            "intervalos": 4,
+            "limite_agrupamento": 0.5,
+            "linha": "SINT-US17",
+            "media_intervalo_seg": 540.0,
+            "motivo_ausencia": null,
+            "motivos": [],
+            "parada": "B",
+            "qualidade": {
+              "cobertura": {
+                "janelas": 8,
+                "lacunas": []
+              },
+              "convencao": "CV = desvio padrão populacional (divisor n) ÷ média dos intervalos entre passagens sucessivas, em segundos",
+              "datas_operacao": [
+                "2026-11-24",
+                "2026-11-25"
+              ],
+              "faixa": {
+                "fuso": "America/Sao_Paulo",
+                "hora_fim": "07:00",
+                "hora_inicio": "06:00"
+              },
+              "minimo_passagens": 3,
+              "oferta": "FREQUENCIA",
+              "regra_agregacao": "CV recalculado sobre a união dos intervalos das janelas; NULL se houver janela não confiável, lacuna de publicação ou janelas sobrepostas",
+              "regra_fronteira": "cada intervalo pertence à janela [início, fim) da sua passagem posterior",
+              "versoes": {
+                "capturas_programacao": [
+                  {
+                    "fonte": "GTFS",
+                    "importacao_id": "db03400c-dde6-59e9-9be7-5b35ba9d703e",
+                    "tipo_dia": "UTIL",
+                    "versao_fonte": "controle-2026-11-24-0"
+                  },
+                  {
+                    "fonte": "GTFS",
+                    "importacao_id": "deda92a0-cdee-5d14-933a-bc8dda4ad479",
+                    "tipo_dia": "UTIL",
+                    "versao_fonte": "controle-2026-11-25-0"
+                  }
+                ],
+                "versao_calculo": "regularidade-1.0",
+                "versao_correspondencia": "correspondencia-controlada-us17",
+                "versao_estimativa": "us15-t01-v1-lacuna120s",
+                "versao_gtfs_id": "22a84032-f143-56fc-8bab-fd8b622176c8",
+                "versao_reconstrucao": "recon-controle-us17",
+                "versoes_conjunto": [
+                  "2ba0c72c3301f6b4a0e36dd60744ad9a",
+                  "b30245b31b057cfd02f5b27553958931"
+                ]
+              }
+            },
+            "referencia": "2026-11",
+            "sentido": "0",
+            "situacao": "CALCULADA",
+            "tipo": "REGULARIDADE_INTERVALOS",
+            "trecho": null,
+            "unidade": "CV (adimensional)",
+            "valor": 0.333333,
+            "versao_calculo": "regularidade-1.0",
+            "versao_conjunto": "5d2ffda5a00d15757bc98c495ba47462",
+            "versao_correspondencia": "correspondencia-controlada-us17",
+            "versao_gtfs_id": "22a84032-f143-56fc-8bab-fd8b622176c8"
+          }
+        ],
+        "paginacao": {
+          "page": 1,
+          "page_size": 100,
+          "total": 1
+        }
+      }
+    },
+    {
+      "id": "C20",
+      "titulo": "Mês sem passagens: NULL, não regularidade perfeita",
+      "escala": "mes",
+      "status": "CONFERIU_EXEMPLO",
+      "aceite_institucional": "PENDENTE",
+      "calculo_manual": "Coleta completa e nenhuma passagem em B: zero intervalos. Sem CV; nunca CV 0.",
+      "consulta": {
+        "tipo": "REGULARIDADE_INTERVALOS",
+        "linha": "SINT-US17",
+        "sentido": "0",
+        "parada": "B",
+        "inicio": "2026-11-24T03:00:00+00:00",
+        "fim": "2026-11-26T03:00:00+00:00",
+        "agregacao": "mes"
+      },
+      "comparacoes": [
+        {
+          "campo": "http_status",
+          "manual": 200,
+          "obtido": 200,
+          "confere": true
+        },
+        {
+          "campo": "quantidade_itens",
+          "manual": 1,
+          "obtido": 1,
+          "confere": true
+        },
+        {
+          "campo": "cv",
+          "manual": null,
+          "obtido": null,
+          "confere": true
+        },
+        {
+          "campo": "agrupamento",
+          "manual": null,
+          "obtido": null,
+          "confere": true
+        },
+        {
+          "campo": "motivo_ausencia",
+          "manual": "passagens_insuficientes",
+          "obtido": "passagens_insuficientes",
+          "confere": true
+        },
+        {
+          "campo": "intervalos",
+          "manual": 0,
+          "obtido": 0,
+          "confere": true
+        },
+        {
+          "campo": "unidade",
+          "manual": "CV (adimensional)",
+          "obtido": "CV (adimensional)",
+          "confere": true
+        },
+        {
+          "campo": "valor_nulo_nao_e_zero",
+          "manual": true,
+          "obtido": true,
+          "confere": true
+        }
+      ],
+      "resposta_api": {
+        "dados": [
+          {
+            "agregacao": "mes",
+            "agrupamento": null,
+            "contagens": {
+              "denominador": null,
+              "numerador": 0
+            },
+            "desvio_padrao_seg": null,
+            "duracao_horas": 48.0,
+            "fim": "2026-11-26T03:00:00+00:00",
+            "indicador": "REGULARIDADE_INTERVALOS",
+            "inicio": "2026-11-24T03:00:00+00:00",
+            "intervalos": 0,
+            "limite_agrupamento": 0.5,
+            "linha": "SINT-US17",
+            "media_intervalo_seg": null,
+            "motivo_ausencia": "passagens_insuficientes",
+            "motivos": [
+              "passagens_insuficientes"
+            ],
+            "parada": "B",
+            "qualidade": {
+              "cobertura": {
+                "janelas": 192,
+                "lacunas": []
+              },
+              "convencao": "CV = desvio padrão populacional (divisor n) ÷ média dos intervalos entre passagens sucessivas, em segundos",
+              "datas_operacao": [
+                "2026-11-24",
+                "2026-11-25"
+              ],
+              "faixa": null,
+              "minimo_passagens": 3,
+              "oferta": "FREQUENCIA",
+              "regra_agregacao": "CV recalculado sobre a união dos intervalos das janelas; NULL se houver janela não confiável, lacuna de publicação ou janelas sobrepostas",
+              "regra_fronteira": "cada intervalo pertence à janela [início, fim) da sua passagem posterior",
+              "versoes": {
+                "capturas_programacao": [
+                  {
+                    "fonte": "GTFS",
+                    "importacao_id": "4e015da9-ae56-54f1-97eb-e81f44722d26",
+                    "tipo_dia": "UTIL",
+                    "versao_fonte": "controle-2026-11-25-0"
+                  },
+                  {
+                    "fonte": "GTFS",
+                    "importacao_id": "c19d647a-b1f9-5073-9919-d06554221984",
+                    "tipo_dia": "UTIL",
+                    "versao_fonte": "controle-2026-11-24-0"
+                  }
+                ],
+                "versao_calculo": "regularidade-1.0",
+                "versao_correspondencia": "correspondencia-controlada-us17",
+                "versao_estimativa": "us15-t01-v1-lacuna120s",
+                "versao_gtfs_id": "7cd49dbd-30e9-5b19-9297-7d097d1c0586",
+                "versao_reconstrucao": "recon-controle-us17",
+                "versoes_conjunto": [
+                  "36d37d1d894f74172ce6f0bdac07e380",
+                  "f794a42e33b32c09de67e79467018b2f"
+                ]
+              }
+            },
+            "referencia": "2026-11",
+            "sentido": "0",
+            "situacao": "DADOS_INSUFICIENTES",
+            "tipo": "REGULARIDADE_INTERVALOS",
+            "trecho": null,
+            "unidade": "CV (adimensional)",
+            "valor": null,
+            "versao_calculo": "regularidade-1.0",
+            "versao_conjunto": "bf86eb76375d5d3e63225b7235fe310f",
+            "versao_correspondencia": "correspondencia-controlada-us17",
+            "versao_gtfs_id": "7cd49dbd-30e9-5b19-9297-7d097d1c0586"
+          }
+        ],
+        "paginacao": {
+          "page": 1,
+          "page_size": 100,
+          "total": 1
+        }
+      }
+    }
+  ]
+}
