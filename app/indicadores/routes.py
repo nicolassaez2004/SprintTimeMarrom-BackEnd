@@ -13,6 +13,7 @@ from app.indicadores.frequencia import AGREGACOES, TIPO_PUBLICO, consultar_frequ
 from app.indicadores.service import consultar_indicadores
 from app.qualidade.service import FUSO
 from app.indicadores.series import consultar_series
+from app.indicadores.agenda import estado_atualizacao, marcar_consolidados
 
 indicadores_bp = Blueprint("indicadores", __name__)
 
@@ -195,7 +196,11 @@ def _responder(*, serie=False):
         return _erro("PARAMETRO_INVALIDO", str(erro), 400, erro.campo)
     try:
         if serie:
-            return consultar_series(filtros), 200
+            # US23-T03: estado das agendas lido na mesma transação dos dados.
+            corpo = consultar_series(filtros)
+            corpo["atualizacao"] = estado_atualizacao()
+            marcar_consolidados(corpo["dados"], corpo["atualizacao"])
+            return corpo, 200
         if filtros.get("agregacao"):
             return consultar_frequencias(filtros), 200
         return consultar_indicadores(filtros), 200
