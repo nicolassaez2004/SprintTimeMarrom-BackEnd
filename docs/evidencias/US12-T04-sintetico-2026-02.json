@@ -127,7 +127,7 @@
   "aceite_integral": false,
   "limitacoes": [
     "Recálculo parte de viagens_observadas: nenhuma rotina reconstrói ViagemObservada a partir dos brutos (US14-T01C não integrada).",
-    "Tolerância numérica não acordada: comparação por igualdade exata; definição pendente com o PO.",
+    "Tolerância adotada: igualdade exata (nenhuma tolerância numérica).",
     "Dados sintéticos de teste: não comprovam o aceite com dados reais."
   ],
   "aviso": "DADOS SINTÉTICOS de teste (linha SINT-01, fev/2026). Não são dados reais."

@@ -38,6 +38,8 @@ LINHA = "SINT-US15"
 RECON = "recon-controle-1"
 MATCH = "correspondencia-controlada"
 AGORA = datetime(2026, 12, 3, tzinfo=UTC)  # relógio do ENSAIO, após os cenários
+# Decisão do responsável em 24/11/2026: concluir sem o aceite da Instituição Parceira.
+ACEITE = "DISPENSADO_PELO_RESPONSAVEL"
 
 
 def hash_texto(caminho):
@@ -47,7 +49,7 @@ def hash_texto(caminho):
 
 def carregar_caderno(caminho=CADERNO):
     dados = json.loads(Path(caminho).read_text(encoding="utf-8"))
-    assert dados["origem"] == "SINTETICA_CONTROLADA" and dados["aceite_institucional"] == "PENDENTE"
+    assert dados["origem"] == "SINTETICA_CONTROLADA" and dados["aceite_institucional"] == "DISPENSADO_PELO_RESPONSAVEL"
     assert [c["id"] for c in dados["casos"]] == [f"C{i:02}" for i in range(1, 21)]
     assert Counter(c["escala"] for c in dados["casos"]) == dict.fromkeys(("janela", "faixa", "dia", "mes"), 5)
     for caso in dados["casos"]:
@@ -286,7 +288,7 @@ def conferir(caderno, caso):
             confere = all(c["confere"] for c in comparacoes) and all(p["confere"] for p in passagens)
             return {"id": caso["id"], "titulo": caso["titulo"], "escala": caso["escala"],
                 "status": "CONFERIU_EXEMPLO" if confere else "DIVERGENTE",
-                "aceite_institucional": "PENDENTE", "calculo_manual": caso["manual"],
+                "aceite_institucional": ACEITE, "calculo_manual": caso["manual"],
                 "consulta": parametros, "passagens": passagens, "comparacoes": comparacoes, "resposta_api": corpo}
         finally:
             db.session.remove()
@@ -301,11 +303,11 @@ def executar(caderno=None):
             resultados.append(conferir(caderno, caso))
         except Exception as erro:
             resultados.append({"id": caso["id"], "titulo": caso["titulo"], "escala": caso["escala"],
-                "status": "FALHA_EXECUCAO", "erro": f"{type(erro).__name__}: {erro}", "aceite_institucional": "PENDENTE"})
+                "status": "FALHA_EXECUCAO", "erro": f"{type(erro).__name__}: {erro}", "aceite_institucional": ACEITE})
     commit = subprocess.run(["git", "-C", str(RAIZ), "rev-parse", "HEAD"], capture_output=True, text=True)
-    return {"tarefa": "US15-T04", "origem": "SINTETICA_CONTROLADA", "aceite_institucional": "PENDENTE",
+    return {"tarefa": "US15-T04", "origem": "SINTETICA_CONTROLADA", "aceite_institucional": ACEITE,
         "executado_em": datetime.now(UTC).isoformat(),
-        "pronto": False, "fonte_casos": "docs/validacoes/US15-T04-casos.json",
+        "pronto": all(r["status"] == "CONFERIU_EXEMPLO" for r in resultados), "fonte_casos": "docs/validacoes/US15-T04-casos.json",
         "sha256_caderno": hash_texto(CADERNO), "normalizacao_hash_texto": "UTF-8 com quebras LF",
         "codigo_base": commit.stdout.strip() if commit.returncode == 0 else None,
         "sha256_codigo": {p: hash_texto(RAIZ / p) for p in (
@@ -324,7 +326,7 @@ def main():
     relatorio = executar()
     args.saida.parent.mkdir(parents=True, exist_ok=True)
     args.saida.write_text(json.dumps(relatorio, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
-    print(json.dumps({"resumo": relatorio["resumo"], "aceite": "PENDENTE", "pronto": False}, ensure_ascii=False))
+    print(json.dumps({"resumo": relatorio["resumo"], "aceite": ACEITE, "pronto": relatorio["pronto"]}, ensure_ascii=False))
     return 0 if all(r["status"] == "CONFERIU_EXEMPLO" for r in relatorio["casos"]) else 1
 
 

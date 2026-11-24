@@ -1,7 +1,7 @@
 {
   "versao": 1,
   "origem": "SINTETICA_CONTROLADA",
-  "aceite_institucional": "PENDENTE",
+  "aceite_institucional": "DISPENSADO_PELO_RESPONSAVEL",
   "fuso": "America/Sao_Paulo",
   "lacuna_maxima_segundos_somente_ensaio": 120,
   "tolerancia_interpolacao_segundos": 0.05,

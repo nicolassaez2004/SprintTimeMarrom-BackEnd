@@ -137,10 +137,11 @@ def test_lacuna_temporal_acima_do_limite(cenario):
     assert "B" in por_parada(estimar(cenario, obs, lacuna=timedelta(seconds=121)))
 
 
-def test_limite_de_lacuna_nao_definido_impede_a_estimativa(cenario):
+def test_limite_de_lacuna_nao_definido_impede_a_estimativa(cenario, app):
+    assert app.config["PASSAGEM_LACUNA_MAXIMA_SEG"] == "120"  # padrão adotado
     with pytest.raises(LimiteLacunaIndefinido):
         EstimadorPassagens(None)
-    # O app de teste não define PASSAGEM_LACUNA_MAXIMA_SEG.
+    app.config["PASSAGEM_LACUNA_MAXIMA_SEG"] = None
     with pytest.raises(LimiteLacunaIndefinido):
         estimar_e_gravar(cenario["viagem"], [])
 

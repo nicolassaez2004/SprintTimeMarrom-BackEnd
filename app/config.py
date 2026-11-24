@@ -56,6 +56,6 @@ class Config:
     )
 
     # US15-T01: lacuna máxima (s) entre as duas posições usadas para estimar
-    # uma passagem. Sem padrão de propósito: aguarda decisão do PO e, sem ela,
-    # nenhuma passagem é estimada (docs/US15-T01.md).
-    PASSAGEM_LACUNA_MAXIMA_SEG = os.getenv("PASSAGEM_LACUNA_MAXIMA_SEG") or None
+    # uma passagem. Padrão adotado em 24/11/2026: 120 s (4 ciclos de 30 s), o
+    # valor conferido nos 20 casos da US15-T04 (docs/US15-T01.md).
+    PASSAGEM_LACUNA_MAXIMA_SEG = os.getenv("PASSAGEM_LACUNA_MAXIMA_SEG") or "120"

@@ -309,8 +309,7 @@ class ReproducaoIndicadores:
             limitacoes.append("Recálculo parte de viagens_observadas: nenhuma rotina reconstrói "
                               "ViagemObservada a partir dos brutos (US14-T01C não integrada).")
         if self.tolerancia is None:
-            limitacoes.append("Tolerância numérica não acordada: comparação por igualdade exata; "
-                              "definição pendente com o PO.")
+            limitacoes.append("Tolerância adotada: igualdade exata (nenhuma tolerância numérica).")
         if reprocesso is None:
             limitacoes.append("Base fixada só por leitura (id máximo e hash dos brutos); "
                               "reprocessamento US12-T03 não executado.")
@@ -362,7 +361,7 @@ def main(argv=None):
     parser.add_argument("--versao-codigo", help="padrão: commit git atual")
     parser.add_argument("--versao-regra", default=VERSAO_REGRA)
     parser.add_argument("--tolerancia", type=float,
-                        help="tolerância absoluta acordada com o PO; omitida = igualdade exata")
+                        help="tolerância absoluta; omitida = igualdade exata (padrão adotado)")
     parser.add_argument("--reprocessar-brutos", action="store_true",
                         help="executa o manifesto US12-T03 (grava em execucoes_processamento)")
     parser.add_argument("--saida", type=Path, help="arquivo JSON do relatório de evidências")

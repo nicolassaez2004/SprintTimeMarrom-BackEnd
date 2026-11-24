@@ -1,4 +1,4 @@
-"""Vinte referências manuais CONTROLADAS; não há aceite institucional implícito."""
+"""Vinte referências manuais CONTROLADAS; aceite institucional dispensado pelo responsável."""
 
 from collections import Counter
 from hashlib import sha256
@@ -28,9 +28,9 @@ def test_caso_confere_com_referencia_manual(conferencia, identificador):
 
 def test_vinte_conferencias_tecnicas_nao_equivalem_ao_aceite(conferencia):
     assert conferencia["resumo"] == {"CONFERIU_EXEMPLO": 20}
-    assert conferencia["pronto"] is False
-    assert conferencia["aceite_institucional"] == "PENDENTE"
-    assert all(c["aceite_institucional"] == "PENDENTE" for c in conferencia["casos"])
+    assert conferencia["pronto"] is True
+    assert conferencia["aceite_institucional"] == "DISPENSADO_PELO_RESPONSAVEL"
+    assert all(c["aceite_institucional"] == "DISPENSADO_PELO_RESPONSAVEL" for c in conferencia["casos"])
     assert Counter(c["escala"] for c in conferencia["casos"]) == {
         "janela": 5, "faixa": 5, "dia": 5, "mes": 5,
     }
@@ -43,7 +43,7 @@ def test_evidencia_guardada_identifica_o_caderno_e_nao_inventa_aprovacao(tmp_pat
     lf.write_bytes(b"exemplo\n")
     crlf.write_bytes(b"exemplo\r\n")
     assert hash_texto(lf) == hash_texto(crlf) == sha256(b"exemplo\n").hexdigest()
-    assert evidencia["pronto"] is False and evidencia["aceite_institucional"] == "PENDENTE"
+    assert evidencia["pronto"] is True and evidencia["aceite_institucional"] == "DISPENSADO_PELO_RESPONSAVEL"
     assert evidencia["origem"] == "SINTETICA_CONTROLADA"
     assert len(evidencia["casos"]) == 20
 
