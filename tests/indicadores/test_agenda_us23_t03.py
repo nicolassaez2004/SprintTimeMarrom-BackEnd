@@ -9,6 +9,7 @@ from datetime import date, datetime, timedelta, timezone
 import pytest
 
 from app import db
+from app.exportacoes.csv import arquivo_indicadores_completo
 from app.gtfs.scheduler import executar_tarefas
 from app.indicadores import agenda
 from app.indicadores.agenda import (
@@ -79,6 +80,9 @@ def test_relogio_controlado_comprova_15_minutos_e_consolidacao_ate_06h(viagens, 
     assert consolidacao.finalizada_em < datetime(2026, 11, 25, 9, tzinfo=UTC)
     assert consolidacao.parametros["no_prazo"] is True
     assert consolidacao.parametros["janelas"] == 96
+    arquivo = arquivo_indicadores_completo(date(2026, 11, 24))
+    assert arquivo is not None
+    assert arquivo["recibo"]["execucao_id"] == consolidacao.id
 
 
 def test_falha_no_meio_nao_publica_conjunto_parcial(viagens, app, monkeypatch):

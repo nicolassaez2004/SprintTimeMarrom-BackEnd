@@ -1,0 +1,11 @@
+{
+  "status_http": 404,
+  "data": {
+    "erro": {
+      "codigo": "PERIODO_AINDA_NAO_CONSOLIDADO",
+      "mensagem": "O CSV deste período ainda não foi consolidado e publicado.",
+      "data": "2026-11-25",
+      "previsto_em": "2026-11-26T06:00:00-03:00"
+    }
+  }
+}

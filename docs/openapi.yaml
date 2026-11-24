@@ -50,6 +50,74 @@ paths:
           content:
             application/json:
               schema: { type: object, additionalProperties: true }
+  /downloads/indicadores:
+    get:
+      operationId: baixarIndicadoresCSV
+      summary: Baixar indicadores diários consolidados em CSV
+      description: >-
+        Serve o arquivo diário publicado após a consolidação US23-T03. Informe
+        `data` ou `inicio` e `fim` dentro do mesmo dia de America/Sao_Paulo.
+        Pode filtrar linha, sentido e tipo. O dia só é anunciado após a
+        consolidação e publicação; enquanto indisponível, a API retorna JSON
+        404, nunca um CSV vazio de sucesso. Disponibilidade prevista até 06:00
+        de D+1 no horário de São Paulo.
+      security: []
+      parameters:
+        - name: formato
+          in: query
+          required: true
+          description: Formato de saída.
+          schema: { type: string, enum: [csv] }
+        - name: data
+          in: query
+          required: false
+          description: Dia operacional AAAA-MM-DD em America/Sao_Paulo; exclusivo com inicio/fim.
+          schema: { type: string, format: date }
+        - $ref: '#/components/parameters/linha'
+        - $ref: '#/components/parameters/sentido'
+        - $ref: '#/components/parameters/tipo'
+        - $ref: '#/components/parameters/indicador'
+        - $ref: '#/components/parameters/parada'
+        - $ref: '#/components/parameters/trecho'
+        - $ref: '#/components/parameters/versao_gtfs_id'
+        - $ref: '#/components/parameters/inicio'
+        - $ref: '#/components/parameters/fim'
+      responses:
+        '200':
+          description: CSV filtrado de um dia consolidado; campos vazios representam nulos.
+          headers:
+            X-Fonte: { schema: { type: string } }
+            X-Fonte-URL: { schema: { type: string, format: uri } }
+            X-Licenca: { schema: { type: string } }
+            X-Licenca-URL: { schema: { type: string, format: uri } }
+            X-Disponibilizado-Em: { schema: { type: string, format: date-time }, description: Instante de publicação do arquivo diário. }
+            X-Total-Registros: { schema: { type: integer, minimum: 0 } }
+            Link: { schema: { type: string }, description: Link rel=describedby para os metadados do arquivo. }
+          content:
+            text/csv:
+              schema: { type: string, format: binary }
+        '400': { $ref: '#/components/responses/ParametroInvalido' }
+        '404':
+          description: Consolidação ainda não publicada ou indisponível.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Erro' }
+        '503':
+          description: Não foi possível verificar ou ler o arquivo publicado.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Erro' }
+  /downloads/indicadores/metadados:
+    get:
+      operationId: consultarMetadadosCSVIndicadores
+      summary: Consultar fonte, condições de uso e formato do CSV
+      security: []
+      responses:
+        '200':
+          description: Metadados aplicáveis ao download CSV.
+          content:
+            application/json:
+              schema: { type: object, additionalProperties: true }
   /indicadores:
     get:
       operationId: listarIndicadores
@@ -321,7 +389,15 @@ components:
       name: tipo
       in: query
       required: false
-      description: Tipo de indicador; inclui PONTUALIDADE_VIAGENS, FREQUENCIA_OBSERVADA, FREQUENCIA_PROGRAMADA FREQUENCIA (observada e programada lado a lado, com agregacao) REGULARIDADE_INTERVALOS (US17, CV dos intervalos entre passagens da oferta por frequência, por parada, com agregacao, agrupamento e motivo_ausencia) e ESPERA (US18, espera_estimada e excesso_espera separados, em min, por parada; as janelas publicadas são ESPERA_ESTIMADA e EXCESSO_ESPERA). Na pontualidade, numerador conta saídas entre -60 s e +300 s, denominador inclui viagens fixas classificáveis; dados insuficientes são indicados em qualidade e valor null. Alias indicador preservado por compatibilidade.
+      description: >-
+        Tipo de indicador; inclui PONTUALIDADE_VIAGENS, FREQUENCIA_OBSERVADA,
+        FREQUENCIA_PROGRAMADA FREQUENCIA (observada e programada lado a lado,
+        com agregacao) e REGULARIDADE_INTERVALOS (US17: CV dos intervalos entre
+        passagens da oferta por frequência, por parada, com agregacao,
+        agrupamento e motivo_ausencia). Na pontualidade, numerador conta saídas
+        entre -60 s e +300 s, denominador inclui viagens fixas classificáveis;
+        dados insuficientes são indicados em qualidade e valor null. Alias
+        indicador preservado por compatibilidade.
       schema: { type: string, pattern: '^[A-Za-z0-9_.:-]{1,64}$' }
     indicador:
       name: indicador

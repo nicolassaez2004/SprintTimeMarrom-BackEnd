@@ -57,7 +57,11 @@ def create_app(config_extra=None):
     origens_frontend = ["http://localhost:5173", "http://127.0.0.1:5173"]
     CORS(
         app,
-        expose_headers=["ETag", "Retry-After", "X-RateLimit-Limit", "X-RateLimit-Remaining", "X-RateLimit-Reset"],
+        expose_headers=[
+            "ETag", "Retry-After", "X-RateLimit-Limit", "X-RateLimit-Remaining",
+            "X-RateLimit-Reset", "X-Fonte", "X-Fonte-URL", "X-Licenca",
+            "X-Licenca-URL", "X-Disponibilizado-Em", "X-Total-Registros",
+        ],
         resources={
             r"/api/*": {
                 "origins": origens_frontend
