@@ -107,7 +107,10 @@ paths:
       description: >-
         US23-T01. Somente janelas persistidas inteiramente contidas no período
         [inicio,fim) e na faixa diária em America/Sao_Paulo. Sem período consulta
-        desde o início conhecido da coleta. Não recalcula nem fatia agregados.
+        desde o início conhecido da coleta. consulta.inicio/fim são o período
+        efetivo, recortado ao histórico (primeira coleta/indicador até o último
+        ciclo/indicador); fora dele não há lacuna, e ambos são null quando o
+        período pedido não cruza o histórico. Não recalcula nem fatia agregados.
         Zero é valor; null é ausência. Lacunas acompanham os registros da página,
         considerando registros anteriores à paginação e sobreposições. Até 200
         lacunas por página; consulta.lacunas_truncadas pede reduzir o período.
