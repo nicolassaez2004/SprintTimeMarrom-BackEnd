@@ -1,7 +1,7 @@
 {
   "tarefa": "US17-T03B",
   "origem": "SINTETICA_CONTROLADA",
-  "aceite_institucional": "PENDENTE",
+  "aceite_institucional": "DISPENSADO_PELO_RESPONSAVEL",
   "convencao": "CV = desvio padrão populacional (divisor n) ÷ média dos intervalos em segundos; agrupamento só com CV > 0,5; NULL com menos de 3 passagens",
   "regra_fronteira": "cada intervalo pertence à janela [início, fim) da passagem posterior",
   "tempos": "minutos (com fração) desde a meia-noite de America/Sao_Paulo da data operacional",

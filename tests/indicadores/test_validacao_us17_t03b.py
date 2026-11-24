@@ -20,11 +20,12 @@ def test_caso_confere_com_calculo_manual(conferencia, identificador):
         "erro": caso.get("erro"), "divergencias": [c for c in caso.get("comparacoes", []) if not c["confere"]]}
 
 
-def test_quatro_escalas_e_aceite_externo_nao_inventado(conferencia):
+def test_quatro_escalas_e_aceite_externo_dispensado(conferencia):
     assert conferencia["resumo"] == {"CONFERIU_EXEMPLO": 20}
     assert Counter(c["escala"] for c in conferencia["casos"]) == {"janela": 5, "faixa": 5, "dia": 5, "mes": 5}
-    assert conferencia["aceite_institucional"] == "PENDENTE"
-    assert conferencia["envio_instituicao_parceira"] == "NAO_ENVIADO_PELO_SCRIPT"
+    assert conferencia["aceite_institucional"] == "DISPENSADO_PELO_RESPONSAVEL"
+    assert conferencia["envio_instituicao_parceira"] == "DISPENSADO_PELO_RESPONSAVEL"
+    assert conferencia["pronto"] is True
 
 
 def test_evidencia_guardada_corresponde_ao_caderno():

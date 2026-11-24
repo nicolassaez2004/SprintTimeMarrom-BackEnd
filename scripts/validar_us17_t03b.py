@@ -223,7 +223,8 @@ def executar(caderno=None):
     commit = subprocess.run(["git", "-C", str(RAIZ), "rev-parse", "HEAD"], capture_output=True, text=True)
     return {"tarefa": "US17-T03B", "origem": caderno["origem"], "executado_em": datetime.now(UTC).isoformat(),
             "aceite_institucional": caderno["aceite_institucional"],
-            "envio_instituicao_parceira": "NAO_ENVIADO_PELO_SCRIPT",
+            "envio_instituicao_parceira": "DISPENSADO_PELO_RESPONSAVEL",
+            "pronto": all(r["status"] == "CONFERIU_EXEMPLO" for r in resultados),
             "fonte_casos": "docs/validacoes/US17-T03B-casos.json", "sha256_caderno": hash_texto(CADERNO),
             "codigo_base": commit.stdout.strip() if commit.returncode == 0 else None,
             "banco": "SQLite em memória; FK ON; sem Aiven", "relogio_ensaio": AGORA.isoformat(),
@@ -236,7 +237,8 @@ def main():
     args = parser.parse_args()
     relatorio = executar()
     args.saida.write_text(json.dumps(relatorio, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
-    print(json.dumps({"resumo": relatorio["resumo"], "aceite": relatorio["aceite_institucional"]}, ensure_ascii=False))
+    print(json.dumps({"resumo": relatorio["resumo"], "aceite": relatorio["aceite_institucional"],
+                      "pronto": relatorio["pronto"]}, ensure_ascii=False))
     return 0 if relatorio["resumo"] == {"CONFERIU_EXEMPLO": 20} else 1
 
 
