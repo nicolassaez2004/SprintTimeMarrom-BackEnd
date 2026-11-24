@@ -20,7 +20,7 @@ def _erro(codigo, mensagem, status, campo=None):
 
 def _ler_filtros(parametros):
     for campo in parametros:
-        if campo not in ("linha", "linha_gtfs"):
+        if campo not in ("linha", "linha_gtfs", "modo"):
             return None, _erro("FILTRO_INVALIDO", "Filtro não reconhecido.", 400, campo)
         if len(parametros.getlist(campo)) != 1:
             return None, _erro("FILTRO_INVALIDO", "Informe cada filtro uma única vez.", 400, campo)
@@ -34,7 +34,13 @@ def _ler_filtros(parametros):
                              or any(ord(c) < 32 or ord(c) == 127 for c in gtfs)):
         return None, _erro("FILTRO_INVALIDO",
                            "Informe um código GTFS com até 64 caracteres, sem controles.", 400, "linha_gtfs")
-    return {"linha": linha, "linha_gtfs": gtfs}, None
+    modo = parametros.get("modo")
+    if modo not in (None, "ultima_coleta"):
+        return None, _erro("FILTRO_INVALIDO", "Modo de posições não reconhecido.", 400, "modo")
+    filtros = {"linha": linha, "linha_gtfs": gtfs}
+    if modo:
+        filtros["ultima_coleta"] = True
+    return filtros, None
 
 
 @posicoes_bp.get("/posicoes/atuais")

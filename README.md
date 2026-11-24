@@ -32,6 +32,12 @@ flask --app app db upgrade   # aplica as migrações em migrations/versions/
 python app.py
 ```
 
+Com o ambiente e o `.env` configurados, abra `app.py` no VS Code e clique em
+**Executar Arquivo Python**. A API e a coleta de ônibus começam juntas usando
+o MySQL definido no `.env`. Depois, execute `servidor.py` no frontend.
+O mapa consulta o último ciclo com posições gravadas por meio de
+`GET /posicoes/atuais?modo=ultima_coleta`.
+
 O servidor inicia em `http://127.0.0.1:5000`. Verifique com `GET /health`, que
 responde `{"status": "ok"}`. O Flask não cria `/docs` automaticamente.
 

@@ -42,7 +42,7 @@ def _linha_gtfs(observacao, linha):
     }
 
 
-def ultimas_posicoes(*, linha=None, linha_gtfs=None, agora=None):
+def ultimas_posicoes(*, linha=None, linha_gtfs=None, agora=None, ultima_coleta=False):
     """`linha` = código Olho Vivo (`cl`); `linha_gtfs` = `route_id` ligado na US03."""
     agora = agora or agora_utc()
     desde = agora - JANELA_CONSULTA
@@ -61,18 +61,49 @@ def ultimas_posicoes(*, linha=None, linha_gtfs=None, agora=None):
         .order_by(ultima.coletado_em.desc(), ultima.id.desc())
         .limit(1).correlate(Veiculo).scalar_subquery()
     )
+    consulta = db.session.query(R, ObservacaoTratada, Linha)
+    if ultima_coleta:
+        ultimo_ciclo_id = (
+            select(ExecucaoColeta.id)
+            .where(
+                ExecucaoColeta.estado == "OK",
+                ExecucaoColeta.novos_persistidos > 0,
+                ExecucaoColeta.iniciada_em.between(desde, agora),
+            )
+            .order_by(ExecucaoColeta.iniciada_em.desc(), ExecucaoColeta.id.desc())
+            .limit(1).scalar_subquery()
+        )
+        consulta = consulta.select_from(R).filter(
+            R.execucao_id == ultimo_ciclo_id,
+            R.veiculo_prefixo.is_not(None), R.latitude.is_not(None),
+            R.longitude.is_not(None), R.horario_gps.is_not(None),
+            R.coletado_em.between(desde, agora),
+        )
+    else:
+        consulta = consulta.select_from(Veiculo).join(R, R.id == ultimo_id)
+
     consulta = (
-        db.session.query(R, ObservacaoTratada, Linha)
-        .select_from(Veiculo)
-        .join(R, R.id == ultimo_id)
-        .outerjoin(ObservacaoTratada, ObservacaoTratada.bruto_id == R.id)
+        consulta.outerjoin(ObservacaoTratada, ObservacaoTratada.bruto_id == R.id)
         .outerjoin(Linha, and_(Linha.versao_gtfs_id == ObservacaoTratada.versao_gtfs_id,
                                Linha.codigo == ObservacaoTratada.linha_codigo))
-        .order_by(R.veiculo_prefixo)
     )
-    # A subconsulta já escolhe um registro por veículo (empate no ciclo: maior id).
+    if not ultima_coleta:
+        consulta = consulta.order_by(R.veiculo_prefixo)
+    if ultima_coleta:
+        por_prefixo = {}
+        for registro, observacao, linha_rede in consulta:
+            prefixo = registro.veiculo_prefixo
+            anterior = por_prefixo.get(prefixo)
+            if anterior is None or (registro.coletado_em, registro.id) > (
+                anterior[0].coletado_em, anterior[0].id
+            ):
+                por_prefixo[prefixo] = (registro, observacao, linha_rede)
+        registros = sorted(por_prefixo.values(), key=lambda resultado: resultado[0].veiculo_prefixo)
+    else:
+        registros = consulta
+
     veiculos = []
-    for registro, observacao, linha_rede in consulta:
+    for registro, observacao, linha_rede in registros:
         gtfs = _linha_gtfs(observacao, linha_rede)
         if linha is not None and registro.linha_origem != linha:
             continue
@@ -94,7 +125,7 @@ def ultimas_posicoes(*, linha=None, linha_gtfs=None, agora=None):
             "recente": idade <= LIMITE_RECENTE_SEGUNDOS,
         })
 
-    ultima_coleta = (
+    ultima_coleta_ok = (
         db.session.query(func.max(ExecucaoColeta.iniciada_em))
         .filter(ExecucaoColeta.estado == "OK").scalar()
     )
@@ -103,7 +134,7 @@ def ultimas_posicoes(*, linha=None, linha_gtfs=None, agora=None):
         "filtros": {"linha": linha, "linha_gtfs": linha_gtfs},
         "limite_recente_segundos": LIMITE_RECENTE_SEGUNDOS,
         "janela_consulta_inicio": _iso(desde),
-        "ultima_coleta_ok_em": _iso(ultima_coleta),
+        "ultima_coleta_ok_em": _iso(ultima_coleta_ok),
         "total": len(veiculos),
         "veiculos": veiculos,
     }
