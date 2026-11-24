@@ -10,6 +10,7 @@ from sqlalchemy.exc import SQLAlchemyError
 from app import db
 from app.core.limites import IdentidadeIPInvalida, consumir_limite, identificar_ip
 from app.indicadores.frequencia import AGREGACOES, TIPO_PUBLICO, consultar_frequencias
+from app.indicadores.regularidade import REGULARIDADE, consultar_regularidade
 from app.indicadores.service import consultar_indicadores
 from app.qualidade.service import FUSO
 from app.indicadores.series import consultar_series
@@ -76,7 +77,9 @@ def _ler_instante(args, campo):
 
 
 def ler_filtros(args, *, serie=False):
-    frequencia = not serie and (args.get("tipo") or args.get("indicador") or "").strip() == TIPO_PUBLICO
+    # Frequência (US15-T03) e regularidade (US17-T03A) aceitam faixa e agregação.
+    frequencia = not serie and (args.get("tipo") or args.get("indicador") or "").strip() in (
+        TIPO_PUBLICO, REGULARIDADE)
     permitidos = (_PARAMETROS | ({"hora_inicio", "hora_fim"} if serie or frequencia else set())
                   | ({"agregacao"} if frequencia else set()))
     for campo in args:
@@ -166,9 +169,9 @@ def _ler_agregacao(args, filtros):
     if agregacao not in AGREGACOES:
         raise ParametroInvalido("agregacao", "Use janela, faixa, dia ou mes.")
     if filtros["linha"] is None:
-        raise ParametroInvalido("linha", "Informe a linha para consultar a frequência.")
+        raise ParametroInvalido("linha", "Informe a linha para consultar a frequência ou a regularidade.")
     if filtros["trecho"] is not None:
-        raise ParametroInvalido("trecho", "A frequência é publicada por parada, não por trecho.")
+        raise ParametroInvalido("trecho", "Frequência e regularidade são publicadas por parada, não por trecho.")
     if inicio is None or fim is None or fim - inicio > timedelta(days=31):
         raise ParametroInvalido("inicio", "Informe inicio e fim, com até 31 dias entre eles.")
     if agregacao != "janela" and fim == inicio:
@@ -201,6 +204,8 @@ def _responder(*, serie=False):
             corpo["atualizacao"] = estado_atualizacao()
             marcar_consolidados(corpo["dados"], corpo["atualizacao"])
             return corpo, 200
+        if filtros.get("agregacao") and filtros["tipo"] == REGULARIDADE:
+            return consultar_regularidade(filtros), 200
         if filtros.get("agregacao"):
             return consultar_frequencias(filtros), 200
         return consultar_indicadores(filtros), 200

@@ -290,6 +290,8 @@ components:
         dia e mes (hora opcional) agrupam por data operacional, somam contagens e recalculam
         passagens/h pela soma das durações. Nas agregações, inicio e fim são meias-noites de America/Sao_Paulo.
         Janela nula, lacuna de publicação ou conjuntos sobrepostos tornam o agregado null, com motivos.
+        Também com tipo=REGULARIDADE_INTERVALOS (US17-T03A), com as mesmas exigências: o CV é
+        recalculado sobre a união dos intervalos das janelas, nunca pela média dos CVs.
       schema: { type: string, enum: [janela, faixa, dia, mes], default: janela }
     hora_inicio:
       name: hora_inicio
@@ -317,7 +319,7 @@ components:
       name: tipo
       in: query
       required: false
-      description: Tipo de indicador; inclui PONTUALIDADE_VIAGENS, FREQUENCIA_OBSERVADA, FREQUENCIA_PROGRAMADA e FREQUENCIA (observada e programada lado a lado, com agregacao). Na pontualidade, numerador conta saídas entre -60 s e +300 s, denominador inclui viagens fixas classificáveis; dados insuficientes são indicados em qualidade e valor null. Alias indicador preservado por compatibilidade.
+      description: Tipo de indicador; inclui PONTUALIDADE_VIAGENS, FREQUENCIA_OBSERVADA, FREQUENCIA_PROGRAMADA FREQUENCIA (observada e programada lado a lado, com agregacao) e REGULARIDADE_INTERVALOS (US17: CV dos intervalos entre passagens da oferta por frequência, por parada, com agregacao, agrupamento e motivo_ausencia). Na pontualidade, numerador conta saídas entre -60 s e +300 s, denominador inclui viagens fixas classificáveis; dados insuficientes são indicados em qualidade e valor null. Alias indicador preservado por compatibilidade.
       schema: { type: string, pattern: '^[A-Za-z0-9_.:-]{1,64}$' }
     indicador:
       name: indicador
@@ -399,11 +401,27 @@ components:
         versao_calculo: { type: string, nullable: true }
         contagens: { $ref: '#/components/schemas/Contagens' }
         qualidade: { $ref: '#/components/schemas/Qualidade' }
-        agregacao: { type: string, enum: [janela, faixa, dia, mes], description: Somente em tipo=FREQUENCIA. }
-        referencia: { type: string, description: 'Data operacional (AAAA-MM-DD) ou mês (AAAA-MM); somente em tipo=FREQUENCIA.' }
+        agregacao: { type: string, enum: [janela, faixa, dia, mes], description: Somente em tipo=FREQUENCIA ou REGULARIDADE_INTERVALOS. }
+        referencia: { type: string, description: 'Data operacional (AAAA-MM-DD) ou mês (AAAA-MM); somente em tipo=FREQUENCIA ou REGULARIDADE_INTERVALOS.' }
         duracao_horas: { type: number, description: Soma das durações das janelas usadas como denominador. }
         observada: { $ref: '#/components/schemas/LadoFrequencia' }
         programada: { $ref: '#/components/schemas/LadoFrequencia' }
+        agrupamento:
+          type: boolean
+          nullable: true
+          description: 'Somente em tipo=REGULARIDADE_INTERVALOS: true só com CV > 0,5 (0,5 não é agrupamento); null sem CV.'
+        limite_agrupamento: { type: number, example: 0.5 }
+        situacao: { type: string, description: 'REGULARIDADE_INTERVALOS: CALCULADA, DADOS_INSUFICIENTES, DADOS_AUSENTES ou CONJUNTOS_INCOMPATIVEIS.' }
+        motivo_ausencia:
+          type: string
+          nullable: true
+          description: >-
+            REGULARIDADE_INTERVALOS com valor null: passagens_insuficientes (menos de 3 passagens),
+            media_invalida, oferta_sem_frequencia, lacuna_maxima_indefinida, coleta_<situação>,
+            sem_evidencia_gps, estimativa_nao_executada, sem_publicacao ou janelas_sobrepostas.
+        intervalos: { type: integer, nullable: true, description: 'Intervalos entre passagens usados no CV.' }
+        media_intervalo_seg: { type: number, nullable: true }
+        desvio_padrao_seg: { type: number, nullable: true, description: 'Desvio padrão populacional (divisor n).' }
     LadoFrequencia:
       type: object
       description: 'US15-T03: valor null nunca é zero; motivos e cobertura explicam a ausência.'

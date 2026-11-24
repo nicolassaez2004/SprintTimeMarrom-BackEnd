@@ -75,8 +75,11 @@ class CalculoFrequencia:
                    "versao_fonte": importacao.versao_fonte, "tipo_dia": importacao.tipo_dia}
         return captura, [p.saida_prevista for p in importacao.partidas], None
 
-    def _passagens(self):
-        """{parada: [instantes]} sem repetir a mesma evidência GPS."""
+    def _passagens(self, tipo_oferta=None):
+        """{parada: [instantes]} sem repetir a mesma evidência GPS.
+
+        ``tipo_oferta`` restringe às viagens cujas partidas têm essa oferta
+        (US17: regularidade só entre passagens da oferta por frequência)."""
         P, V, Pt, I = PassagemEstimada, ViagemObservada, PartidaProgramada, ImportacaoProgramacao
         linhas = (
             db.session.query(P.parada_codigo, P.posicao_anterior_id, P.posicao_posterior_id,
@@ -89,7 +92,8 @@ class CalculoFrequencia:
                     V.versao_reconstrucao == self.versoes["versao_reconstrucao"],
                     V.versao_correspondencia == self.versoes["versao_correspondencia"],
                     I.versao_gtfs_id == self.versao_gtfs_id, I.linha_codigo == self.linha,
-                    I.sentido == self.sentido, I.data_operacao == self.data)
+                    I.sentido == self.sentido, I.data_operacao == self.data,
+                    *([Pt.tipo_oferta == tipo_oferta] if tipo_oferta else []))
             .group_by(P.parada_codigo, P.posicao_anterior_id, P.posicao_posterior_id)
             .all()
         )
@@ -271,6 +275,8 @@ class PublicacaoFrequencia:
     publicadas e a taxa é recalculada pela soma das suas durações.
     """
 
+    INDICADORES = (OBSERVADA, PROGRAMADA)
+
     def __init__(self, filtros):
         self.f = filtros
         self.agregacao = filtros.get("agregacao") or "janela"
@@ -280,7 +286,7 @@ class PublicacaoFrequencia:
 
     def _registros(self):
         I = IndicadorOperacional
-        consulta = consulta_base({**self.f, "tipo": None}).filter(I.indicador.in_((OBSERVADA, PROGRAMADA)))
+        consulta = consulta_base({**self.f, "tipo": None}).filter(I.indicador.in_(self.INDICADORES))
         if self.agregacao == "janela":
             consulta = filtrar_periodo(consulta, self.f)
         else:  # +1 dia: janelas após 24h da última data operacional
