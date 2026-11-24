@@ -390,6 +390,8 @@ class Trecho(db.Model):
             "versao_gtfs_id", "linha_codigo", "trajeto", "ordem",
             name="uq_trechos_trajeto_ordem",
         ),
+        UniqueConstraint("id", "versao_gtfs_id", "linha_codigo",
+                         name="uq_trechos_id_versao_linha"),
         CheckConstraint("ordem >= 1", name="ck_trechos_ordem"),
     )
 
@@ -773,6 +775,40 @@ class LimiteConsultaIP(db.Model):
     tentativas = db.Column(db.Integer, nullable=False)
 
 
+class ViagemObservada(db.Model):
+    """Reconstrução versionada da viagem associada a uma partida programada.
+
+    US14-T01C é responsável por produzir a observação. Este registro contém
+    os fatos mínimos usados pelo cálculo de cumprimento, sem tocar no GPS bruto.
+    """
+
+    __tablename__ = "viagens_observadas"
+    __table_args__ = (
+        UniqueConstraint("partida_programada_id", "versao_reconstrucao",
+                         name="uq_viagem_observada_partida_versao"),
+        CheckConstraint("cobertura_tracado BETWEEN 0 AND 1",
+                        name="ck_viagem_observada_cobertura"),
+        CheckConstraint("fim_observado IS NULL OR fim_observado >= saida_observada",
+                        name="ck_viagem_observada_intervalo"),
+        Index("ix_viagens_observadas_reconstrucao", "versao_reconstrucao"),
+    )
+
+    id = db.Column(db.String(36), primary_key=True, default=lambda: str(uuid4()))
+    partida_programada_id = db.Column(
+        db.String(36), db.ForeignKey("partidas_programadas.id",
+                                     name="fk_viagem_observada_partida", ondelete="RESTRICT"),
+        nullable=False, index=True,
+    )
+    saida_observada = db.Column(UTCDateTime, nullable=False)
+    fim_observado = db.Column(UTCDateTime, nullable=True)
+    cobertura_tracado = db.Column(Double, nullable=False)
+    versao_reconstrucao = db.Column(db.String(128), nullable=False)
+    versao_correspondencia = db.Column(db.String(128), nullable=False)
+    qualidade = db.Column(db.JSON, nullable=False, default=dict)
+
+    partida_programada = db.relationship("PartidaProgramada")
+
+
 class IndicadorOperacional(db.Model):
     """Valor publicado e versionado para a API pública (US11/US14).
 
@@ -782,25 +818,65 @@ class IndicadorOperacional(db.Model):
 
     __tablename__ = "indicadores_operacionais"
     __table_args__ = (
+        db.ForeignKeyConstraint(
+            ["versao_gtfs_id", "linha_codigo"],
+            ["linhas.versao_gtfs_id", "linhas.codigo"],
+            name="fk_indicadores_linha_gtfs", ondelete="RESTRICT",
+        ),
+        db.ForeignKeyConstraint(
+            ["versao_gtfs_id", "parada_codigo"],
+            ["paradas.versao_gtfs_id", "paradas.codigo"],
+            name="fk_indicadores_parada_gtfs", ondelete="RESTRICT",
+        ),
+        db.ForeignKeyConstraint(
+            ["trecho_id", "versao_gtfs_id", "linha_codigo"],
+            ["trechos.id", "trechos.versao_gtfs_id", "trechos.linha_codigo"],
+            name="fk_indicadores_trecho_linha", ondelete="RESTRICT",
+        ),
         UniqueConstraint(
-            "linha_codigo", "indicador", "periodo_inicio", "periodo_fim",
-            "versao_conjunto", name="uq_indicador_publicado_periodo_versao",
+            "chave_resultado", name="uq_indicadores_chave_resultado",
         ),
         CheckConstraint("periodo_fim > periodo_inicio", name="ck_indicador_periodo"),
-        Index("ix_indicadores_linha_indicador_inicio", "linha_codigo", "indicador", "periodo_inicio"),
+        CheckConstraint("parada_codigo IS NULL OR trecho_id IS NULL",
+                        name="ck_indicador_parada_ou_trecho"),
+        CheckConstraint("sentido IS NULL OR sentido IN ('0', '1')",
+                        name="ck_indicador_sentido"),
+        CheckConstraint("contagem_numerador IS NULL OR contagem_numerador >= 0",
+                        name="ck_indicador_numerador"),
+        CheckConstraint("contagem_denominador IS NULL OR contagem_denominador >= 0",
+                        name="ck_indicador_denominador"),
+        CheckConstraint("contagem_numerador IS NULL OR contagem_denominador IS NULL OR "
+                        "contagem_numerador <= contagem_denominador",
+                        name="ck_indicador_contagens"),
+        CheckConstraint("contagem_denominador IS NULL OR contagem_denominador > 0 OR valor IS NULL",
+                        name="ck_indicador_denominador_zero_sem_valor"),
+        Index("ix_indicadores_linha_sentido_tipo_periodo", "linha_codigo", "sentido", "indicador", "periodo_inicio"),
+        Index("ix_indicadores_parada_periodo", "parada_codigo", "periodo_inicio"),
+        Index("ix_indicadores_trecho_periodo", "trecho_id", "periodo_inicio"),
         Index("ix_indicadores_versao", "versao_conjunto"),
     )
 
     id = db.Column(db.String(36), primary_key=True, default=lambda: str(uuid4()))
-    linha_codigo = db.Column(db.String(64), nullable=False)
+    chave_resultado = db.Column(db.String(64), nullable=False,
+                                 default=lambda: uuid4().hex)
+    versao_gtfs_id = db.Column(db.String(36), nullable=False)
+    linha_codigo = db.Column(CodigoGTFS, nullable=False)
+    sentido = db.Column(db.String(1), nullable=True)
+    parada_codigo = db.Column(CodigoGTFS, nullable=True)
+    trecho_id = db.Column(db.String(36), nullable=True)
     indicador = db.Column(db.String(64), nullable=False)
-    valor = db.Column(Double, nullable=False)
+    valor = db.Column(Double, nullable=True)
     unidade = db.Column(db.String(32), nullable=False)
     periodo_inicio = db.Column(UTCDateTime, nullable=False)
     periodo_fim = db.Column(UTCDateTime, nullable=False)
+    contagem_numerador = db.Column(db.BigInteger, nullable=True)
+    contagem_denominador = db.Column(db.BigInteger, nullable=True)
     versao_conjunto = db.Column(db.String(128), nullable=False)
+    versao_correspondencia = db.Column(db.String(128), nullable=True)
+    versao_calculo = db.Column(db.String(128), nullable=True)
     qualidade = db.Column(db.JSON, nullable=False, default=dict)
     publicado_em = db.Column(UTCDateTime, nullable=False, default=agora_utc)
+
 
 
 # US05: documento novo catalogado em até 30 dias após a descoberta.

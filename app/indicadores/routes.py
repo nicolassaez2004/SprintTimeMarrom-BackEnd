@@ -50,7 +50,10 @@ def informar_limite(resposta):
         resposta.headers["Cache-Control"] = "no-store"
     return resposta
 
-_PARAMETROS = {"linha", "indicador", "inicio", "fim", "page", "page_size"}
+_PARAMETROS = {
+    "linha", "sentido", "tipo", "indicador", "parada", "trecho",
+    "versao_gtfs_id", "inicio", "fim", "page", "page_size",
+}
 _INSTANTE = re.compile(r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})$")
 _CODIGO = re.compile(r"^[A-Za-z0-9_.:-]{1,64}$")
 PAGE_SIZE_MAX = 100
@@ -81,11 +84,33 @@ def ler_filtros(args):
             raise ParametroInvalido(campo, "Informe cada parâmetro uma única vez.")
 
     linha = args.get("linha", "").strip() or None
-    if linha is not None and not re.fullmatch(r"[0-9]{1,16}", linha):
-        raise ParametroInvalido("linha", "Informe o código numérico da linha com até 16 dígitos.")
-    indicador = args.get("indicador", "").strip() or None
-    if indicador is not None and not _CODIGO.fullmatch(indicador):
-        raise ParametroInvalido("indicador", "Use de 1 a 64 letras, números ou os caracteres _ . : -.")
+    if linha is not None and (len(linha) > 64 or any(ord(c) < 32 or ord(c) == 127 for c in linha)):
+        raise ParametroInvalido("linha", "Informe um código de linha com até 64 caracteres, sem controles.")
+    if "tipo" in args and "indicador" in args:
+        raise ParametroInvalido("tipo", "Use tipo ou indicador, não ambos.")
+    tipo = (args.get("tipo") or args.get("indicador") or "").strip() or None
+    if tipo is not None and not _CODIGO.fullmatch(tipo):
+        raise ParametroInvalido("tipo", "Use de 1 a 64 letras, números ou os caracteres _ . : -.")
+    sentido = args.get("sentido", "").strip().lower() or None
+    if sentido in ("ida", "volta"):
+        sentido = "0" if sentido == "ida" else "1"
+    if sentido is not None and sentido not in ("0", "1"):
+        raise ParametroInvalido("sentido", "Informe 0/ida ou 1/volta.")
+
+    parada = args.get("parada", "").strip() or None
+    trecho = args.get("trecho", "").strip() or None
+    for campo, valor in (("parada", parada), ("trecho", trecho)):
+        if valor is not None and (len(valor) > 64 or any(ord(c) < 32 or ord(c) == 127 for c in valor)):
+            raise ParametroInvalido(campo, "Informe um código com até 64 caracteres, sem controles.")
+    if parada is not None and trecho is not None:
+        raise ParametroInvalido("trecho", "Filtre por parada ou trecho, não pelos dois simultaneamente.")
+
+    versao_gtfs_id = args.get("versao_gtfs_id", "").strip() or None
+    if versao_gtfs_id is not None and not re.fullmatch(
+        r"[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}",
+        versao_gtfs_id,
+    ):
+        raise ParametroInvalido("versao_gtfs_id", "Informe um UUID GTFS com hífens.")
 
     inicio = _ler_instante(args, "inicio") if "inicio" in args else None
     fim = _ler_instante(args, "fim") if "fim" in args else None
@@ -103,7 +128,11 @@ def ler_filtros(args):
 
     return {
         "linha": linha,
-        "indicador": indicador,
+        "sentido": sentido,
+        "tipo": tipo,
+        "parada": parada,
+        "trecho": trecho,
+        "versao_gtfs_id": versao_gtfs_id.lower() if versao_gtfs_id else None,
         "inicio": inicio,
         "fim": fim,
         "page": inteiro("page", 1, 1, 2_147_483_647),
