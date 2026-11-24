@@ -1,18 +1,18 @@
 {
   "tarefa": "US15-T04",
   "origem": "SINTETICA_CONTROLADA",
-  "aceite_institucional": "PENDENTE",
-  "executado_em": "2026-11-24T16:36:59.289085+00:00",
-  "pronto": false,
+  "aceite_institucional": "DISPENSADO_PELO_RESPONSAVEL",
+  "executado_em": "2026-11-24T17:04:41.511688+00:00",
+  "pronto": true,
   "fonte_casos": "docs/validacoes/US15-T04-casos.json",
-  "sha256_caderno": "a52f2653c23dc9800ffeb9c103ffd933ade7203573d37aac3dbd67db92e7128a",
+  "sha256_caderno": "29fbf13d9849ea597b021b099ffaa108275bd0cfc5ea0257941729ed6ea72f6a",
   "normalizacao_hash_texto": "UTF-8 com quebras LF",
-  "codigo_base": "1e44ff89027e43d1fd4f593a2dd4937a9aac261e",
+  "codigo_base": "0351f471bb0c93b50ec72bff060ba7fe9c4a5183",
   "sha256_codigo": {
     "app/viagens/passagens.py": "d0a2203c942ec8f669aa71a72057c445a435bdf3d35aa61fc6c0585e3c12862e",
     "app/indicadores/frequencia.py": "b0713dfa6c3dac6e89e61f013bf956135d9adf241eb1bb5b387e221ad79b509c",
     "app/indicadores/routes.py": "5d4697d165b1f617e6632dd5cc8c24b099ca4e509577e67284081e160c4e9854",
-    "scripts/validar_us15_t04.py": "4bf8980f8e0e6e886a7f9974e6c3a41f882ccaa30bd5fc4ffdab19cc4b3a7495"
+    "scripts/validar_us15_t04.py": "938277bdf56d6a17673e38317115ae2b7c1d358edbe9ef837c0e61b3381a9e5f"
   },
   "ambiente": {
     "python": "3.14.7",
@@ -35,7 +35,7 @@
       "titulo": "Interpolacao no meio do par, ida",
       "escala": "janela",
       "status": "CONFERIU_EXEMPLO",
-      "aceite_institucional": "PENDENTE",
+      "aceite_institucional": "DISPENSADO_PELO_RESPONSAVEL",
       "calculo_manual": "09:00:00 + (100-20)/(180-20) x 120 s = 09:01:00; 1/(15/60) = 4/h. Programada intermediaria indisponivel.",
       "consulta": {
         "tipo": "FREQUENCIA",
@@ -269,7 +269,7 @@
       "titulo": "Volta usa percurso invertido e separa ida",
       "escala": "janela",
       "status": "CONFERIU_EXEMPLO",
-      "aceite_institucional": "PENDENTE",
+      "aceite_institucional": "DISPENSADO_PELO_RESPONSAVEL",
       "calculo_manual": "Na volta, B esta a metade do avanco de 150 m para 50 m: 45 s; conta somente 1 passagem do sentido 1, 4/h.",
       "consulta": {
         "tipo": "FREQUENCIA",
@@ -528,7 +528,7 @@
       "titulo": "Fim exclusivo sem dupla contagem",
       "escala": "janela",
       "status": "CONFERIU_EXEMPLO",
-      "aceite_institucional": "PENDENTE",
+      "aceite_institucional": "DISPENSADO_PELO_RESPONSAVEL",
       "calculo_manual": "Passagem exatamente 09:15:00: [09:00,09:15) recebe 0; [09:15,09:30) recebe 1. Taxas 0 e 4/h.",
       "consulta": {
         "tipo": "FREQUENCIA",
@@ -935,7 +935,7 @@
       "titulo": "Lacuna acima do limite nao cria passagem",
       "escala": "janela",
       "status": "CONFERIU_EXEMPLO",
-      "aceite_institucional": "PENDENTE",
+      "aceite_institucional": "DISPENSADO_PELO_RESPONSAVEL",
       "calculo_manual": "121 s > limite de ensaio 120 s: nenhuma interpolacao. A viagem passou por B sem evidencia GPS: nao se afirma 0/h; valor nulo com motivo sem_evidencia_gps (revisao 24/11).",
       "consulta": {
         "tipo": "FREQUENCIA",
@@ -1186,7 +1186,7 @@
       "titulo": "Origem: observada e programada distintas",
       "escala": "janela",
       "status": "CONFERIU_EXEMPLO",
-      "aceite_institucional": "PENDENTE",
+      "aceite_institucional": "DISPENSADO_PELO_RESPONSAVEL",
       "calculo_manual": "GPS sobre A recebe 09:00:00. Observada 1/0,25 = 4/h; programadas 09:00,09:05,09:10: 3/0,25 = 12/h.",
       "consulta": {
         "tipo": "FREQUENCIA",
@@ -1418,7 +1418,7 @@
       "titulo": "Faixa e interpolacao em um quarto",
       "escala": "faixa",
       "status": "CONFERIU_EXEMPLO",
-      "aceite_institucional": "PENDENTE",
+      "aceite_institucional": "DISPENSADO_PELO_RESPONSAVEL",
       "calculo_manual": "(100-80)/(160-80) x 80 = 20 s; 06:00:20. Faixa de 1 h: 1/1 = 1/h.",
       "consulta": {
         "tipo": "FREQUENCIA",
@@ -1649,7 +1649,7 @@
       "titulo": "Faixa noturna e interpolacao na virada",
       "escala": "faixa",
       "status": "CONFERIU_EXEMPLO",
-      "aceite_institucional": "PENDENTE",
+      "aceite_institucional": "DISPENSADO_PELO_RESPONSAVEL",
       "calculo_manual": "24/11 23:59:50 + 20 s = 25/11 00:00:10; pertence a operacao de 24/11. Faixa 22-02 tem 4 h: 1/4 = 0,25/h.",
       "consulta": {
         "tipo": "FREQUENCIA",
@@ -1880,7 +1880,7 @@
       "titulo": "Posicao invalida interrompe interpolacao",
       "escala": "faixa",
       "status": "CONFERIU_EXEMPLO",
-      "aceite_institucional": "PENDENTE",
+      "aceite_institucional": "DISPENSADO_PELO_RESPONSAVEL",
       "calculo_manual": "Ha GPS invalido entre os validos: os dois pares consecutivos sao rejeitados, sem pular o ponto invalido. A viagem passou por B sem evidencia: valor nulo com motivo sem_evidencia_gps, nao 0/h (revisao 24/11).",
       "consulta": {
         "tipo": "FREQUENCIA",
@@ -2135,7 +2135,7 @@
       "titulo": "Faixa nao soma ida e volta",
       "escala": "faixa",
       "status": "CONFERIU_EXEMPLO",
-      "aceite_institucional": "PENDENTE",
+      "aceite_institucional": "DISPENSADO_PELO_RESPONSAVEL",
       "calculo_manual": "2 passagens ida e 3 volta na mesma parada. Filtro sentido 0: 2/1 = 2/h; nunca 5/h.",
       "consulta": {
         "tipo": "FREQUENCIA",
@@ -2466,7 +2466,7 @@
       "titulo": "Faixa compara duas observadas com quatro previstas",
       "escala": "faixa",
       "status": "CONFERIU_EXEMPLO",
-      "aceite_institucional": "PENDENTE",
+      "aceite_institucional": "DISPENSADO_PELO_RESPONSAVEL",
       "calculo_manual": "Observadas 08:10 e 08:40: 2/1 = 2/h. Previstas 08:00,08:15,08:30,08:45: 4/1 = 4/h.",
       "consulta": {
         "tipo": "FREQUENCIA",
@@ -2720,7 +2720,7 @@
       "titulo": "Dia completo soma contagens",
       "escala": "dia",
       "status": "CONFERIU_EXEMPLO",
-      "aceite_institucional": "PENDENTE",
+      "aceite_institucional": "DISPENSADO_PELO_RESPONSAVEL",
       "calculo_manual": "Uma observada por hora, duas previstas por hora: 24/24 = 1/h e 48/24 = 2/h.",
       "consulta": {
         "tipo": "FREQUENCIA",
@@ -3518,7 +3518,7 @@
       "titulo": "GTFS 24:40 conserva data operacional",
       "escala": "dia",
       "status": "CONFERIU_EXEMPLO",
-      "aceite_institucional": "PENDENTE",
+      "aceite_institucional": "DISPENSADO_PELO_RESPONSAVEL",
       "calculo_manual": "24:40 de 24/11 = 25/11 00:40 local. Janelas vao ate 24:45, 99/4 h; ambas 1/(99/4) = 4/99 por hora.",
       "consulta": {
         "tipo": "FREQUENCIA",
@@ -3741,7 +3741,7 @@
       "titulo": "Dia com cobertura parcial nao vira zero",
       "escala": "dia",
       "status": "CONFERIU_EXEMPLO",
-      "aceite_institucional": "PENDENTE",
+      "aceite_institucional": "DISPENSADO_PELO_RESPONSAVEL",
       "calculo_manual": "So 08-09 tem coleta; 1 passagem parcial nao autoriza taxa diaria. Observada NULL, parcial 1; programada 24/24 = 1/h.",
       "consulta": {
         "tipo": "FREQUENCIA",
@@ -3976,7 +3976,7 @@
       "titulo": "Grades ambiguas nao sao escolhidas em silencio",
       "escala": "dia",
       "status": "CONFERIU_EXEMPLO",
-      "aceite_institucional": "PENDENTE",
+      "aceite_institucional": "DISPENSADO_PELO_RESPONSAVEL",
       "calculo_manual": "Capturas UTIL e FERIADO para a mesma data sem escolha: programada NULL. Uma observada no dia: 1/24 por hora.",
       "consulta": {
         "tipo": "FREQUENCIA",
@@ -4204,7 +4204,7 @@
       "titulo": "Mesmo par GPS conta uma unica vez",
       "escala": "dia",
       "status": "CONFERIU_EXEMPLO",
-      "aceite_institucional": "PENDENTE",
+      "aceite_institucional": "DISPENSADO_PELO_RESPONSAVEL",
       "calculo_manual": "Duas viagens apontam ao mesmo par GPS: uma evidencia observada, 1/24 por hora. Duas previstas: 2/24 = 1/12 por hora.",
       "consulta": {
         "tipo": "FREQUENCIA",
@@ -4427,7 +4427,7 @@
       "titulo": "Mes pondera horas, nao media de taxas",
       "escala": "mes",
       "status": "CONFERIU_EXEMPLO",
-      "aceite_institucional": "PENDENTE",
+      "aceite_institucional": "DISPENSADO_PELO_RESPONSAVEL",
       "calculo_manual": "Recorte mensal de dois dias: 24/24 e 49/24,5; (24+49)/(24+24,5) = 146/97 por hora, nao 1,5/h.",
       "consulta": {
         "tipo": "FREQUENCIA",
@@ -6458,7 +6458,7 @@
       "titulo": "Falta de publicacao mantem mes parcial",
       "escala": "mes",
       "status": "CONFERIU_EXEMPLO",
-      "aceite_institucional": "PENDENTE",
+      "aceite_institucional": "DISPENSADO_PELO_RESPONSAVEL",
       "calculo_manual": "Falta uma janela de 15 min de 48 h: observada NULL, 47,75 h publicadas e contagem parcial 2. Programada 48/48 = 1/h.",
       "consulta": {
         "tipo": "FREQUENCIA",
@@ -6735,7 +6735,7 @@
       "titulo": "Mes completo coberto com zero",
       "escala": "mes",
       "status": "CONFERIU_EXEMPLO",
-      "aceite_institucional": "PENDENTE",
+      "aceite_institucional": "DISPENSADO_PELO_RESPONSAVEL",
       "calculo_manual": "Novembro inteiro: 30 x 24 = 720 h cobertas e processamento explicitamente executado; 0/720 = 0/h em ambos os lados.",
       "consulta": {
         "tipo": "FREQUENCIA",
@@ -7164,7 +7164,7 @@
       "titulo": "Mes sem coleta preserva ausencia",
       "escala": "mes",
       "status": "CONFERIU_EXEMPLO",
-      "aceite_institucional": "PENDENTE",
+      "aceite_institucional": "DISPENSADO_PELO_RESPONSAVEL",
       "calculo_manual": "Recorte mensal de um dia sem coleta: observada NULL, nunca zero; duas previstas em 24 h: 2/24 = 1/12 por hora.",
       "consulta": {
         "tipo": "FREQUENCIA",
@@ -7365,7 +7365,7 @@
       "titulo": "Mes separa versoes da reconstrucao",
       "escala": "mes",
       "status": "CONFERIU_EXEMPLO",
-      "aceite_institucional": "PENDENTE",
+      "aceite_institucional": "DISPENSADO_PELO_RESPONSAVEL",
       "calculo_manual": "Reconstrucao 1: 24/24 = 1/h; reconstrucao 2: 48/24 = 2/h. Dois itens, sem somar 72 nem tirar media 1,5.",
       "consulta": {
         "tipo": "FREQUENCIA",

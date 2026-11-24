@@ -3,7 +3,7 @@
   "data_verificacao": "2026-11-24",
   "origem_dados": "SINTETICA_CONTROLADA",
   "banco_compartilhado_acessado": false,
-  "codigo_base": "1e44ff89027e43d1fd4f593a2dd4937a9aac261e",
+  "codigo_base": "0351f471bb0c93b50ec72bff060ba7fe9c4a5183",
   "conferencia": {
     "casos": 20,
     "conferiram": 20,
@@ -69,7 +69,7 @@
     },
     "correcao_na_us15_t04": false
   },
-  "revisao_outra_pessoa": "PENDENTE",
-  "aceite_institucional": "PENDENTE",
-  "pronto": false
+  "revisao_outra_pessoa": "Matheus Hermida, 24/11/2026 (branch review/US24-US15-US12)",
+  "aceite_institucional": "DISPENSADO_PELO_RESPONSAVEL",
+  "pronto": true
 }
