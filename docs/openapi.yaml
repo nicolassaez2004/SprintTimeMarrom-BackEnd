@@ -82,8 +82,8 @@ paths:
                 dados:
                   - linha: '3762-10'
                     sentido: '0'
-                    tipo: CUMPRIMENTO_VIAGENS
-                    indicador: CUMPRIMENTO_VIAGENS
+                    tipo: PONTUALIDADE_VIAGENS
+                    indicador: PONTUALIDADE_VIAGENS
                     valor: 87.5
                     unidade: '%'
                     inicio: '2026-11-23T00:00:00Z'
@@ -95,7 +95,7 @@ paths:
                     versao_correspondencia: 'match-v3'
                     versao_calculo: 'cumprimento-1.0'
                     contagens: { numerador: 7, denominador: 8 }
-                    qualidade: { partidas_programadas: 8, cobertura_tracado_minima: 0.8 }
+                    qualidade: { dados_insuficientes: false, limite_adiantamento_segundos: 60, limite_atraso_segundos: 300, limites_inclusivos: true, excluidas: { frequencia: 2, sem_pareamento: 1, saida_nao_confirmada: 0 } }
                 paginacao: { page: 1, page_size: 100, total: 1 }
         '400': { $ref: '#/components/responses/ParametroInvalido' }
         '429': { $ref: '#/components/responses/LimiteExcedido' }
@@ -134,8 +134,8 @@ paths:
                   - instante: '2026-11-23T12:00:00Z'
                     linha: '3762-10'
                     sentido: '0'
-                    tipo: CUMPRIMENTO_VIAGENS
-                    indicador: CUMPRIMENTO_VIAGENS
+                    tipo: PONTUALIDADE_VIAGENS
+                    indicador: PONTUALIDADE_VIAGENS
                     valor: 87.5
                     unidade: '%'
                     parada: null
@@ -145,7 +145,7 @@ paths:
                     versao_correspondencia: 'match-v3'
                     versao_calculo: 'cumprimento-1.0'
                     contagens: { numerador: 7, denominador: 8 }
-                    qualidade: { partidas_programadas: 8, cobertura_tracado_minima: 0.8 }
+                    qualidade: { dados_insuficientes: false, limite_adiantamento_segundos: 60, limite_atraso_segundos: 300, limites_inclusivos: true, excluidas: { frequencia: 2, sem_pareamento: 1, saida_nao_confirmada: 0 } }
                 paginacao: { page: 1, page_size: 100, total: 1 }
         '400': { $ref: '#/components/responses/ParametroInvalido' }
         '429': { $ref: '#/components/responses/LimiteExcedido' }
@@ -178,7 +178,7 @@ components:
       name: tipo
       in: query
       required: false
-      description: Tipo de indicador; alias indicador preservado por compatibilidade.
+      description: Tipo de indicador; inclui PONTUALIDADE_VIAGENS. Na pontualidade, numerador conta saídas entre -60 s e +300 s, denominador inclui viagens fixas classificáveis; dados insuficientes são indicados em qualidade e valor null. Alias indicador preservado por compatibilidade.
       schema: { type: string, pattern: '^[A-Za-z0-9_.:-]{1,64}$' }
     indicador:
       name: indicador
