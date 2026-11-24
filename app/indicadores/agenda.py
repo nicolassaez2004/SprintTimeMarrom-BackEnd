@@ -170,7 +170,23 @@ def atualizar_indicadores(agora):
     resultado = {"atualizacao": atualizar_janela(agora).chave_logica}
     local = agora.astimezone(FUSO)
     if local.time() >= INICIO_CONSOLIDACAO:
-        resultado["consolidacao"] = consolidar_dia(local.date() - timedelta(days=1), agora).chave_logica
+        dia = local.date() - timedelta(days=1)
+        execucao = consolidar_dia(dia, agora)
+        resultado["consolidacao"] = execucao.chave_logica
+        # O arquivo é publicado somente depois do commit da consolidação. Se a
+        # exportação falhar, a execução diária seguinte tenta novamente sem
+        # desfazer indicadores já consolidados.
+        try:
+            from app.exportacoes.csv import publicar_csv_indicadores
+
+            recibo = publicar_csv_indicadores(dia, agora)
+            resultado["csv_indicadores"] = {
+                "estado": "PUBLICADO", "data": recibo["data"],
+                "registros": recibo["registros"], "sha256": recibo["sha256"],
+            }
+        except Exception as erro:
+            logger.exception("Falha ao publicar CSV diário de indicadores (%s)", type(erro).__name__)
+            resultado["csv_indicadores"] = {"estado": "PENDENTE", "data": dia.isoformat()}
     return resultado
 
 
