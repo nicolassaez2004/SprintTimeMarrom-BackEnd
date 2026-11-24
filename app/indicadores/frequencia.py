@@ -302,7 +302,13 @@ class PublicacaoFrequencia:
             motivos = [ausente]
         elif lacunas:
             motivos.append("sem_publicacao")
-        sobrepostas = any(b[0] < a[1] for a, b in zip(janelas, janelas[1:]))
+        # Janelas após 24h de uma data cobrem o mesmo horário civil da data seguinte;
+        # sobreposição só é conflito dentro da mesma data operacional.
+        por_data = {}
+        for r in registros:
+            por_data.setdefault((r.qualidade or {}).get("data_operacao"), []).append(
+                (r.periodo_inicio, r.periodo_fim))
+        sobrepostas = any(b[0] < a[1] for js in por_data.values() for a, b in zip(js, js[1:]))
         if sobrepostas:
             motivos.append("janelas_sobrepostas")
         if motivos:

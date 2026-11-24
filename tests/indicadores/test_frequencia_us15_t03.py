@@ -237,3 +237,15 @@ def test_compatibilidade_com_os_demais_indicadores(cenario, app):
     assert all(campo in item for campo in COMUNS)
     series = cliente.get("/series?linha=3762-10&tipo=CUMPRIMENTO_VIAGENS")
     assert series.status_code == 200 and series.get_json()["dados"][0]["valor"] == 87.5
+
+
+def test_mes_com_servico_apos_24h_nao_vira_janelas_sobrepostas(cenario, app):
+    # 01/11 vai até 24:30 (98 janelas, a mesma hora civil das 2 primeiras de 02/11).
+    dia(cenario, NOV1, [1] * 98, data="2026-11-01")
+    dia(cenario, NOV1 + timedelta(days=1), [1] * 96, data="2026-11-02")
+    db.session.commit()
+    item = unico(consultar(app, parada="B", agregacao="mes",
+                           inicio="2026-11-01T00:00:00-03:00", fim="2026-11-03T00:00:00-03:00"))
+    assert item["observada"]["situacao"] == "CALCULADA", item["observada"]["motivos"]
+    assert item["observada"]["contagem"] == 194
+    assert item["observada"]["valor"] == pytest.approx(194 / 48.5)
