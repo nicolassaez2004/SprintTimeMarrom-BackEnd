@@ -1,0 +1,134 @@
+{
+  "tarefa": "US12-T04",
+  "mes": "2026-02",
+  "fuso": "America/Sao_Paulo",
+  "periodo_utc": {
+    "inicio": "2026-02-01T03:00:00+00:00",
+    "fim_exclusivo": "2026-03-01T03:00:00+00:00"
+  },
+  "origem_dados": "SINTETICA",
+  "versoes": {
+    "base": "alembic:sintetica",
+    "codigo": "git:sintetico",
+    "regra": "cumprimento-1.1+pontualidade-1.0",
+    "algoritmos": {
+      "CUMPRIMENTO_VIAGENS": "cumprimento-1.1",
+      "PONTUALIDADE_VIAGENS": "pontualidade-1.0"
+    }
+  },
+  "tolerancia": {
+    "valor_absoluta": null,
+    "modo": "IGUALDADE_EXATA",
+    "aplica_se_a": "valor (contagens, versões e períodos sempre exatos)"
+  },
+  "completude": {
+    "completo": true,
+    "mes_encerrado": true,
+    "dias_no_mes": 28,
+    "dias_sem_brutos": [],
+    "motivos": []
+  },
+  "base": {
+    "bruto_id_maximo_no_mes": 28,
+    "reprocessamento_us12_t03": {
+      "execucao_id": "20400cc5-35e5-4651-a600-b6490b605f68",
+      "chave_logica": "reprocessamento:6b9bf74ffab4c79485cb28ed8b7997e0deb8770ead7da13d986ec3ec632714b7",
+      "bruto_id_maximo": 28,
+      "estado": "PRONTO",
+      "brutos_no_snapshot": 28,
+      "tratados": 28,
+      "validos": 28,
+      "invalidos": 0,
+      "confere": true
+    }
+  },
+  "quantidade_indicadores": 2,
+  "resultado": {
+    "IGUAL": 2,
+    "IGUAL_COM_TOLERANCIA": 0,
+    "DIVERGENTE": 0,
+    "VERSAO_INCOMPATIVEL": 0,
+    "DADOS_INSUFICIENTES": 0,
+    "NAO_SUPORTADO": 0,
+    "ERRO_RECALCULO": 0
+  },
+  "por_indicador": {
+    "CUMPRIMENTO_VIAGENS": {
+      "publicados": 1,
+      "reproduzidos": 1
+    },
+    "PONTUALIDADE_VIAGENS": {
+      "publicados": 1,
+      "reproduzidos": 1
+    }
+  },
+  "preservacao": {
+    "inalterado": true,
+    "antes": {
+      "brutos": 28,
+      "brutos_sha256": "2f23eef4295e880e55e9aed0b11464dc2c5e05d56f80a89dff098848d799a8d9",
+      "publicados_sha256": "c5d9f2015d263f50153f212d40ce2c52aae262351aeaf2fff89f3550481176b5"
+    },
+    "depois": {
+      "brutos": 28,
+      "brutos_sha256": "2f23eef4295e880e55e9aed0b11464dc2c5e05d56f80a89dff098848d799a8d9",
+      "publicados_sha256": "c5d9f2015d263f50153f212d40ce2c52aae262351aeaf2fff89f3550481176b5"
+    }
+  },
+  "itens": [
+    {
+      "id": "191baaf2-70d9-4317-8a9d-8533b7b0f977",
+      "indicador": "CUMPRIMENTO_VIAGENS",
+      "linha": "SINT-01",
+      "sentido": "0",
+      "inicio": "2026-02-10T12:00:00+00:00",
+      "fim": "2026-02-10T13:00:00+00:00",
+      "unidade": "%",
+      "valor_publicado": 66.67,
+      "contagens_publicadas": [
+        2,
+        3
+      ],
+      "versao_calculo": "cumprimento-1.1",
+      "valor_nulo": false,
+      "status": "IGUAL",
+      "valor_recalculado": 66.67,
+      "contagens_recalculadas": [
+        2,
+        3
+      ],
+      "divergencias": []
+    },
+    {
+      "id": "0bda8830-b66c-42a7-84a5-f35b343050b7",
+      "indicador": "PONTUALIDADE_VIAGENS",
+      "linha": "SINT-01",
+      "sentido": "0",
+      "inicio": "2026-02-10T12:00:00+00:00",
+      "fim": "2026-02-10T13:00:00+00:00",
+      "unidade": "%",
+      "valor_publicado": 50.0,
+      "contagens_publicadas": [
+        1,
+        2
+      ],
+      "versao_calculo": "pontualidade-1.0",
+      "valor_nulo": false,
+      "status": "IGUAL",
+      "valor_recalculado": 50.0,
+      "contagens_recalculadas": [
+        1,
+        2
+      ],
+      "divergencias": []
+    }
+  ],
+  "veredito": "REPRODUZIDO",
+  "aceite_integral": false,
+  "limitacoes": [
+    "Recálculo parte de viagens_observadas: nenhuma rotina reconstrói ViagemObservada a partir dos brutos (US14-T01C não integrada).",
+    "Tolerância numérica não acordada: comparação por igualdade exata; definição pendente com o PO.",
+    "Dados sintéticos de teste: não comprovam o aceite com dados reais."
+  ],
+  "aviso": "DADOS SINTÉTICOS de teste (linha SINT-01, fev/2026). Não são dados reais."
+}

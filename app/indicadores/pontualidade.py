@@ -8,9 +8,8 @@ from hashlib import sha256
 import json
 from typing import Iterable
 
-from app import db
 from app.indicadores.cumprimento import (
-    COBERTURA_MINIMA, programacao_da_janela, viagens_observadas,
+    COBERTURA_MINIMA, gravar_indicador, programacao_da_janela, viagens_observadas,
 )
 from app.models import IndicadorOperacional, PartidaProgramada
 from app.viagens.separacao import ViagemObservada
@@ -132,14 +131,19 @@ def calcular_percentual_pontualidade(
     )
 
 
-def publicar_pontualidade(
+def publicar_pontualidade(resultado: ResultadoPontualidade, **contexto) -> IndicadorOperacional:
+    """Persiste o agregado versionado na tabela consumida por GET /indicadores."""
+    return gravar_indicador(montar_pontualidade(resultado, **contexto))
+
+
+def montar_pontualidade(
     resultado: ResultadoPontualidade,
     *, linha: str, sentido: str, inicio: datetime, fim: datetime,
     versao_gtfs_id: str, versao_correspondencia: str,
     versao_reconstrucao: str, versao_calculo: str = VERSAO_ALGORITMO_PONTUALIDADE,
     versoes_programacao: list[dict] | None = None, qualidade_extra: dict | None = None,
-) -> IndicadorOperacional:
-    """Persiste o agregado versionado na tabela consumida por GET /indicadores.
+) -> dict:
+    """Monta, sem gravar, as colunas do agregado versionado de pontualidade.
 
     Toda viagem com programação precisa pertencer à linha, ao sentido, à versão
     GTFS e à janela (pela saída prevista) declarados; viagem CALCULADA sem
@@ -196,50 +200,52 @@ def publicar_pontualidade(
         ],
     }
     chave = sha256(json.dumps(identidade, sort_keys=True, separators=(",", ":")).encode()).hexdigest()
-    registro = IndicadorOperacional.query.filter_by(chave_resultado=chave).one_or_none()
-    if registro is None:
-        registro = IndicadorOperacional(chave_resultado=chave)
-        db.session.add(registro)
-    registro.versao_gtfs_id = versao_gtfs_id
-    registro.linha_codigo = linha
-    registro.sentido = sentido
-    registro.parada_codigo = None
-    registro.trecho_id = None
-    registro.indicador = "PONTUALIDADE_VIAGENS"
-    registro.valor = float(agregado.percentual) if agregado.percentual is not None else None
-    registro.unidade = "%"
-    registro.periodo_inicio = inicio_utc
-    registro.periodo_fim = fim_utc
-    registro.contagem_numerador = agregado.pontuais
-    registro.contagem_denominador = agregado.realizadas
-    registro.versao_conjunto = chave[:32]
-    registro.versao_correspondencia = versao_correspondencia
-    registro.versao_calculo = versao_calculo
-    registro.qualidade = {
-        "dados_insuficientes": agregado.dados_insuficientes,
-        "motivo_insuficiencia": "NENHUMA_VIAGEM_FIXA_CLASSIFICAVEL" if agregado.dados_insuficientes else None,
-        "viagens_classificadas": agregado.classificadas,
-        "viagens_realizadas": agregado.realizadas,
-        "viagens_pontuais": agregado.pontuais,
-        "excluidas": agregado.excluidas,
-        "limite_adiantamento_segundos": LIMITE_ADIANTAMENTO_SEGUNDOS,
-        "limite_atraso_segundos": LIMITE_ATRASO_SEGUNDOS,
-        "limites_inclusivos": True,
-        "oferta_por_frequencia_excluida": True,
-        "versao_reconstrucao": versao_reconstrucao,
-        "capturas_programacao": versoes_programacao,
-        **(qualidade_extra or {}),
+    return {
+        "chave_resultado": chave,
+        "versao_gtfs_id": versao_gtfs_id,
+        "linha_codigo": linha,
+        "sentido": sentido,
+        "parada_codigo": None,
+        "trecho_id": None,
+        "indicador": "PONTUALIDADE_VIAGENS",
+        "valor": float(agregado.percentual) if agregado.percentual is not None else None,
+        "unidade": "%",
+        "periodo_inicio": inicio_utc,
+        "periodo_fim": fim_utc,
+        "contagem_numerador": agregado.pontuais,
+        "contagem_denominador": agregado.realizadas,
+        "versao_conjunto": chave[:32],
+        "versao_correspondencia": versao_correspondencia,
+        "versao_calculo": versao_calculo,
+        "qualidade": {
+            "dados_insuficientes": agregado.dados_insuficientes,
+            "motivo_insuficiencia": "NENHUMA_VIAGEM_FIXA_CLASSIFICAVEL" if agregado.dados_insuficientes else None,
+            "viagens_classificadas": agregado.classificadas,
+            "viagens_realizadas": agregado.realizadas,
+            "viagens_pontuais": agregado.pontuais,
+            "excluidas": agregado.excluidas,
+            "limite_adiantamento_segundos": LIMITE_ADIANTAMENTO_SEGUNDOS,
+            "limite_atraso_segundos": LIMITE_ATRASO_SEGUNDOS,
+            "limites_inclusivos": True,
+            "oferta_por_frequencia_excluida": True,
+            "versao_reconstrucao": versao_reconstrucao,
+            "capturas_programacao": versoes_programacao,
+            **(qualidade_extra or {}),
+        },
     }
-    db.session.commit()
-    return registro
 
 
-def calcular_e_publicar_pontualidade(
+def calcular_e_publicar_pontualidade(**parametros) -> IndicadorOperacional:
+    """Calcula a partir das ``ViagemObservada`` persistidas e publica (US16-T02)."""
+    return gravar_indicador(calcular_indicador_pontualidade(**parametros))
+
+
+def calcular_indicador_pontualidade(
     *, linha: str, sentido: str, inicio: datetime, fim: datetime,
     versao_gtfs_id: str, versao_correspondencia: str, versao_reconstrucao: str,
     versao_calculo: str = VERSAO_ALGORITMO_PONTUALIDADE,
-) -> IndicadorOperacional:
-    """Calcula a partir das ``ViagemObservada`` persistidas e publica (US16-T02).
+) -> dict:
+    """Calcula, sem gravar, a pontualidade a partir das ``ViagemObservada``.
 
     Usa a mesma grade e janela do cumprimento (US14). Cada registro persistido
     já é pareado por chave estrangeira a uma única partida por versão de
@@ -283,7 +289,7 @@ def calcular_e_publicar_pontualidade(
             else "SEM_PARTIDAS_FIXAS_PROGRAMADAS" if fixas == 0
             else "SEM_VIAGENS_FIXAS_OBSERVADAS"
         )
-    return publicar_pontualidade(
+    return montar_pontualidade(
         ResultadoPontualidade(tuple(itens)), linha=linha, sentido=sentido, inicio=inicio,
         fim=fim, versao_gtfs_id=versao_gtfs_id, versao_correspondencia=versao_correspondencia,
         versao_reconstrucao=versao_reconstrucao, versao_calculo=versao_calculo,
