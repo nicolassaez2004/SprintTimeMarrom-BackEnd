@@ -21,8 +21,8 @@ def consulta_base(filtros):
     return consulta
 
 
-def consultar_indicadores(filtros, *, serie=False):
-    consulta = consulta_base(filtros)
+def filtrar_periodo(consulta, filtros):
+    """Regra de sobreposição da US11 para o período [inicio, fim)."""
     if filtros["inicio"] is not None:
         consulta = consulta.filter(IndicadorOperacional.periodo_fim > filtros["inicio"])
     if filtros["fim"] is not None:
@@ -32,7 +32,11 @@ def consultar_indicadores(filtros, *, serie=False):
             consulta = consulta.filter(IndicadorOperacional.periodo_inicio <= filtros["fim"])
         else:
             consulta = consulta.filter(IndicadorOperacional.periodo_inicio < filtros["fim"])
+    return consulta
 
+
+def consultar_indicadores(filtros, *, serie=False):
+    consulta = filtrar_periodo(consulta_base(filtros), filtros)
     total = consulta.count()
     registros = (
         consulta.order_by(
