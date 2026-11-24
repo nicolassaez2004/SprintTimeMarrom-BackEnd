@@ -1,0 +1,3675 @@
+{
+  "tarefa": "US18-T03B",
+  "origem": "SINTETICA_CONTROLADA",
+  "executado_em": "2026-11-24T17:41:17.773341+00:00",
+  "aceite_institucional": "DISPENSADO_PELO_RESPONSAVEL",
+  "envio_instituicao_parceira": "DISPENSADO_PELO_RESPONSAVEL",
+  "pronto": true,
+  "fonte_casos": "docs/validacoes/US18-T03B-casos.json",
+  "sha256_caderno": "b30b1aa38655048450129eab5e8ab93678333f850eb97f1106aac34423f218ba",
+  "codigo_base": "c73d86986bf73645d711dd36abaf11b82e478e2f",
+  "banco": "SQLite em memória; FK ON; sem Aiven",
+  "relogio_ensaio": "2026-12-03T00:00:00+00:00",
+  "resumo": {
+    "CONFERIU_EXEMPLO": 20
+  },
+  "casos": [
+    {
+      "id": "C01",
+      "titulo": "Exemplo manual: excesso negativo mantido",
+      "escala": "janela",
+      "status": "CONFERIU_EXEMPLO",
+      "calculo_manual": "Intervalos 240, 360, 180 s: Σh = 780, Σh² = 219600, E = 219600/1560 = 140,769231 s = 2,346154 min. Vigentes: partidas 09:00, 09:05, 09:10 (H = 300 s) → E_prog = 150 s. Excesso = −9,230769 s = −0,153846 min.",
+      "consulta": {
+        "tipo": "ESPERA",
+        "linha": "SINT-US17",
+        "sentido": "0",
+        "parada": "B",
+        "inicio": "2026-11-24T12:00:00+00:00",
+        "fim": "2026-11-24T12:00:00+00:00"
+      },
+      "comparacoes": [
+        {
+          "campo": "http_status",
+          "manual": 200,
+          "obtido": 200,
+          "confere": true
+        },
+        {
+          "campo": "quantidade_itens",
+          "manual": 1,
+          "obtido": 1,
+          "confere": true
+        },
+        {
+          "campo": "espera_min",
+          "manual": 2.346154,
+          "obtido": 2.346154,
+          "confere": true
+        },
+        {
+          "campo": "excesso_min",
+          "manual": -0.153846,
+          "obtido": -0.153846,
+          "confere": true
+        },
+        {
+          "campo": "motivo_espera",
+          "manual": null,
+          "obtido": null,
+          "confere": true
+        },
+        {
+          "campo": "motivo_excesso",
+          "manual": null,
+          "obtido": null,
+          "confere": true
+        },
+        {
+          "campo": "unidades",
+          "manual": [
+            "min",
+            "min"
+          ],
+          "obtido": [
+            "min",
+            "min"
+          ],
+          "confere": true
+        },
+        {
+          "campo": "parada",
+          "manual": "B",
+          "obtido": "B",
+          "confere": true
+        },
+        {
+          "campo": "ausencia_nao_e_zero",
+          "manual": [
+            false,
+            false
+          ],
+          "obtido": [
+            false,
+            false
+          ],
+          "confere": true
+        }
+      ],
+      "resposta_api": {
+        "dados": [
+          {
+            "agregacao": "janela",
+            "contagens": {
+              "denominador": null,
+              "numerador": 3
+            },
+            "duracao_horas": 0.25,
+            "espera_estimada": {
+              "lacunas": [],
+              "motivo_ausencia": null,
+              "situacao": "CALCULADA",
+              "unidade": "min",
+              "valor": 2.346154
+            },
+            "excesso_espera": {
+              "espera_programada_min": 2.5,
+              "intervalos_programados_seg": [
+                300,
+                300,
+                300
+              ],
+              "lacunas": [],
+              "motivo_ausencia": null,
+              "situacao": "CALCULADA",
+              "unidade": "min",
+              "valor": -0.153846
+            },
+            "fim": "2026-11-24T12:15:00+00:00",
+            "indicador": "ESPERA",
+            "inicio": "2026-11-24T12:00:00+00:00",
+            "intervalos": 3,
+            "linha": "SINT-US17",
+            "parada": "B",
+            "qualidade": {
+              "datas_operacao": [
+                "2026-11-24"
+              ],
+              "faixa": null,
+              "formula_espera": "E = Σh² ÷ (2·Σh) dos intervalos h entre passagens sucessivas (s), publicada em minutos",
+              "minimo_passagens": 3,
+              "oferta": "FREQUENCIA",
+              "regra_excesso": "excesso = E − E_prog; E_prog = ΣH² ÷ (2·ΣH) dos intervalos programados vigentes na janela (= H ÷ 2 com intervalo único); excesso negativo mantido, sem truncar",
+              "regra_fronteira": "cada intervalo pertence à janela [início, fim) da sua passagem posterior",
+              "regra_vigencia": "partida da oferta por frequência da captura da US04 cujo intervalo [saída, saída + H) cruza a janela",
+              "versoes": {
+                "capturas_programacao": [
+                  {
+                    "fonte": "OFICIAL",
+                    "importacao_id": "8d8144d4-3b7f-5605-bec3-8af8a322de35",
+                    "tipo_dia": "UTIL",
+                    "versao_fonte": "programacao-2026-11-24"
+                  }
+                ],
+                "versao_calculo": "espera-1.0",
+                "versao_correspondencia": "correspondencia-controlada-us17",
+                "versao_estimativa": "us15-t01-v1-lacuna120s",
+                "versao_gtfs_id": "e4c4ce91-9217-52af-ba88-8214056e6cb5",
+                "versao_reconstrucao": "recon-controle-us17",
+                "versoes_conjunto": [
+                  "aec7f3855de6b90ae55325796c8d1e91"
+                ]
+              }
+            },
+            "referencia": "2026-11-24",
+            "sentido": "0",
+            "tipo": "ESPERA",
+            "trecho": null,
+            "unidade": "min",
+            "valor": 2.346154,
+            "versao_calculo": "espera-1.0",
+            "versao_conjunto": "aec7f3855de6b90ae55325796c8d1e91",
+            "versao_correspondencia": "correspondencia-controlada-us17",
+            "versao_gtfs_id": "e4c4ce91-9217-52af-ba88-8214056e6cb5"
+          }
+        ],
+        "paginacao": {
+          "page": 1,
+          "page_size": 100,
+          "total": 1
+        }
+      }
+    },
+    {
+      "id": "C02",
+      "titulo": "Intervalos iguais ao programado: excesso zero",
+      "escala": "janela",
+      "status": "CONFERIU_EXEMPLO",
+      "calculo_manual": "Intervalos 300, 300, 300 s: E = 270000/1800 = 150 s = 2,5 min; E_prog = 300/2 = 150 s; excesso 0.",
+      "consulta": {
+        "tipo": "ESPERA",
+        "linha": "SINT-US17",
+        "sentido": "0",
+        "parada": "B",
+        "inicio": "2026-11-24T12:00:00+00:00",
+        "fim": "2026-11-24T12:00:00+00:00"
+      },
+      "comparacoes": [
+        {
+          "campo": "http_status",
+          "manual": 200,
+          "obtido": 200,
+          "confere": true
+        },
+        {
+          "campo": "quantidade_itens",
+          "manual": 1,
+          "obtido": 1,
+          "confere": true
+        },
+        {
+          "campo": "espera_min",
+          "manual": 2.5,
+          "obtido": 2.5,
+          "confere": true
+        },
+        {
+          "campo": "excesso_min",
+          "manual": 0,
+          "obtido": 0.0,
+          "confere": true
+        },
+        {
+          "campo": "motivo_espera",
+          "manual": null,
+          "obtido": null,
+          "confere": true
+        },
+        {
+          "campo": "motivo_excesso",
+          "manual": null,
+          "obtido": null,
+          "confere": true
+        },
+        {
+          "campo": "unidades",
+          "manual": [
+            "min",
+            "min"
+          ],
+          "obtido": [
+            "min",
+            "min"
+          ],
+          "confere": true
+        },
+        {
+          "campo": "parada",
+          "manual": "B",
+          "obtido": "B",
+          "confere": true
+        },
+        {
+          "campo": "ausencia_nao_e_zero",
+          "manual": [
+            false,
+            false
+          ],
+          "obtido": [
+            false,
+            false
+          ],
+          "confere": true
+        }
+      ],
+      "resposta_api": {
+        "dados": [
+          {
+            "agregacao": "janela",
+            "contagens": {
+              "denominador": null,
+              "numerador": 3
+            },
+            "duracao_horas": 0.25,
+            "espera_estimada": {
+              "lacunas": [],
+              "motivo_ausencia": null,
+              "situacao": "CALCULADA",
+              "unidade": "min",
+              "valor": 2.5
+            },
+            "excesso_espera": {
+              "espera_programada_min": 2.5,
+              "intervalos_programados_seg": [
+                300,
+                300,
+                300
+              ],
+              "lacunas": [],
+              "motivo_ausencia": null,
+              "situacao": "CALCULADA",
+              "unidade": "min",
+              "valor": 0.0
+            },
+            "fim": "2026-11-24T12:15:00+00:00",
+            "indicador": "ESPERA",
+            "inicio": "2026-11-24T12:00:00+00:00",
+            "intervalos": 3,
+            "linha": "SINT-US17",
+            "parada": "B",
+            "qualidade": {
+              "datas_operacao": [
+                "2026-11-24"
+              ],
+              "faixa": null,
+              "formula_espera": "E = Σh² ÷ (2·Σh) dos intervalos h entre passagens sucessivas (s), publicada em minutos",
+              "minimo_passagens": 3,
+              "oferta": "FREQUENCIA",
+              "regra_excesso": "excesso = E − E_prog; E_prog = ΣH² ÷ (2·ΣH) dos intervalos programados vigentes na janela (= H ÷ 2 com intervalo único); excesso negativo mantido, sem truncar",
+              "regra_fronteira": "cada intervalo pertence à janela [início, fim) da sua passagem posterior",
+              "regra_vigencia": "partida da oferta por frequência da captura da US04 cujo intervalo [saída, saída + H) cruza a janela",
+              "versoes": {
+                "capturas_programacao": [
+                  {
+                    "fonte": "OFICIAL",
+                    "importacao_id": "b56b8886-6abd-5957-add8-1d4177f2ed71",
+                    "tipo_dia": "UTIL",
+                    "versao_fonte": "programacao-2026-11-24"
+                  }
+                ],
+                "versao_calculo": "espera-1.0",
+                "versao_correspondencia": "correspondencia-controlada-us17",
+                "versao_estimativa": "us15-t01-v1-lacuna120s",
+                "versao_gtfs_id": "b4302232-2ea1-547a-969f-4ba12fe08e3a",
+                "versao_reconstrucao": "recon-controle-us17",
+                "versoes_conjunto": [
+                  "191bc16b4615ebb03918fb1b24860b13"
+                ]
+              }
+            },
+            "referencia": "2026-11-24",
+            "sentido": "0",
+            "tipo": "ESPERA",
+            "trecho": null,
+            "unidade": "min",
+            "valor": 2.5,
+            "versao_calculo": "espera-1.0",
+            "versao_conjunto": "191bc16b4615ebb03918fb1b24860b13",
+            "versao_correspondencia": "correspondencia-controlada-us17",
+            "versao_gtfs_id": "b4302232-2ea1-547a-969f-4ba12fe08e3a"
+          }
+        ],
+        "paginacao": {
+          "page": 1,
+          "page_size": 100,
+          "total": 1
+        }
+      }
+    },
+    {
+      "id": "C03",
+      "titulo": "Comboio aumenta a espera",
+      "escala": "janela",
+      "status": "CONFERIU_EXEMPLO",
+      "calculo_manual": "Intervalos 60, 660, 60 s: Σh = 780, Σh² = 442800, E = 283,846154 s = 4,730769 min; E_prog = 150 s; excesso = 133,846154 s = 2,230769 min.",
+      "consulta": {
+        "tipo": "ESPERA",
+        "linha": "SINT-US17",
+        "sentido": "0",
+        "parada": "B",
+        "inicio": "2026-11-24T12:00:00+00:00",
+        "fim": "2026-11-24T12:00:00+00:00"
+      },
+      "comparacoes": [
+        {
+          "campo": "http_status",
+          "manual": 200,
+          "obtido": 200,
+          "confere": true
+        },
+        {
+          "campo": "quantidade_itens",
+          "manual": 1,
+          "obtido": 1,
+          "confere": true
+        },
+        {
+          "campo": "espera_min",
+          "manual": 4.730769,
+          "obtido": 4.730769,
+          "confere": true
+        },
+        {
+          "campo": "excesso_min",
+          "manual": 2.230769,
+          "obtido": 2.230769,
+          "confere": true
+        },
+        {
+          "campo": "motivo_espera",
+          "manual": null,
+          "obtido": null,
+          "confere": true
+        },
+        {
+          "campo": "motivo_excesso",
+          "manual": null,
+          "obtido": null,
+          "confere": true
+        },
+        {
+          "campo": "unidades",
+          "manual": [
+            "min",
+            "min"
+          ],
+          "obtido": [
+            "min",
+            "min"
+          ],
+          "confere": true
+        },
+        {
+          "campo": "parada",
+          "manual": "B",
+          "obtido": "B",
+          "confere": true
+        },
+        {
+          "campo": "ausencia_nao_e_zero",
+          "manual": [
+            false,
+            false
+          ],
+          "obtido": [
+            false,
+            false
+          ],
+          "confere": true
+        }
+      ],
+      "resposta_api": {
+        "dados": [
+          {
+            "agregacao": "janela",
+            "contagens": {
+              "denominador": null,
+              "numerador": 3
+            },
+            "duracao_horas": 0.25,
+            "espera_estimada": {
+              "lacunas": [],
+              "motivo_ausencia": null,
+              "situacao": "CALCULADA",
+              "unidade": "min",
+              "valor": 4.730769
+            },
+            "excesso_espera": {
+              "espera_programada_min": 2.5,
+              "intervalos_programados_seg": [
+                300,
+                300,
+                300
+              ],
+              "lacunas": [],
+              "motivo_ausencia": null,
+              "situacao": "CALCULADA",
+              "unidade": "min",
+              "valor": 2.230769
+            },
+            "fim": "2026-11-24T12:15:00+00:00",
+            "indicador": "ESPERA",
+            "inicio": "2026-11-24T12:00:00+00:00",
+            "intervalos": 3,
+            "linha": "SINT-US17",
+            "parada": "B",
+            "qualidade": {
+              "datas_operacao": [
+                "2026-11-24"
+              ],
+              "faixa": null,
+              "formula_espera": "E = Σh² ÷ (2·Σh) dos intervalos h entre passagens sucessivas (s), publicada em minutos",
+              "minimo_passagens": 3,
+              "oferta": "FREQUENCIA",
+              "regra_excesso": "excesso = E − E_prog; E_prog = ΣH² ÷ (2·ΣH) dos intervalos programados vigentes na janela (= H ÷ 2 com intervalo único); excesso negativo mantido, sem truncar",
+              "regra_fronteira": "cada intervalo pertence à janela [início, fim) da sua passagem posterior",
+              "regra_vigencia": "partida da oferta por frequência da captura da US04 cujo intervalo [saída, saída + H) cruza a janela",
+              "versoes": {
+                "capturas_programacao": [
+                  {
+                    "fonte": "OFICIAL",
+                    "importacao_id": "f56abd87-2ad7-58e1-b5be-a9f38faf9756",
+                    "tipo_dia": "UTIL",
+                    "versao_fonte": "programacao-2026-11-24"
+                  }
+                ],
+                "versao_calculo": "espera-1.0",
+                "versao_correspondencia": "correspondencia-controlada-us17",
+                "versao_estimativa": "us15-t01-v1-lacuna120s",
+                "versao_gtfs_id": "53e0cbfb-a8a2-50b0-99bf-ca261f867774",
+                "versao_reconstrucao": "recon-controle-us17",
+                "versoes_conjunto": [
+                  "14cfad22420d3953d84b8031f407bf8e"
+                ]
+              }
+            },
+            "referencia": "2026-11-24",
+            "sentido": "0",
+            "tipo": "ESPERA",
+            "trecho": null,
+            "unidade": "min",
+            "valor": 4.730769,
+            "versao_calculo": "espera-1.0",
+            "versao_conjunto": "14cfad22420d3953d84b8031f407bf8e",
+            "versao_correspondencia": "correspondencia-controlada-us17",
+            "versao_gtfs_id": "53e0cbfb-a8a2-50b0-99bf-ca261f867774"
+          }
+        ],
+        "paginacao": {
+          "page": 1,
+          "page_size": 100,
+          "total": 1
+        }
+      }
+    },
+    {
+      "id": "C04",
+      "titulo": "Janela que cruza faixas de programação",
+      "escala": "janela",
+      "status": "CONFERIU_EXEMPLO",
+      "calculo_manual": "Vigentes em 09:00–09:15: partida 09:00 (H = 300 s, até 09:05) e 09:05 (H = 600 s). E_prog = (300² + 600²)/(2 × 900) = 250 s. E = 140,769231 s. Excesso = −109,230769 s = −1,820513 min.",
+      "consulta": {
+        "tipo": "ESPERA",
+        "linha": "SINT-US17",
+        "sentido": "0",
+        "parada": "B",
+        "inicio": "2026-11-24T12:00:00+00:00",
+        "fim": "2026-11-24T12:00:00+00:00"
+      },
+      "comparacoes": [
+        {
+          "campo": "http_status",
+          "manual": 200,
+          "obtido": 200,
+          "confere": true
+        },
+        {
+          "campo": "quantidade_itens",
+          "manual": 1,
+          "obtido": 1,
+          "confere": true
+        },
+        {
+          "campo": "espera_min",
+          "manual": 2.346154,
+          "obtido": 2.346154,
+          "confere": true
+        },
+        {
+          "campo": "excesso_min",
+          "manual": -1.820513,
+          "obtido": -1.820513,
+          "confere": true
+        },
+        {
+          "campo": "motivo_espera",
+          "manual": null,
+          "obtido": null,
+          "confere": true
+        },
+        {
+          "campo": "motivo_excesso",
+          "manual": null,
+          "obtido": null,
+          "confere": true
+        },
+        {
+          "campo": "unidades",
+          "manual": [
+            "min",
+            "min"
+          ],
+          "obtido": [
+            "min",
+            "min"
+          ],
+          "confere": true
+        },
+        {
+          "campo": "parada",
+          "manual": "B",
+          "obtido": "B",
+          "confere": true
+        },
+        {
+          "campo": "ausencia_nao_e_zero",
+          "manual": [
+            false,
+            false
+          ],
+          "obtido": [
+            false,
+            false
+          ],
+          "confere": true
+        }
+      ],
+      "resposta_api": {
+        "dados": [
+          {
+            "agregacao": "janela",
+            "contagens": {
+              "denominador": null,
+              "numerador": 3
+            },
+            "duracao_horas": 0.25,
+            "espera_estimada": {
+              "lacunas": [],
+              "motivo_ausencia": null,
+              "situacao": "CALCULADA",
+              "unidade": "min",
+              "valor": 2.346154
+            },
+            "excesso_espera": {
+              "espera_programada_min": 4.166667,
+              "intervalos_programados_seg": [
+                300,
+                600
+              ],
+              "lacunas": [],
+              "motivo_ausencia": null,
+              "situacao": "CALCULADA",
+              "unidade": "min",
+              "valor": -1.820513
+            },
+            "fim": "2026-11-24T12:15:00+00:00",
+            "indicador": "ESPERA",
+            "inicio": "2026-11-24T12:00:00+00:00",
+            "intervalos": 3,
+            "linha": "SINT-US17",
+            "parada": "B",
+            "qualidade": {
+              "datas_operacao": [
+                "2026-11-24"
+              ],
+              "faixa": null,
+              "formula_espera": "E = Σh² ÷ (2·Σh) dos intervalos h entre passagens sucessivas (s), publicada em minutos",
+              "minimo_passagens": 3,
+              "oferta": "FREQUENCIA",
+              "regra_excesso": "excesso = E − E_prog; E_prog = ΣH² ÷ (2·ΣH) dos intervalos programados vigentes na janela (= H ÷ 2 com intervalo único); excesso negativo mantido, sem truncar",
+              "regra_fronteira": "cada intervalo pertence à janela [início, fim) da sua passagem posterior",
+              "regra_vigencia": "partida da oferta por frequência da captura da US04 cujo intervalo [saída, saída + H) cruza a janela",
+              "versoes": {
+                "capturas_programacao": [
+                  {
+                    "fonte": "OFICIAL",
+                    "importacao_id": "f290464d-c7f8-58a9-ab92-147b4e6f5fca",
+                    "tipo_dia": "UTIL",
+                    "versao_fonte": "programacao-2026-11-24"
+                  }
+                ],
+                "versao_calculo": "espera-1.0",
+                "versao_correspondencia": "correspondencia-controlada-us17",
+                "versao_estimativa": "us15-t01-v1-lacuna120s",
+                "versao_gtfs_id": "2773adcd-288b-5bfe-a6ef-dfb38c8512d5",
+                "versao_reconstrucao": "recon-controle-us17",
+                "versoes_conjunto": [
+                  "69f099ea75e25de5a088c50664ac32f3"
+                ]
+              }
+            },
+            "referencia": "2026-11-24",
+            "sentido": "0",
+            "tipo": "ESPERA",
+            "trecho": null,
+            "unidade": "min",
+            "valor": 2.346154,
+            "versao_calculo": "espera-1.0",
+            "versao_conjunto": "69f099ea75e25de5a088c50664ac32f3",
+            "versao_correspondencia": "correspondencia-controlada-us17",
+            "versao_gtfs_id": "2773adcd-288b-5bfe-a6ef-dfb38c8512d5"
+          }
+        ],
+        "paginacao": {
+          "page": 1,
+          "page_size": 100,
+          "total": 1
+        }
+      }
+    },
+    {
+      "id": "C05",
+      "titulo": "Menos de três passagens: os dois sem resultado",
+      "escala": "janela",
+      "status": "CONFERIU_EXEMPLO",
+      "calculo_manual": "Um intervalo (420 s): sem espera e sem excesso; nunca zero.",
+      "consulta": {
+        "tipo": "ESPERA",
+        "linha": "SINT-US17",
+        "sentido": "0",
+        "parada": "B",
+        "inicio": "2026-11-24T12:00:00+00:00",
+        "fim": "2026-11-24T12:00:00+00:00"
+      },
+      "comparacoes": [
+        {
+          "campo": "http_status",
+          "manual": 200,
+          "obtido": 200,
+          "confere": true
+        },
+        {
+          "campo": "quantidade_itens",
+          "manual": 1,
+          "obtido": 1,
+          "confere": true
+        },
+        {
+          "campo": "espera_min",
+          "manual": null,
+          "obtido": null,
+          "confere": true
+        },
+        {
+          "campo": "excesso_min",
+          "manual": null,
+          "obtido": null,
+          "confere": true
+        },
+        {
+          "campo": "motivo_espera",
+          "manual": "passagens_insuficientes",
+          "obtido": "passagens_insuficientes",
+          "confere": true
+        },
+        {
+          "campo": "motivo_excesso",
+          "manual": "passagens_insuficientes",
+          "obtido": "passagens_insuficientes",
+          "confere": true
+        },
+        {
+          "campo": "unidades",
+          "manual": [
+            "min",
+            "min"
+          ],
+          "obtido": [
+            "min",
+            "min"
+          ],
+          "confere": true
+        },
+        {
+          "campo": "parada",
+          "manual": "B",
+          "obtido": "B",
+          "confere": true
+        },
+        {
+          "campo": "ausencia_nao_e_zero",
+          "manual": [
+            true,
+            true
+          ],
+          "obtido": [
+            true,
+            true
+          ],
+          "confere": true
+        }
+      ],
+      "resposta_api": {
+        "dados": [
+          {
+            "agregacao": "janela",
+            "contagens": {
+              "denominador": null,
+              "numerador": null
+            },
+            "duracao_horas": 0.25,
+            "espera_estimada": {
+              "lacunas": [],
+              "motivo_ausencia": "passagens_insuficientes",
+              "situacao": "DADOS_INSUFICIENTES",
+              "unidade": "min",
+              "valor": null
+            },
+            "excesso_espera": {
+              "espera_programada_min": 2.5,
+              "intervalos_programados_seg": [
+                300,
+                300,
+                300
+              ],
+              "lacunas": [],
+              "motivo_ausencia": "passagens_insuficientes",
+              "situacao": "DADOS_INSUFICIENTES",
+              "unidade": "min",
+              "valor": null
+            },
+            "fim": "2026-11-24T12:15:00+00:00",
+            "indicador": "ESPERA",
+            "inicio": "2026-11-24T12:00:00+00:00",
+            "intervalos": null,
+            "linha": "SINT-US17",
+            "parada": "B",
+            "qualidade": {
+              "datas_operacao": [
+                "2026-11-24"
+              ],
+              "faixa": null,
+              "formula_espera": "E = Σh² ÷ (2·Σh) dos intervalos h entre passagens sucessivas (s), publicada em minutos",
+              "minimo_passagens": 3,
+              "oferta": "FREQUENCIA",
+              "regra_excesso": "excesso = E − E_prog; E_prog = ΣH² ÷ (2·ΣH) dos intervalos programados vigentes na janela (= H ÷ 2 com intervalo único); excesso negativo mantido, sem truncar",
+              "regra_fronteira": "cada intervalo pertence à janela [início, fim) da sua passagem posterior",
+              "regra_vigencia": "partida da oferta por frequência da captura da US04 cujo intervalo [saída, saída + H) cruza a janela",
+              "versoes": {
+                "capturas_programacao": [
+                  {
+                    "fonte": "OFICIAL",
+                    "importacao_id": "fe15b9f1-8b93-567f-ac8b-ecda6566f819",
+                    "tipo_dia": "UTIL",
+                    "versao_fonte": "programacao-2026-11-24"
+                  }
+                ],
+                "versao_calculo": "espera-1.0",
+                "versao_correspondencia": "correspondencia-controlada-us17",
+                "versao_estimativa": "us15-t01-v1-lacuna120s",
+                "versao_gtfs_id": "b384983a-d3d9-5989-b5ab-1c5fd3e02345",
+                "versao_reconstrucao": "recon-controle-us17",
+                "versoes_conjunto": [
+                  "d0d82ee6654e8297df3e0245ff961dfc"
+                ]
+              }
+            },
+            "referencia": "2026-11-24",
+            "sentido": "0",
+            "tipo": "ESPERA",
+            "trecho": null,
+            "unidade": "min",
+            "valor": null,
+            "versao_calculo": "espera-1.0",
+            "versao_conjunto": "d0d82ee6654e8297df3e0245ff961dfc",
+            "versao_correspondencia": "correspondencia-controlada-us17",
+            "versao_gtfs_id": "b384983a-d3d9-5989-b5ab-1c5fd3e02345"
+          }
+        ],
+        "paginacao": {
+          "page": 1,
+          "page_size": 100,
+          "total": 1
+        }
+      }
+    },
+    {
+      "id": "C06",
+      "titulo": "Faixa une as janelas",
+      "escala": "faixa",
+      "status": "CONFERIU_EXEMPLO",
+      "calculo_manual": "Nove intervalos de 360 s: E = 180 s = 3 min. Partidas vigentes 09:00…09:54 (H = 360 s): E_prog = 180 s; excesso 0.",
+      "consulta": {
+        "tipo": "ESPERA",
+        "linha": "SINT-US17",
+        "sentido": "0",
+        "parada": "B",
+        "inicio": "2026-11-24T03:00:00+00:00",
+        "fim": "2026-11-25T03:00:00+00:00",
+        "agregacao": "faixa",
+        "hora_inicio": "09:00",
+        "hora_fim": "10:00"
+      },
+      "comparacoes": [
+        {
+          "campo": "http_status",
+          "manual": 200,
+          "obtido": 200,
+          "confere": true
+        },
+        {
+          "campo": "quantidade_itens",
+          "manual": 1,
+          "obtido": 1,
+          "confere": true
+        },
+        {
+          "campo": "espera_min",
+          "manual": 3,
+          "obtido": 3.0,
+          "confere": true
+        },
+        {
+          "campo": "excesso_min",
+          "manual": 0,
+          "obtido": 0.0,
+          "confere": true
+        },
+        {
+          "campo": "motivo_espera",
+          "manual": null,
+          "obtido": null,
+          "confere": true
+        },
+        {
+          "campo": "motivo_excesso",
+          "manual": null,
+          "obtido": null,
+          "confere": true
+        },
+        {
+          "campo": "unidades",
+          "manual": [
+            "min",
+            "min"
+          ],
+          "obtido": [
+            "min",
+            "min"
+          ],
+          "confere": true
+        },
+        {
+          "campo": "parada",
+          "manual": "B",
+          "obtido": "B",
+          "confere": true
+        },
+        {
+          "campo": "ausencia_nao_e_zero",
+          "manual": [
+            false,
+            false
+          ],
+          "obtido": [
+            false,
+            false
+          ],
+          "confere": true
+        }
+      ],
+      "resposta_api": {
+        "dados": [
+          {
+            "agregacao": "faixa",
+            "contagens": {
+              "denominador": null,
+              "numerador": 9
+            },
+            "duracao_horas": 1.0,
+            "espera_estimada": {
+              "lacunas": [],
+              "motivo_ausencia": null,
+              "situacao": "CALCULADA",
+              "unidade": "min",
+              "valor": 3.0
+            },
+            "excesso_espera": {
+              "espera_programada_min": 3.0,
+              "intervalos_programados_seg": [
+                360,
+                360,
+                360,
+                360,
+                360,
+                360,
+                360,
+                360,
+                360,
+                360
+              ],
+              "lacunas": [],
+              "motivo_ausencia": null,
+              "situacao": "CALCULADA",
+              "unidade": "min",
+              "valor": 0.0
+            },
+            "fim": "2026-11-24T13:00:00+00:00",
+            "indicador": "ESPERA",
+            "inicio": "2026-11-24T12:00:00+00:00",
+            "intervalos": 9,
+            "linha": "SINT-US17",
+            "parada": "B",
+            "qualidade": {
+              "datas_operacao": [
+                "2026-11-24"
+              ],
+              "faixa": {
+                "fuso": "America/Sao_Paulo",
+                "hora_fim": "10:00",
+                "hora_inicio": "09:00"
+              },
+              "formula_espera": "E = Σh² ÷ (2·Σh) dos intervalos h entre passagens sucessivas (s), publicada em minutos",
+              "minimo_passagens": 3,
+              "oferta": "FREQUENCIA",
+              "regra_excesso": "excesso = E − E_prog; E_prog = ΣH² ÷ (2·ΣH) dos intervalos programados vigentes na janela (= H ÷ 2 com intervalo único); excesso negativo mantido, sem truncar",
+              "regra_fronteira": "cada intervalo pertence à janela [início, fim) da sua passagem posterior",
+              "regra_vigencia": "partida da oferta por frequência da captura da US04 cujo intervalo [saída, saída + H) cruza a janela",
+              "versoes": {
+                "capturas_programacao": [
+                  {
+                    "fonte": "OFICIAL",
+                    "importacao_id": "104946db-b5d5-5bfa-a183-ee71266dcfa2",
+                    "tipo_dia": "UTIL",
+                    "versao_fonte": "programacao-2026-11-24"
+                  }
+                ],
+                "versao_calculo": "espera-1.0",
+                "versao_correspondencia": "correspondencia-controlada-us17",
+                "versao_estimativa": "us15-t01-v1-lacuna120s",
+                "versao_gtfs_id": "cebda149-1f77-5576-9193-efd2da80d185",
+                "versao_reconstrucao": "recon-controle-us17",
+                "versoes_conjunto": [
+                  "7e9c6cb76e497e5687b141113a8bdd95"
+                ]
+              }
+            },
+            "referencia": "2026-11-24",
+            "sentido": "0",
+            "tipo": "ESPERA",
+            "trecho": null,
+            "unidade": "min",
+            "valor": 3.0,
+            "versao_calculo": "espera-1.0",
+            "versao_conjunto": "7e9c6cb76e497e5687b141113a8bdd95",
+            "versao_correspondencia": "correspondencia-controlada-us17",
+            "versao_gtfs_id": "cebda149-1f77-5576-9193-efd2da80d185"
+          }
+        ],
+        "paginacao": {
+          "page": 1,
+          "page_size": 100,
+          "total": 1
+        }
+      }
+    },
+    {
+      "id": "C07",
+      "titulo": "Sem programação vigente: excesso ausente explícito",
+      "escala": "faixa",
+      "status": "CONFERIU_EXEMPLO",
+      "calculo_manual": "Intervalos 600, 600, 600 s: E = 300 s = 5 min. A programação só vai das 06:00 às 07:00: nenhum intervalo programado vigente às 09:00–10:00 → excesso sem resultado.",
+      "consulta": {
+        "tipo": "ESPERA",
+        "linha": "SINT-US17",
+        "sentido": "0",
+        "parada": "B",
+        "inicio": "2026-11-24T03:00:00+00:00",
+        "fim": "2026-11-25T03:00:00+00:00",
+        "agregacao": "faixa",
+        "hora_inicio": "09:00",
+        "hora_fim": "10:00"
+      },
+      "comparacoes": [
+        {
+          "campo": "http_status",
+          "manual": 200,
+          "obtido": 200,
+          "confere": true
+        },
+        {
+          "campo": "quantidade_itens",
+          "manual": 1,
+          "obtido": 1,
+          "confere": true
+        },
+        {
+          "campo": "espera_min",
+          "manual": 5,
+          "obtido": 5.0,
+          "confere": true
+        },
+        {
+          "campo": "excesso_min",
+          "manual": null,
+          "obtido": null,
+          "confere": true
+        },
+        {
+          "campo": "motivo_espera",
+          "manual": null,
+          "obtido": null,
+          "confere": true
+        },
+        {
+          "campo": "motivo_excesso",
+          "manual": "intervalo_programado_ausente",
+          "obtido": "intervalo_programado_ausente",
+          "confere": true
+        },
+        {
+          "campo": "unidades",
+          "manual": [
+            "min",
+            "min"
+          ],
+          "obtido": [
+            "min",
+            "min"
+          ],
+          "confere": true
+        },
+        {
+          "campo": "parada",
+          "manual": "B",
+          "obtido": "B",
+          "confere": true
+        },
+        {
+          "campo": "ausencia_nao_e_zero",
+          "manual": [
+            false,
+            true
+          ],
+          "obtido": [
+            false,
+            true
+          ],
+          "confere": true
+        }
+      ],
+      "resposta_api": {
+        "dados": [
+          {
+            "agregacao": "faixa",
+            "contagens": {
+              "denominador": null,
+              "numerador": 3
+            },
+            "duracao_horas": 1.0,
+            "espera_estimada": {
+              "lacunas": [],
+              "motivo_ausencia": null,
+              "situacao": "CALCULADA",
+              "unidade": "min",
+              "valor": 5.0
+            },
+            "excesso_espera": {
+              "espera_programada_min": null,
+              "intervalos_programados_seg": [],
+              "lacunas": [],
+              "motivo_ausencia": "intervalo_programado_ausente",
+              "situacao": "DADOS_AUSENTES",
+              "unidade": "min",
+              "valor": null
+            },
+            "fim": "2026-11-24T13:00:00+00:00",
+            "indicador": "ESPERA",
+            "inicio": "2026-11-24T12:00:00+00:00",
+            "intervalos": 3,
+            "linha": "SINT-US17",
+            "parada": "B",
+            "qualidade": {
+              "datas_operacao": [
+                "2026-11-24"
+              ],
+              "faixa": {
+                "fuso": "America/Sao_Paulo",
+                "hora_fim": "10:00",
+                "hora_inicio": "09:00"
+              },
+              "formula_espera": "E = Σh² ÷ (2·Σh) dos intervalos h entre passagens sucessivas (s), publicada em minutos",
+              "minimo_passagens": 3,
+              "oferta": "FREQUENCIA",
+              "regra_excesso": "excesso = E − E_prog; E_prog = ΣH² ÷ (2·ΣH) dos intervalos programados vigentes na janela (= H ÷ 2 com intervalo único); excesso negativo mantido, sem truncar",
+              "regra_fronteira": "cada intervalo pertence à janela [início, fim) da sua passagem posterior",
+              "regra_vigencia": "partida da oferta por frequência da captura da US04 cujo intervalo [saída, saída + H) cruza a janela",
+              "versoes": {
+                "capturas_programacao": [
+                  {
+                    "fonte": "OFICIAL",
+                    "importacao_id": "3dc96f7e-4506-584f-ac1c-f1e64d385c74",
+                    "tipo_dia": "UTIL",
+                    "versao_fonte": "programacao-2026-11-24"
+                  }
+                ],
+                "versao_calculo": "espera-1.0",
+                "versao_correspondencia": "correspondencia-controlada-us17",
+                "versao_estimativa": "us15-t01-v1-lacuna120s",
+                "versao_gtfs_id": "25c81ee0-f765-5673-a218-91c34bad5e9b",
+                "versao_reconstrucao": "recon-controle-us17",
+                "versoes_conjunto": [
+                  "a90d01db489aa17bbfd17204ae1ea68c"
+                ]
+              }
+            },
+            "referencia": "2026-11-24",
+            "sentido": "0",
+            "tipo": "ESPERA",
+            "trecho": null,
+            "unidade": "min",
+            "valor": 5.0,
+            "versao_calculo": "espera-1.0",
+            "versao_conjunto": "a90d01db489aa17bbfd17204ae1ea68c",
+            "versao_correspondencia": "correspondencia-controlada-us17",
+            "versao_gtfs_id": "25c81ee0-f765-5673-a218-91c34bad5e9b"
+          }
+        ],
+        "paginacao": {
+          "page": 1,
+          "page_size": 100,
+          "total": 1
+        }
+      }
+    },
+    {
+      "id": "C08",
+      "titulo": "Sentidos não se misturam",
+      "escala": "faixa",
+      "status": "CONFERIU_EXEMPLO",
+      "calculo_manual": "Ida: intervalos 600 s → E = 300 s = 5 min; E_prog = 300 s; excesso 0. A volta (09:05, 09:15, 09:25) daria intervalos de 300 s se misturada.",
+      "consulta": {
+        "tipo": "ESPERA",
+        "linha": "SINT-US17",
+        "sentido": "0",
+        "parada": "B",
+        "inicio": "2026-11-24T03:00:00+00:00",
+        "fim": "2026-11-25T03:00:00+00:00",
+        "agregacao": "faixa",
+        "hora_inicio": "09:00",
+        "hora_fim": "10:00"
+      },
+      "comparacoes": [
+        {
+          "campo": "http_status",
+          "manual": 200,
+          "obtido": 200,
+          "confere": true
+        },
+        {
+          "campo": "quantidade_itens",
+          "manual": 1,
+          "obtido": 1,
+          "confere": true
+        },
+        {
+          "campo": "espera_min",
+          "manual": 5,
+          "obtido": 5.0,
+          "confere": true
+        },
+        {
+          "campo": "excesso_min",
+          "manual": 0,
+          "obtido": 0.0,
+          "confere": true
+        },
+        {
+          "campo": "motivo_espera",
+          "manual": null,
+          "obtido": null,
+          "confere": true
+        },
+        {
+          "campo": "motivo_excesso",
+          "manual": null,
+          "obtido": null,
+          "confere": true
+        },
+        {
+          "campo": "unidades",
+          "manual": [
+            "min",
+            "min"
+          ],
+          "obtido": [
+            "min",
+            "min"
+          ],
+          "confere": true
+        },
+        {
+          "campo": "parada",
+          "manual": "B",
+          "obtido": "B",
+          "confere": true
+        },
+        {
+          "campo": "ausencia_nao_e_zero",
+          "manual": [
+            false,
+            false
+          ],
+          "obtido": [
+            false,
+            false
+          ],
+          "confere": true
+        }
+      ],
+      "resposta_api": {
+        "dados": [
+          {
+            "agregacao": "faixa",
+            "contagens": {
+              "denominador": null,
+              "numerador": 3
+            },
+            "duracao_horas": 1.0,
+            "espera_estimada": {
+              "lacunas": [],
+              "motivo_ausencia": null,
+              "situacao": "CALCULADA",
+              "unidade": "min",
+              "valor": 5.0
+            },
+            "excesso_espera": {
+              "espera_programada_min": 5.0,
+              "intervalos_programados_seg": [
+                600,
+                600,
+                600,
+                600,
+                600,
+                600
+              ],
+              "lacunas": [],
+              "motivo_ausencia": null,
+              "situacao": "CALCULADA",
+              "unidade": "min",
+              "valor": 0.0
+            },
+            "fim": "2026-11-24T13:00:00+00:00",
+            "indicador": "ESPERA",
+            "inicio": "2026-11-24T12:00:00+00:00",
+            "intervalos": 3,
+            "linha": "SINT-US17",
+            "parada": "B",
+            "qualidade": {
+              "datas_operacao": [
+                "2026-11-24"
+              ],
+              "faixa": {
+                "fuso": "America/Sao_Paulo",
+                "hora_fim": "10:00",
+                "hora_inicio": "09:00"
+              },
+              "formula_espera": "E = Σh² ÷ (2·Σh) dos intervalos h entre passagens sucessivas (s), publicada em minutos",
+              "minimo_passagens": 3,
+              "oferta": "FREQUENCIA",
+              "regra_excesso": "excesso = E − E_prog; E_prog = ΣH² ÷ (2·ΣH) dos intervalos programados vigentes na janela (= H ÷ 2 com intervalo único); excesso negativo mantido, sem truncar",
+              "regra_fronteira": "cada intervalo pertence à janela [início, fim) da sua passagem posterior",
+              "regra_vigencia": "partida da oferta por frequência da captura da US04 cujo intervalo [saída, saída + H) cruza a janela",
+              "versoes": {
+                "capturas_programacao": [
+                  {
+                    "fonte": "OFICIAL",
+                    "importacao_id": "498750fa-b153-5b87-a557-a1f746755d32",
+                    "tipo_dia": "UTIL",
+                    "versao_fonte": "programacao-2026-11-24"
+                  }
+                ],
+                "versao_calculo": "espera-1.0",
+                "versao_correspondencia": "correspondencia-controlada-us17",
+                "versao_estimativa": "us15-t01-v1-lacuna120s",
+                "versao_gtfs_id": "f79cd7f4-ad63-58be-a325-8023e2c9dc5c",
+                "versao_reconstrucao": "recon-controle-us17",
+                "versoes_conjunto": [
+                  "f00524a65855a9e5cf9ff0163043dae0"
+                ]
+              }
+            },
+            "referencia": "2026-11-24",
+            "sentido": "0",
+            "tipo": "ESPERA",
+            "trecho": null,
+            "unidade": "min",
+            "valor": 5.0,
+            "versao_calculo": "espera-1.0",
+            "versao_conjunto": "f00524a65855a9e5cf9ff0163043dae0",
+            "versao_correspondencia": "correspondencia-controlada-us17",
+            "versao_gtfs_id": "f79cd7f4-ad63-58be-a325-8023e2c9dc5c"
+          }
+        ],
+        "paginacao": {
+          "page": 1,
+          "page_size": 100,
+          "total": 1
+        }
+      }
+    },
+    {
+      "id": "C09",
+      "titulo": "Só passagens da oferta por frequência",
+      "escala": "faixa",
+      "status": "CONFERIU_EXEMPLO",
+      "calculo_manual": "Viagens de horário fixo (09:05 e 09:25) ficam fora: intervalos 600 s → E = 5 min; excesso 0.",
+      "consulta": {
+        "tipo": "ESPERA",
+        "linha": "SINT-US17",
+        "sentido": "0",
+        "parada": "B",
+        "inicio": "2026-11-24T03:00:00+00:00",
+        "fim": "2026-11-25T03:00:00+00:00",
+        "agregacao": "faixa",
+        "hora_inicio": "09:00",
+        "hora_fim": "10:00"
+      },
+      "comparacoes": [
+        {
+          "campo": "http_status",
+          "manual": 200,
+          "obtido": 200,
+          "confere": true
+        },
+        {
+          "campo": "quantidade_itens",
+          "manual": 1,
+          "obtido": 1,
+          "confere": true
+        },
+        {
+          "campo": "espera_min",
+          "manual": 5,
+          "obtido": 5.0,
+          "confere": true
+        },
+        {
+          "campo": "excesso_min",
+          "manual": 0,
+          "obtido": 0.0,
+          "confere": true
+        },
+        {
+          "campo": "motivo_espera",
+          "manual": null,
+          "obtido": null,
+          "confere": true
+        },
+        {
+          "campo": "motivo_excesso",
+          "manual": null,
+          "obtido": null,
+          "confere": true
+        },
+        {
+          "campo": "unidades",
+          "manual": [
+            "min",
+            "min"
+          ],
+          "obtido": [
+            "min",
+            "min"
+          ],
+          "confere": true
+        },
+        {
+          "campo": "parada",
+          "manual": "B",
+          "obtido": "B",
+          "confere": true
+        },
+        {
+          "campo": "ausencia_nao_e_zero",
+          "manual": [
+            false,
+            false
+          ],
+          "obtido": [
+            false,
+            false
+          ],
+          "confere": true
+        }
+      ],
+      "resposta_api": {
+        "dados": [
+          {
+            "agregacao": "faixa",
+            "contagens": {
+              "denominador": null,
+              "numerador": 3
+            },
+            "duracao_horas": 1.0,
+            "espera_estimada": {
+              "lacunas": [],
+              "motivo_ausencia": null,
+              "situacao": "CALCULADA",
+              "unidade": "min",
+              "valor": 5.0
+            },
+            "excesso_espera": {
+              "espera_programada_min": 5.0,
+              "intervalos_programados_seg": [
+                600,
+                600,
+                600,
+                600,
+                600,
+                600
+              ],
+              "lacunas": [],
+              "motivo_ausencia": null,
+              "situacao": "CALCULADA",
+              "unidade": "min",
+              "valor": 0.0
+            },
+            "fim": "2026-11-24T13:00:00+00:00",
+            "indicador": "ESPERA",
+            "inicio": "2026-11-24T12:00:00+00:00",
+            "intervalos": 3,
+            "linha": "SINT-US17",
+            "parada": "B",
+            "qualidade": {
+              "datas_operacao": [
+                "2026-11-24"
+              ],
+              "faixa": {
+                "fuso": "America/Sao_Paulo",
+                "hora_fim": "10:00",
+                "hora_inicio": "09:00"
+              },
+              "formula_espera": "E = Σh² ÷ (2·Σh) dos intervalos h entre passagens sucessivas (s), publicada em minutos",
+              "minimo_passagens": 3,
+              "oferta": "FREQUENCIA",
+              "regra_excesso": "excesso = E − E_prog; E_prog = ΣH² ÷ (2·ΣH) dos intervalos programados vigentes na janela (= H ÷ 2 com intervalo único); excesso negativo mantido, sem truncar",
+              "regra_fronteira": "cada intervalo pertence à janela [início, fim) da sua passagem posterior",
+              "regra_vigencia": "partida da oferta por frequência da captura da US04 cujo intervalo [saída, saída + H) cruza a janela",
+              "versoes": {
+                "capturas_programacao": [
+                  {
+                    "fonte": "OFICIAL",
+                    "importacao_id": "e296317f-5d2e-5605-a551-917e265b20e4",
+                    "tipo_dia": "UTIL",
+                    "versao_fonte": "programacao-2026-11-24"
+                  }
+                ],
+                "versao_calculo": "espera-1.0",
+                "versao_correspondencia": "correspondencia-controlada-us17",
+                "versao_estimativa": "us15-t01-v1-lacuna120s",
+                "versao_gtfs_id": "21f6b776-be1c-5d23-912d-70f0a3013047",
+                "versao_reconstrucao": "recon-controle-us17",
+                "versoes_conjunto": [
+                  "c03e4dfe9910dcdfa9bb2afd263ece4b"
+                ]
+              }
+            },
+            "referencia": "2026-11-24",
+            "sentido": "0",
+            "tipo": "ESPERA",
+            "trecho": null,
+            "unidade": "min",
+            "valor": 5.0,
+            "versao_calculo": "espera-1.0",
+            "versao_conjunto": "c03e4dfe9910dcdfa9bb2afd263ece4b",
+            "versao_correspondencia": "correspondencia-controlada-us17",
+            "versao_gtfs_id": "21f6b776-be1c-5d23-912d-70f0a3013047"
+          }
+        ],
+        "paginacao": {
+          "page": 1,
+          "page_size": 100,
+          "total": 1
+        }
+      }
+    },
+    {
+      "id": "C10",
+      "titulo": "Coleta incompleta: os dois sem resultado",
+      "escala": "faixa",
+      "status": "CONFERIU_EXEMPLO",
+      "calculo_manual": "Coleta só até 09:30: um ônibus perdido mudaria os intervalos. Espera e excesso sem resultado.",
+      "consulta": {
+        "tipo": "ESPERA",
+        "linha": "SINT-US17",
+        "sentido": "0",
+        "parada": "B",
+        "inicio": "2026-11-24T03:00:00+00:00",
+        "fim": "2026-11-25T03:00:00+00:00",
+        "agregacao": "faixa",
+        "hora_inicio": "09:00",
+        "hora_fim": "10:00"
+      },
+      "comparacoes": [
+        {
+          "campo": "http_status",
+          "manual": 200,
+          "obtido": 200,
+          "confere": true
+        },
+        {
+          "campo": "quantidade_itens",
+          "manual": 1,
+          "obtido": 1,
+          "confere": true
+        },
+        {
+          "campo": "espera_min",
+          "manual": null,
+          "obtido": null,
+          "confere": true
+        },
+        {
+          "campo": "excesso_min",
+          "manual": null,
+          "obtido": null,
+          "confere": true
+        },
+        {
+          "campo": "motivo_espera",
+          "manual": "coleta_sem_dados",
+          "obtido": "coleta_sem_dados",
+          "confere": true
+        },
+        {
+          "campo": "motivo_excesso",
+          "manual": "coleta_sem_dados",
+          "obtido": "coleta_sem_dados",
+          "confere": true
+        },
+        {
+          "campo": "unidades",
+          "manual": [
+            "min",
+            "min"
+          ],
+          "obtido": [
+            "min",
+            "min"
+          ],
+          "confere": true
+        },
+        {
+          "campo": "parada",
+          "manual": "B",
+          "obtido": "B",
+          "confere": true
+        },
+        {
+          "campo": "ausencia_nao_e_zero",
+          "manual": [
+            true,
+            true
+          ],
+          "obtido": [
+            true,
+            true
+          ],
+          "confere": true
+        }
+      ],
+      "resposta_api": {
+        "dados": [
+          {
+            "agregacao": "faixa",
+            "contagens": {
+              "denominador": null,
+              "numerador": null
+            },
+            "duracao_horas": 1.0,
+            "espera_estimada": {
+              "lacunas": [],
+              "motivo_ausencia": "coleta_sem_dados",
+              "situacao": "DADOS_AUSENTES",
+              "unidade": "min",
+              "valor": null
+            },
+            "excesso_espera": {
+              "espera_programada_min": 2.5,
+              "intervalos_programados_seg": [
+                300,
+                300,
+                300,
+                300,
+                300,
+                300,
+                300,
+                300,
+                300,
+                300,
+                300,
+                300
+              ],
+              "lacunas": [],
+              "motivo_ausencia": "coleta_sem_dados",
+              "situacao": "DADOS_AUSENTES",
+              "unidade": "min",
+              "valor": null
+            },
+            "fim": "2026-11-24T13:00:00+00:00",
+            "indicador": "ESPERA",
+            "inicio": "2026-11-24T12:00:00+00:00",
+            "intervalos": null,
+            "linha": "SINT-US17",
+            "parada": "B",
+            "qualidade": {
+              "datas_operacao": [
+                "2026-11-24"
+              ],
+              "faixa": {
+                "fuso": "America/Sao_Paulo",
+                "hora_fim": "10:00",
+                "hora_inicio": "09:00"
+              },
+              "formula_espera": "E = Σh² ÷ (2·Σh) dos intervalos h entre passagens sucessivas (s), publicada em minutos",
+              "minimo_passagens": 3,
+              "oferta": "FREQUENCIA",
+              "regra_excesso": "excesso = E − E_prog; E_prog = ΣH² ÷ (2·ΣH) dos intervalos programados vigentes na janela (= H ÷ 2 com intervalo único); excesso negativo mantido, sem truncar",
+              "regra_fronteira": "cada intervalo pertence à janela [início, fim) da sua passagem posterior",
+              "regra_vigencia": "partida da oferta por frequência da captura da US04 cujo intervalo [saída, saída + H) cruza a janela",
+              "versoes": {
+                "capturas_programacao": [
+                  {
+                    "fonte": "OFICIAL",
+                    "importacao_id": "02350f32-0993-5bac-afeb-3b47e9da86e7",
+                    "tipo_dia": "UTIL",
+                    "versao_fonte": "programacao-2026-11-24"
+                  }
+                ],
+                "versao_calculo": "espera-1.0",
+                "versao_correspondencia": "correspondencia-controlada-us17",
+                "versao_estimativa": "us15-t01-v1-lacuna120s",
+                "versao_gtfs_id": "c8a87fb6-82f4-5597-9945-76d3e62a56a3",
+                "versao_reconstrucao": "recon-controle-us17",
+                "versoes_conjunto": [
+                  "74a14e733dfe88df0b759e46c1d993f1"
+                ]
+              }
+            },
+            "referencia": "2026-11-24",
+            "sentido": "0",
+            "tipo": "ESPERA",
+            "trecho": null,
+            "unidade": "min",
+            "valor": null,
+            "versao_calculo": "espera-1.0",
+            "versao_conjunto": "74a14e733dfe88df0b759e46c1d993f1",
+            "versao_correspondencia": "correspondencia-controlada-us17",
+            "versao_gtfs_id": "c8a87fb6-82f4-5597-9945-76d3e62a56a3"
+          }
+        ],
+        "paginacao": {
+          "page": 1,
+          "page_size": 100,
+          "total": 1
+        }
+      }
+    },
+    {
+      "id": "C11",
+      "titulo": "Dia com vão entre picos",
+      "escala": "dia",
+      "status": "CONFERIU_EXEMPLO",
+      "calculo_manual": "12 intervalos de 600 s e um de 39600 s: Σh = 46800; Σh² = 4320000 + 1568160000 = 1572480000; E = 16800 s = 280 min. Programação H = 600 s o dia todo: E_prog = 300 s; excesso = 16500 s = 275 min.",
+      "consulta": {
+        "tipo": "ESPERA",
+        "linha": "SINT-US17",
+        "sentido": "0",
+        "parada": "B",
+        "inicio": "2026-11-24T03:00:00+00:00",
+        "fim": "2026-11-25T03:00:00+00:00",
+        "agregacao": "dia"
+      },
+      "comparacoes": [
+        {
+          "campo": "http_status",
+          "manual": 200,
+          "obtido": 200,
+          "confere": true
+        },
+        {
+          "campo": "quantidade_itens",
+          "manual": 1,
+          "obtido": 1,
+          "confere": true
+        },
+        {
+          "campo": "espera_min",
+          "manual": 280,
+          "obtido": 280.0,
+          "confere": true
+        },
+        {
+          "campo": "excesso_min",
+          "manual": 275,
+          "obtido": 275.0,
+          "confere": true
+        },
+        {
+          "campo": "motivo_espera",
+          "manual": null,
+          "obtido": null,
+          "confere": true
+        },
+        {
+          "campo": "motivo_excesso",
+          "manual": null,
+          "obtido": null,
+          "confere": true
+        },
+        {
+          "campo": "unidades",
+          "manual": [
+            "min",
+            "min"
+          ],
+          "obtido": [
+            "min",
+            "min"
+          ],
+          "confere": true
+        },
+        {
+          "campo": "parada",
+          "manual": "B",
+          "obtido": "B",
+          "confere": true
+        },
+        {
+          "campo": "ausencia_nao_e_zero",
+          "manual": [
+            false,
+            false
+          ],
+          "obtido": [
+            false,
+            false
+          ],
+          "confere": true
+        }
+      ],
+      "resposta_api": {
+        "dados": [
+          {
+            "agregacao": "dia",
+            "contagens": {
+              "denominador": null,
+              "numerador": 13
+            },
+            "duracao_horas": 24.0,
+            "espera_estimada": {
+              "lacunas": [],
+              "motivo_ausencia": null,
+              "situacao": "CALCULADA",
+              "unidade": "min",
+              "valor": 280.0
+            },
+            "excesso_espera": {
+              "espera_programada_min": 5.0,
+              "intervalos_programados_seg": [
+                600,
+                600,
+                600,
+                600,
+                600,
+                600,
+                600,
+                600,
+                600,
+                600,
+                600,
+                600,
+                600,
+                600,
+                600,
+                600,
+                600,
+                600,
+                600,
+                600,
+                600,
+                600,
+                600,
+                600,
+                600,
+                600,
+                600,
+                600,
+                600,
+                600,
+                600,
+                600,
+                600,
+                600,
+                600,
+                600,
+                600,
+                600,
+                600,
+                600,
+                600,
+                600,
+                600,
+                600,
+                600,
+                600,
+                600,
+                600,
+                600,
+                600,
+                600,
+                600,
+                600,
+                600,
+                600,
+                600,
+                600,
+                600,
+                600,
+                600,
+                600,
+                600,
+                600,
+                600,
+                600,
+                600,
+                600,
+                600,
+                600,
+                600,
+                600,
+                600,
+                600,
+                600,
+                600,
+                600,
+                600,
+                600,
+                600,
+                600,
+                600,
+                600,
+                600,
+                600
+              ],
+              "lacunas": [],
+              "motivo_ausencia": null,
+              "situacao": "CALCULADA",
+              "unidade": "min",
+              "valor": 275.0
+            },
+            "fim": "2026-11-25T03:00:00+00:00",
+            "indicador": "ESPERA",
+            "inicio": "2026-11-24T03:00:00+00:00",
+            "intervalos": 13,
+            "linha": "SINT-US17",
+            "parada": "B",
+            "qualidade": {
+              "datas_operacao": [
+                "2026-11-24"
+              ],
+              "faixa": null,
+              "formula_espera": "E = Σh² ÷ (2·Σh) dos intervalos h entre passagens sucessivas (s), publicada em minutos",
+              "minimo_passagens": 3,
+              "oferta": "FREQUENCIA",
+              "regra_excesso": "excesso = E − E_prog; E_prog = ΣH² ÷ (2·ΣH) dos intervalos programados vigentes na janela (= H ÷ 2 com intervalo único); excesso negativo mantido, sem truncar",
+              "regra_fronteira": "cada intervalo pertence à janela [início, fim) da sua passagem posterior",
+              "regra_vigencia": "partida da oferta por frequência da captura da US04 cujo intervalo [saída, saída + H) cruza a janela",
+              "versoes": {
+                "capturas_programacao": [
+                  {
+                    "fonte": "OFICIAL",
+                    "importacao_id": "aab77576-c0b3-571a-b48e-a3bdbd59bc1a",
+                    "tipo_dia": "UTIL",
+                    "versao_fonte": "programacao-2026-11-24"
+                  }
+                ],
+                "versao_calculo": "espera-1.0",
+                "versao_correspondencia": "correspondencia-controlada-us17",
+                "versao_estimativa": "us15-t01-v1-lacuna120s",
+                "versao_gtfs_id": "0ee65909-fdf9-50e9-b134-1448245a8607",
+                "versao_reconstrucao": "recon-controle-us17",
+                "versoes_conjunto": [
+                  "77225cdbc216678906b8ccd964126e50"
+                ]
+              }
+            },
+            "referencia": "2026-11-24",
+            "sentido": "0",
+            "tipo": "ESPERA",
+            "trecho": null,
+            "unidade": "min",
+            "valor": 280.0,
+            "versao_calculo": "espera-1.0",
+            "versao_conjunto": "77225cdbc216678906b8ccd964126e50",
+            "versao_correspondencia": "correspondencia-controlada-us17",
+            "versao_gtfs_id": "0ee65909-fdf9-50e9-b134-1448245a8607"
+          }
+        ],
+        "paginacao": {
+          "page": 1,
+          "page_size": 100,
+          "total": 1
+        }
+      }
+    },
+    {
+      "id": "C12",
+      "titulo": "Dia com duas passagens",
+      "escala": "dia",
+      "status": "CONFERIU_EXEMPLO",
+      "calculo_manual": "Um intervalo no dia: sem espera e sem excesso.",
+      "consulta": {
+        "tipo": "ESPERA",
+        "linha": "SINT-US17",
+        "sentido": "0",
+        "parada": "B",
+        "inicio": "2026-11-24T03:00:00+00:00",
+        "fim": "2026-11-25T03:00:00+00:00",
+        "agregacao": "dia"
+      },
+      "comparacoes": [
+        {
+          "campo": "http_status",
+          "manual": 200,
+          "obtido": 200,
+          "confere": true
+        },
+        {
+          "campo": "quantidade_itens",
+          "manual": 1,
+          "obtido": 1,
+          "confere": true
+        },
+        {
+          "campo": "espera_min",
+          "manual": null,
+          "obtido": null,
+          "confere": true
+        },
+        {
+          "campo": "excesso_min",
+          "manual": null,
+          "obtido": null,
+          "confere": true
+        },
+        {
+          "campo": "motivo_espera",
+          "manual": "passagens_insuficientes",
+          "obtido": "passagens_insuficientes",
+          "confere": true
+        },
+        {
+          "campo": "motivo_excesso",
+          "manual": "passagens_insuficientes",
+          "obtido": "passagens_insuficientes",
+          "confere": true
+        },
+        {
+          "campo": "unidades",
+          "manual": [
+            "min",
+            "min"
+          ],
+          "obtido": [
+            "min",
+            "min"
+          ],
+          "confere": true
+        },
+        {
+          "campo": "parada",
+          "manual": "B",
+          "obtido": "B",
+          "confere": true
+        },
+        {
+          "campo": "ausencia_nao_e_zero",
+          "manual": [
+            true,
+            true
+          ],
+          "obtido": [
+            true,
+            true
+          ],
+          "confere": true
+        }
+      ],
+      "resposta_api": {
+        "dados": [
+          {
+            "agregacao": "dia",
+            "contagens": {
+              "denominador": null,
+              "numerador": null
+            },
+            "duracao_horas": 24.0,
+            "espera_estimada": {
+              "lacunas": [],
+              "motivo_ausencia": "passagens_insuficientes",
+              "situacao": "DADOS_INSUFICIENTES",
+              "unidade": "min",
+              "valor": null
+            },
+            "excesso_espera": {
+              "espera_programada_min": 5.0,
+              "intervalos_programados_seg": [
+                600,
+                600,
+                600,
+                600,
+                600,
+                600,
+                600,
+                600,
+                600,
+                600,
+                600,
+                600
+              ],
+              "lacunas": [],
+              "motivo_ausencia": "passagens_insuficientes",
+              "situacao": "DADOS_INSUFICIENTES",
+              "unidade": "min",
+              "valor": null
+            },
+            "fim": "2026-11-25T03:00:00+00:00",
+            "indicador": "ESPERA",
+            "inicio": "2026-11-24T03:00:00+00:00",
+            "intervalos": null,
+            "linha": "SINT-US17",
+            "parada": "B",
+            "qualidade": {
+              "datas_operacao": [
+                "2026-11-24"
+              ],
+              "faixa": null,
+              "formula_espera": "E = Σh² ÷ (2·Σh) dos intervalos h entre passagens sucessivas (s), publicada em minutos",
+              "minimo_passagens": 3,
+              "oferta": "FREQUENCIA",
+              "regra_excesso": "excesso = E − E_prog; E_prog = ΣH² ÷ (2·ΣH) dos intervalos programados vigentes na janela (= H ÷ 2 com intervalo único); excesso negativo mantido, sem truncar",
+              "regra_fronteira": "cada intervalo pertence à janela [início, fim) da sua passagem posterior",
+              "regra_vigencia": "partida da oferta por frequência da captura da US04 cujo intervalo [saída, saída + H) cruza a janela",
+              "versoes": {
+                "capturas_programacao": [
+                  {
+                    "fonte": "OFICIAL",
+                    "importacao_id": "61f32fb8-9d65-5e62-b13d-a626292b5f5f",
+                    "tipo_dia": "UTIL",
+                    "versao_fonte": "programacao-2026-11-24"
+                  }
+                ],
+                "versao_calculo": "espera-1.0",
+                "versao_correspondencia": "correspondencia-controlada-us17",
+                "versao_estimativa": "us15-t01-v1-lacuna120s",
+                "versao_gtfs_id": "d1819120-4c32-5288-8de8-744410c94524",
+                "versao_reconstrucao": "recon-controle-us17",
+                "versoes_conjunto": [
+                  "66fcc357ff5d5026dfb4c25aec4f30d4"
+                ]
+              }
+            },
+            "referencia": "2026-11-24",
+            "sentido": "0",
+            "tipo": "ESPERA",
+            "trecho": null,
+            "unidade": "min",
+            "valor": null,
+            "versao_calculo": "espera-1.0",
+            "versao_conjunto": "66fcc357ff5d5026dfb4c25aec4f30d4",
+            "versao_correspondencia": "correspondencia-controlada-us17",
+            "versao_gtfs_id": "d1819120-4c32-5288-8de8-744410c94524"
+          }
+        ],
+        "paginacao": {
+          "page": 1,
+          "page_size": 100,
+          "total": 1
+        }
+      }
+    },
+    {
+      "id": "C13",
+      "titulo": "Passagem sem evidência GPS",
+      "escala": "dia",
+      "status": "CONFERIU_EXEMPLO",
+      "calculo_manual": "Uma viagem passou por B entre 06:12 e 06:14 sem par GPS válido: os intervalos podem estar errados. Sem resultado.",
+      "consulta": {
+        "tipo": "ESPERA",
+        "linha": "SINT-US17",
+        "sentido": "0",
+        "parada": "B",
+        "inicio": "2026-11-24T03:00:00+00:00",
+        "fim": "2026-11-25T03:00:00+00:00",
+        "agregacao": "dia"
+      },
+      "comparacoes": [
+        {
+          "campo": "http_status",
+          "manual": 200,
+          "obtido": 200,
+          "confere": true
+        },
+        {
+          "campo": "quantidade_itens",
+          "manual": 1,
+          "obtido": 1,
+          "confere": true
+        },
+        {
+          "campo": "espera_min",
+          "manual": null,
+          "obtido": null,
+          "confere": true
+        },
+        {
+          "campo": "excesso_min",
+          "manual": null,
+          "obtido": null,
+          "confere": true
+        },
+        {
+          "campo": "motivo_espera",
+          "manual": "sem_evidencia_gps",
+          "obtido": "sem_evidencia_gps",
+          "confere": true
+        },
+        {
+          "campo": "motivo_excesso",
+          "manual": "sem_evidencia_gps",
+          "obtido": "sem_evidencia_gps",
+          "confere": true
+        },
+        {
+          "campo": "unidades",
+          "manual": [
+            "min",
+            "min"
+          ],
+          "obtido": [
+            "min",
+            "min"
+          ],
+          "confere": true
+        },
+        {
+          "campo": "parada",
+          "manual": "B",
+          "obtido": "B",
+          "confere": true
+        },
+        {
+          "campo": "ausencia_nao_e_zero",
+          "manual": [
+            true,
+            true
+          ],
+          "obtido": [
+            true,
+            true
+          ],
+          "confere": true
+        }
+      ],
+      "resposta_api": {
+        "dados": [
+          {
+            "agregacao": "dia",
+            "contagens": {
+              "denominador": null,
+              "numerador": null
+            },
+            "duracao_horas": 24.0,
+            "espera_estimada": {
+              "lacunas": [],
+              "motivo_ausencia": "sem_evidencia_gps",
+              "situacao": "DADOS_AUSENTES",
+              "unidade": "min",
+              "valor": null
+            },
+            "excesso_espera": {
+              "espera_programada_min": 5.0,
+              "intervalos_programados_seg": [
+                600,
+                600,
+                600,
+                600,
+                600,
+                600,
+                600,
+                600,
+                600,
+                600,
+                600,
+                600
+              ],
+              "lacunas": [],
+              "motivo_ausencia": "sem_evidencia_gps",
+              "situacao": "DADOS_AUSENTES",
+              "unidade": "min",
+              "valor": null
+            },
+            "fim": "2026-11-25T03:00:00+00:00",
+            "indicador": "ESPERA",
+            "inicio": "2026-11-24T03:00:00+00:00",
+            "intervalos": null,
+            "linha": "SINT-US17",
+            "parada": "B",
+            "qualidade": {
+              "datas_operacao": [
+                "2026-11-24"
+              ],
+              "faixa": null,
+              "formula_espera": "E = Σh² ÷ (2·Σh) dos intervalos h entre passagens sucessivas (s), publicada em minutos",
+              "minimo_passagens": 3,
+              "oferta": "FREQUENCIA",
+              "regra_excesso": "excesso = E − E_prog; E_prog = ΣH² ÷ (2·ΣH) dos intervalos programados vigentes na janela (= H ÷ 2 com intervalo único); excesso negativo mantido, sem truncar",
+              "regra_fronteira": "cada intervalo pertence à janela [início, fim) da sua passagem posterior",
+              "regra_vigencia": "partida da oferta por frequência da captura da US04 cujo intervalo [saída, saída + H) cruza a janela",
+              "versoes": {
+                "capturas_programacao": [
+                  {
+                    "fonte": "OFICIAL",
+                    "importacao_id": "3672c213-3690-5e9a-abf9-9d6e207c2d83",
+                    "tipo_dia": "UTIL",
+                    "versao_fonte": "programacao-2026-11-24"
+                  }
+                ],
+                "versao_calculo": "espera-1.0",
+                "versao_correspondencia": "correspondencia-controlada-us17",
+                "versao_estimativa": "us15-t01-v1-lacuna120s",
+                "versao_gtfs_id": "953c997d-c44c-5d29-9344-5b4f4adeb239",
+                "versao_reconstrucao": "recon-controle-us17",
+                "versoes_conjunto": [
+                  "0ae261707f13d4428a28117465b3fadf"
+                ]
+              }
+            },
+            "referencia": "2026-11-24",
+            "sentido": "0",
+            "tipo": "ESPERA",
+            "trecho": null,
+            "unidade": "min",
+            "valor": null,
+            "versao_calculo": "espera-1.0",
+            "versao_conjunto": "0ae261707f13d4428a28117465b3fadf",
+            "versao_correspondencia": "correspondencia-controlada-us17",
+            "versao_gtfs_id": "953c997d-c44c-5d29-9344-5b4f4adeb239"
+          }
+        ],
+        "paginacao": {
+          "page": 1,
+          "page_size": 100,
+          "total": 1
+        }
+      }
+    },
+    {
+      "id": "C14",
+      "titulo": "Divisor inválido",
+      "escala": "dia",
+      "status": "CONFERIU_EXEMPLO",
+      "calculo_manual": "Três ônibus juntos às 06:00 (evidências distintas): intervalos 0 e 0, Σh = 0 → divisor inválido. Sem espera, nunca zero.",
+      "consulta": {
+        "tipo": "ESPERA",
+        "linha": "SINT-US17",
+        "sentido": "0",
+        "parada": "B",
+        "inicio": "2026-11-24T03:00:00+00:00",
+        "fim": "2026-11-25T03:00:00+00:00",
+        "agregacao": "dia"
+      },
+      "comparacoes": [
+        {
+          "campo": "http_status",
+          "manual": 200,
+          "obtido": 200,
+          "confere": true
+        },
+        {
+          "campo": "quantidade_itens",
+          "manual": 1,
+          "obtido": 1,
+          "confere": true
+        },
+        {
+          "campo": "espera_min",
+          "manual": null,
+          "obtido": null,
+          "confere": true
+        },
+        {
+          "campo": "excesso_min",
+          "manual": null,
+          "obtido": null,
+          "confere": true
+        },
+        {
+          "campo": "motivo_espera",
+          "manual": "divisor_invalido",
+          "obtido": "divisor_invalido",
+          "confere": true
+        },
+        {
+          "campo": "motivo_excesso",
+          "manual": "divisor_invalido",
+          "obtido": "divisor_invalido",
+          "confere": true
+        },
+        {
+          "campo": "unidades",
+          "manual": [
+            "min",
+            "min"
+          ],
+          "obtido": [
+            "min",
+            "min"
+          ],
+          "confere": true
+        },
+        {
+          "campo": "parada",
+          "manual": "B",
+          "obtido": "B",
+          "confere": true
+        },
+        {
+          "campo": "ausencia_nao_e_zero",
+          "manual": [
+            true,
+            true
+          ],
+          "obtido": [
+            true,
+            true
+          ],
+          "confere": true
+        }
+      ],
+      "resposta_api": {
+        "dados": [
+          {
+            "agregacao": "dia",
+            "contagens": {
+              "denominador": null,
+              "numerador": null
+            },
+            "duracao_horas": 24.0,
+            "espera_estimada": {
+              "lacunas": [],
+              "motivo_ausencia": "divisor_invalido",
+              "situacao": "DADOS_INSUFICIENTES",
+              "unidade": "min",
+              "valor": null
+            },
+            "excesso_espera": {
+              "espera_programada_min": 5.0,
+              "intervalos_programados_seg": [
+                600,
+                600,
+                600,
+                600,
+                600,
+                600,
+                600,
+                600,
+                600,
+                600,
+                600,
+                600
+              ],
+              "lacunas": [],
+              "motivo_ausencia": "divisor_invalido",
+              "situacao": "DADOS_INSUFICIENTES",
+              "unidade": "min",
+              "valor": null
+            },
+            "fim": "2026-11-25T03:00:00+00:00",
+            "indicador": "ESPERA",
+            "inicio": "2026-11-24T03:00:00+00:00",
+            "intervalos": null,
+            "linha": "SINT-US17",
+            "parada": "B",
+            "qualidade": {
+              "datas_operacao": [
+                "2026-11-24"
+              ],
+              "faixa": null,
+              "formula_espera": "E = Σh² ÷ (2·Σh) dos intervalos h entre passagens sucessivas (s), publicada em minutos",
+              "minimo_passagens": 3,
+              "oferta": "FREQUENCIA",
+              "regra_excesso": "excesso = E − E_prog; E_prog = ΣH² ÷ (2·ΣH) dos intervalos programados vigentes na janela (= H ÷ 2 com intervalo único); excesso negativo mantido, sem truncar",
+              "regra_fronteira": "cada intervalo pertence à janela [início, fim) da sua passagem posterior",
+              "regra_vigencia": "partida da oferta por frequência da captura da US04 cujo intervalo [saída, saída + H) cruza a janela",
+              "versoes": {
+                "capturas_programacao": [
+                  {
+                    "fonte": "OFICIAL",
+                    "importacao_id": "f3ce5a08-42f6-51c0-b242-b769dabf6b3b",
+                    "tipo_dia": "UTIL",
+                    "versao_fonte": "programacao-2026-11-24"
+                  }
+                ],
+                "versao_calculo": "espera-1.0",
+                "versao_correspondencia": "correspondencia-controlada-us17",
+                "versao_estimativa": "us15-t01-v1-lacuna120s",
+                "versao_gtfs_id": "ec1ab760-0ba5-51be-871b-2dc52059c52c",
+                "versao_reconstrucao": "recon-controle-us17",
+                "versoes_conjunto": [
+                  "bbdb7eb9924299bf6a37fb6d42151bc2"
+                ]
+              }
+            },
+            "referencia": "2026-11-24",
+            "sentido": "0",
+            "tipo": "ESPERA",
+            "trecho": null,
+            "unidade": "min",
+            "valor": null,
+            "versao_calculo": "espera-1.0",
+            "versao_conjunto": "bbdb7eb9924299bf6a37fb6d42151bc2",
+            "versao_correspondencia": "correspondencia-controlada-us17",
+            "versao_gtfs_id": "ec1ab760-0ba5-51be-871b-2dc52059c52c"
+          }
+        ],
+        "paginacao": {
+          "page": 1,
+          "page_size": 100,
+          "total": 1
+        }
+      }
+    },
+    {
+      "id": "C15",
+      "titulo": "Linha só com horário fixo",
+      "escala": "dia",
+      "status": "CONFERIU_EXEMPLO",
+      "calculo_manual": "Programação de horário fixo: a espera Σh²/2Σh vale para a oferta por frequência. Sem resultado.",
+      "consulta": {
+        "tipo": "ESPERA",
+        "linha": "SINT-US17",
+        "sentido": "0",
+        "parada": "B",
+        "inicio": "2026-11-24T03:00:00+00:00",
+        "fim": "2026-11-25T03:00:00+00:00",
+        "agregacao": "dia"
+      },
+      "comparacoes": [
+        {
+          "campo": "http_status",
+          "manual": 200,
+          "obtido": 200,
+          "confere": true
+        },
+        {
+          "campo": "quantidade_itens",
+          "manual": 1,
+          "obtido": 1,
+          "confere": true
+        },
+        {
+          "campo": "espera_min",
+          "manual": null,
+          "obtido": null,
+          "confere": true
+        },
+        {
+          "campo": "excesso_min",
+          "manual": null,
+          "obtido": null,
+          "confere": true
+        },
+        {
+          "campo": "motivo_espera",
+          "manual": "oferta_sem_frequencia",
+          "obtido": "oferta_sem_frequencia",
+          "confere": true
+        },
+        {
+          "campo": "motivo_excesso",
+          "manual": "oferta_sem_frequencia",
+          "obtido": "oferta_sem_frequencia",
+          "confere": true
+        },
+        {
+          "campo": "unidades",
+          "manual": [
+            "min",
+            "min"
+          ],
+          "obtido": [
+            "min",
+            "min"
+          ],
+          "confere": true
+        },
+        {
+          "campo": "parada",
+          "manual": "B",
+          "obtido": "B",
+          "confere": true
+        },
+        {
+          "campo": "ausencia_nao_e_zero",
+          "manual": [
+            true,
+            true
+          ],
+          "obtido": [
+            true,
+            true
+          ],
+          "confere": true
+        }
+      ],
+      "resposta_api": {
+        "dados": [
+          {
+            "agregacao": "dia",
+            "contagens": {
+              "denominador": null,
+              "numerador": null
+            },
+            "duracao_horas": 24.0,
+            "espera_estimada": {
+              "lacunas": [],
+              "motivo_ausencia": "oferta_sem_frequencia",
+              "situacao": "DADOS_AUSENTES",
+              "unidade": "min",
+              "valor": null
+            },
+            "excesso_espera": {
+              "espera_programada_min": null,
+              "intervalos_programados_seg": [],
+              "lacunas": [],
+              "motivo_ausencia": "oferta_sem_frequencia",
+              "situacao": "DADOS_AUSENTES",
+              "unidade": "min",
+              "valor": null
+            },
+            "fim": "2026-11-25T03:00:00+00:00",
+            "indicador": "ESPERA",
+            "inicio": "2026-11-24T03:00:00+00:00",
+            "intervalos": null,
+            "linha": "SINT-US17",
+            "parada": "B",
+            "qualidade": {
+              "datas_operacao": [
+                "2026-11-24"
+              ],
+              "faixa": null,
+              "formula_espera": "E = Σh² ÷ (2·Σh) dos intervalos h entre passagens sucessivas (s), publicada em minutos",
+              "minimo_passagens": 3,
+              "oferta": "FREQUENCIA",
+              "regra_excesso": "excesso = E − E_prog; E_prog = ΣH² ÷ (2·ΣH) dos intervalos programados vigentes na janela (= H ÷ 2 com intervalo único); excesso negativo mantido, sem truncar",
+              "regra_fronteira": "cada intervalo pertence à janela [início, fim) da sua passagem posterior",
+              "regra_vigencia": "partida da oferta por frequência da captura da US04 cujo intervalo [saída, saída + H) cruza a janela",
+              "versoes": {
+                "capturas_programacao": [
+                  {
+                    "fonte": "OFICIAL",
+                    "importacao_id": "e00cfb72-e1ce-581d-a7d2-0f684a51ad77",
+                    "tipo_dia": "UTIL",
+                    "versao_fonte": "programacao-2026-11-24"
+                  }
+                ],
+                "versao_calculo": "espera-1.0",
+                "versao_correspondencia": "correspondencia-controlada-us17",
+                "versao_estimativa": "us15-t01-v1-lacuna120s",
+                "versao_gtfs_id": "caf3f185-0cf6-5211-a326-652b68eb1d5b",
+                "versao_reconstrucao": "recon-controle-us17",
+                "versoes_conjunto": [
+                  "8e329015129d971052916e08f855f9d5"
+                ]
+              }
+            },
+            "referencia": "2026-11-24",
+            "sentido": "0",
+            "tipo": "ESPERA",
+            "trecho": null,
+            "unidade": "min",
+            "valor": null,
+            "versao_calculo": "espera-1.0",
+            "versao_conjunto": "8e329015129d971052916e08f855f9d5",
+            "versao_correspondencia": "correspondencia-controlada-us17",
+            "versao_gtfs_id": "caf3f185-0cf6-5211-a326-652b68eb1d5b"
+          }
+        ],
+        "paginacao": {
+          "page": 1,
+          "page_size": 100,
+          "total": 1
+        }
+      }
+    },
+    {
+      "id": "C16",
+      "titulo": "Mês: união de dois dias",
+      "escala": "mes",
+      "status": "CONFERIU_EXEMPLO",
+      "calculo_manual": "Intervalos 600, 600, 900, 900 s: Σh = 3000; Σh² = 2340000; E = 390 s = 6,5 min. Programação H = 600 s: E_prog = 300 s; excesso = 90 s = 1,5 min.",
+      "consulta": {
+        "tipo": "ESPERA",
+        "linha": "SINT-US17",
+        "sentido": "0",
+        "parada": "B",
+        "inicio": "2026-11-24T03:00:00+00:00",
+        "fim": "2026-11-26T03:00:00+00:00",
+        "agregacao": "mes"
+      },
+      "comparacoes": [
+        {
+          "campo": "http_status",
+          "manual": 200,
+          "obtido": 200,
+          "confere": true
+        },
+        {
+          "campo": "quantidade_itens",
+          "manual": 1,
+          "obtido": 1,
+          "confere": true
+        },
+        {
+          "campo": "espera_min",
+          "manual": 6.5,
+          "obtido": 6.5,
+          "confere": true
+        },
+        {
+          "campo": "excesso_min",
+          "manual": 1.5,
+          "obtido": 1.5,
+          "confere": true
+        },
+        {
+          "campo": "motivo_espera",
+          "manual": null,
+          "obtido": null,
+          "confere": true
+        },
+        {
+          "campo": "motivo_excesso",
+          "manual": null,
+          "obtido": null,
+          "confere": true
+        },
+        {
+          "campo": "unidades",
+          "manual": [
+            "min",
+            "min"
+          ],
+          "obtido": [
+            "min",
+            "min"
+          ],
+          "confere": true
+        },
+        {
+          "campo": "parada",
+          "manual": "B",
+          "obtido": "B",
+          "confere": true
+        },
+        {
+          "campo": "ausencia_nao_e_zero",
+          "manual": [
+            false,
+            false
+          ],
+          "obtido": [
+            false,
+            false
+          ],
+          "confere": true
+        }
+      ],
+      "resposta_api": {
+        "dados": [
+          {
+            "agregacao": "mes",
+            "contagens": {
+              "denominador": null,
+              "numerador": 4
+            },
+            "duracao_horas": 48.0,
+            "espera_estimada": {
+              "lacunas": [],
+              "motivo_ausencia": null,
+              "situacao": "CALCULADA",
+              "unidade": "min",
+              "valor": 6.5
+            },
+            "excesso_espera": {
+              "espera_programada_min": 5.0,
+              "intervalos_programados_seg": [
+                600,
+                600,
+                600,
+                600,
+                600,
+                600,
+                600,
+                600,
+                600,
+                600,
+                600,
+                600,
+                600,
+                600,
+                600,
+                600,
+                600,
+                600,
+                600,
+                600,
+                600,
+                600,
+                600,
+                600,
+                600,
+                600,
+                600,
+                600,
+                600,
+                600,
+                600,
+                600,
+                600,
+                600,
+                600,
+                600
+              ],
+              "lacunas": [],
+              "motivo_ausencia": null,
+              "situacao": "CALCULADA",
+              "unidade": "min",
+              "valor": 1.5
+            },
+            "fim": "2026-11-26T03:00:00+00:00",
+            "indicador": "ESPERA",
+            "inicio": "2026-11-24T03:00:00+00:00",
+            "intervalos": 4,
+            "linha": "SINT-US17",
+            "parada": "B",
+            "qualidade": {
+              "datas_operacao": [
+                "2026-11-24",
+                "2026-11-25"
+              ],
+              "faixa": null,
+              "formula_espera": "E = Σh² ÷ (2·Σh) dos intervalos h entre passagens sucessivas (s), publicada em minutos",
+              "minimo_passagens": 3,
+              "oferta": "FREQUENCIA",
+              "regra_excesso": "excesso = E − E_prog; E_prog = ΣH² ÷ (2·ΣH) dos intervalos programados vigentes na janela (= H ÷ 2 com intervalo único); excesso negativo mantido, sem truncar",
+              "regra_fronteira": "cada intervalo pertence à janela [início, fim) da sua passagem posterior",
+              "regra_vigencia": "partida da oferta por frequência da captura da US04 cujo intervalo [saída, saída + H) cruza a janela",
+              "versoes": {
+                "capturas_programacao": [
+                  {
+                    "fonte": "OFICIAL",
+                    "importacao_id": "6cd74cc0-af8c-510c-8252-be10b566a6f1",
+                    "tipo_dia": "UTIL",
+                    "versao_fonte": "programacao-2026-11-24"
+                  },
+                  {
+                    "fonte": "OFICIAL",
+                    "importacao_id": "75b7f11b-4ffe-5e3e-8ed9-2039a9a507e4",
+                    "tipo_dia": "UTIL",
+                    "versao_fonte": "programacao-2026-11-25"
+                  }
+                ],
+                "versao_calculo": "espera-1.0",
+                "versao_correspondencia": "correspondencia-controlada-us17",
+                "versao_estimativa": "us15-t01-v1-lacuna120s",
+                "versao_gtfs_id": "f64da5bd-c361-5753-8447-a6651b138cd9",
+                "versao_reconstrucao": "recon-controle-us17",
+                "versoes_conjunto": [
+                  "3689eb1d58b9631251db59838ee0b102",
+                  "7e386a91d80602dd59acfcdab9858149"
+                ]
+              }
+            },
+            "referencia": "2026-11",
+            "sentido": "0",
+            "tipo": "ESPERA",
+            "trecho": null,
+            "unidade": "min",
+            "valor": 6.5,
+            "versao_calculo": "espera-1.0",
+            "versao_conjunto": "7e59d37300b0333e8425bfd66f6cec10",
+            "versao_correspondencia": "correspondencia-controlada-us17",
+            "versao_gtfs_id": "f64da5bd-c361-5753-8447-a6651b138cd9"
+          }
+        ],
+        "paginacao": {
+          "page": 1,
+          "page_size": 100,
+          "total": 1
+        }
+      }
+    },
+    {
+      "id": "C17",
+      "titulo": "Dia sem publicação",
+      "escala": "mes",
+      "status": "CONFERIU_EXEMPLO",
+      "calculo_manual": "25/11 não publicado: o recorte não tem todos os intervalos. Sem resultado.",
+      "consulta": {
+        "tipo": "ESPERA",
+        "linha": "SINT-US17",
+        "sentido": "0",
+        "parada": "B",
+        "inicio": "2026-11-24T03:00:00+00:00",
+        "fim": "2026-11-26T03:00:00+00:00",
+        "agregacao": "mes"
+      },
+      "comparacoes": [
+        {
+          "campo": "http_status",
+          "manual": 200,
+          "obtido": 200,
+          "confere": true
+        },
+        {
+          "campo": "quantidade_itens",
+          "manual": 1,
+          "obtido": 1,
+          "confere": true
+        },
+        {
+          "campo": "espera_min",
+          "manual": null,
+          "obtido": null,
+          "confere": true
+        },
+        {
+          "campo": "excesso_min",
+          "manual": null,
+          "obtido": null,
+          "confere": true
+        },
+        {
+          "campo": "motivo_espera",
+          "manual": "sem_publicacao",
+          "obtido": "sem_publicacao",
+          "confere": true
+        },
+        {
+          "campo": "motivo_excesso",
+          "manual": "sem_publicacao",
+          "obtido": "sem_publicacao",
+          "confere": true
+        },
+        {
+          "campo": "unidades",
+          "manual": [
+            "min",
+            "min"
+          ],
+          "obtido": [
+            "min",
+            "min"
+          ],
+          "confere": true
+        },
+        {
+          "campo": "parada",
+          "manual": "B",
+          "obtido": "B",
+          "confere": true
+        },
+        {
+          "campo": "ausencia_nao_e_zero",
+          "manual": [
+            true,
+            true
+          ],
+          "obtido": [
+            true,
+            true
+          ],
+          "confere": true
+        }
+      ],
+      "resposta_api": {
+        "dados": [
+          {
+            "agregacao": "mes",
+            "contagens": {
+              "denominador": null,
+              "numerador": null
+            },
+            "duracao_horas": 24.0,
+            "espera_estimada": {
+              "lacunas": [
+                {
+                  "fim": "2026-11-26T03:00:00+00:00",
+                  "inicio": "2026-11-25T03:00:00+00:00"
+                }
+              ],
+              "motivo_ausencia": "sem_publicacao",
+              "situacao": "DADOS_AUSENTES",
+              "unidade": "min",
+              "valor": null
+            },
+            "excesso_espera": {
+              "espera_programada_min": 5.0,
+              "intervalos_programados_seg": [
+                600,
+                600,
+                600,
+                600,
+                600,
+                600,
+                600,
+                600,
+                600,
+                600,
+                600,
+                600,
+                600,
+                600,
+                600,
+                600,
+                600,
+                600
+              ],
+              "lacunas": [
+                {
+                  "fim": "2026-11-26T03:00:00+00:00",
+                  "inicio": "2026-11-25T03:00:00+00:00"
+                }
+              ],
+              "motivo_ausencia": "sem_publicacao",
+              "situacao": "DADOS_AUSENTES",
+              "unidade": "min",
+              "valor": null
+            },
+            "fim": "2026-11-26T03:00:00+00:00",
+            "indicador": "ESPERA",
+            "inicio": "2026-11-24T03:00:00+00:00",
+            "intervalos": null,
+            "linha": "SINT-US17",
+            "parada": "B",
+            "qualidade": {
+              "datas_operacao": [
+                "2026-11-24"
+              ],
+              "faixa": null,
+              "formula_espera": "E = Σh² ÷ (2·Σh) dos intervalos h entre passagens sucessivas (s), publicada em minutos",
+              "minimo_passagens": 3,
+              "oferta": "FREQUENCIA",
+              "regra_excesso": "excesso = E − E_prog; E_prog = ΣH² ÷ (2·ΣH) dos intervalos programados vigentes na janela (= H ÷ 2 com intervalo único); excesso negativo mantido, sem truncar",
+              "regra_fronteira": "cada intervalo pertence à janela [início, fim) da sua passagem posterior",
+              "regra_vigencia": "partida da oferta por frequência da captura da US04 cujo intervalo [saída, saída + H) cruza a janela",
+              "versoes": {
+                "capturas_programacao": [
+                  {
+                    "fonte": "OFICIAL",
+                    "importacao_id": "63c9ee79-8a4c-5228-b379-a1f5ad09cdf7",
+                    "tipo_dia": "UTIL",
+                    "versao_fonte": "programacao-2026-11-24"
+                  }
+                ],
+                "versao_calculo": "espera-1.0",
+                "versao_correspondencia": "correspondencia-controlada-us17",
+                "versao_estimativa": "us15-t01-v1-lacuna120s",
+                "versao_gtfs_id": "1a268129-f3e5-5bd4-8607-3c6e70962a4d",
+                "versao_reconstrucao": "recon-controle-us17",
+                "versoes_conjunto": [
+                  "e826197e39877acb08a290f94066c819"
+                ]
+              }
+            },
+            "referencia": "2026-11",
+            "sentido": "0",
+            "tipo": "ESPERA",
+            "trecho": null,
+            "unidade": "min",
+            "valor": null,
+            "versao_calculo": "espera-1.0",
+            "versao_conjunto": "e826197e39877acb08a290f94066c819",
+            "versao_correspondencia": "correspondencia-controlada-us17",
+            "versao_gtfs_id": "1a268129-f3e5-5bd4-8607-3c6e70962a4d"
+          }
+        ],
+        "paginacao": {
+          "page": 1,
+          "page_size": 100,
+          "total": 1
+        }
+      }
+    },
+    {
+      "id": "C18",
+      "titulo": "Dias insuficientes somam no mês",
+      "escala": "mes",
+      "status": "CONFERIU_EXEMPLO",
+      "calculo_manual": "Um intervalo por dia (600 e 1200 s); no mês: Σh = 1800; Σh² = 1800000; E = 500 s = 8,333333 min; E_prog = 300 s; excesso = 200 s = 3,333333 min.",
+      "consulta": {
+        "tipo": "ESPERA",
+        "linha": "SINT-US17",
+        "sentido": "0",
+        "parada": "B",
+        "inicio": "2026-11-24T03:00:00+00:00",
+        "fim": "2026-11-26T03:00:00+00:00",
+        "agregacao": "mes"
+      },
+      "comparacoes": [
+        {
+          "campo": "http_status",
+          "manual": 200,
+          "obtido": 200,
+          "confere": true
+        },
+        {
+          "campo": "quantidade_itens",
+          "manual": 1,
+          "obtido": 1,
+          "confere": true
+        },
+        {
+          "campo": "espera_min",
+          "manual": 8.333333,
+          "obtido": 8.333333,
+          "confere": true
+        },
+        {
+          "campo": "excesso_min",
+          "manual": 3.333333,
+          "obtido": 3.333333,
+          "confere": true
+        },
+        {
+          "campo": "motivo_espera",
+          "manual": null,
+          "obtido": null,
+          "confere": true
+        },
+        {
+          "campo": "motivo_excesso",
+          "manual": null,
+          "obtido": null,
+          "confere": true
+        },
+        {
+          "campo": "unidades",
+          "manual": [
+            "min",
+            "min"
+          ],
+          "obtido": [
+            "min",
+            "min"
+          ],
+          "confere": true
+        },
+        {
+          "campo": "parada",
+          "manual": "B",
+          "obtido": "B",
+          "confere": true
+        },
+        {
+          "campo": "ausencia_nao_e_zero",
+          "manual": [
+            false,
+            false
+          ],
+          "obtido": [
+            false,
+            false
+          ],
+          "confere": true
+        }
+      ],
+      "resposta_api": {
+        "dados": [
+          {
+            "agregacao": "mes",
+            "contagens": {
+              "denominador": null,
+              "numerador": 2
+            },
+            "duracao_horas": 48.0,
+            "espera_estimada": {
+              "lacunas": [],
+              "motivo_ausencia": null,
+              "situacao": "CALCULADA",
+              "unidade": "min",
+              "valor": 8.333333
+            },
+            "excesso_espera": {
+              "espera_programada_min": 5.0,
+              "intervalos_programados_seg": [
+                600,
+                600,
+                600,
+                600,
+                600,
+                600,
+                600,
+                600,
+                600,
+                600,
+                600,
+                600,
+                600,
+                600,
+                600,
+                600,
+                600,
+                600,
+                600,
+                600,
+                600,
+                600,
+                600,
+                600,
+                600,
+                600,
+                600,
+                600,
+                600,
+                600,
+                600,
+                600,
+                600,
+                600,
+                600,
+                600
+              ],
+              "lacunas": [],
+              "motivo_ausencia": null,
+              "situacao": "CALCULADA",
+              "unidade": "min",
+              "valor": 3.333333
+            },
+            "fim": "2026-11-26T03:00:00+00:00",
+            "indicador": "ESPERA",
+            "inicio": "2026-11-24T03:00:00+00:00",
+            "intervalos": 2,
+            "linha": "SINT-US17",
+            "parada": "B",
+            "qualidade": {
+              "datas_operacao": [
+                "2026-11-24",
+                "2026-11-25"
+              ],
+              "faixa": null,
+              "formula_espera": "E = Σh² ÷ (2·Σh) dos intervalos h entre passagens sucessivas (s), publicada em minutos",
+              "minimo_passagens": 3,
+              "oferta": "FREQUENCIA",
+              "regra_excesso": "excesso = E − E_prog; E_prog = ΣH² ÷ (2·ΣH) dos intervalos programados vigentes na janela (= H ÷ 2 com intervalo único); excesso negativo mantido, sem truncar",
+              "regra_fronteira": "cada intervalo pertence à janela [início, fim) da sua passagem posterior",
+              "regra_vigencia": "partida da oferta por frequência da captura da US04 cujo intervalo [saída, saída + H) cruza a janela",
+              "versoes": {
+                "capturas_programacao": [
+                  {
+                    "fonte": "OFICIAL",
+                    "importacao_id": "6b5a98e6-e1c0-5035-b66c-02376a4ea73b",
+                    "tipo_dia": "UTIL",
+                    "versao_fonte": "programacao-2026-11-24"
+                  },
+                  {
+                    "fonte": "OFICIAL",
+                    "importacao_id": "af69e729-e595-5647-97bd-d2e0d8d6bacc",
+                    "tipo_dia": "UTIL",
+                    "versao_fonte": "programacao-2026-11-25"
+                  }
+                ],
+                "versao_calculo": "espera-1.0",
+                "versao_correspondencia": "correspondencia-controlada-us17",
+                "versao_estimativa": "us15-t01-v1-lacuna120s",
+                "versao_gtfs_id": "23f90508-fa6c-5e60-b0d0-3e2d155558bb",
+                "versao_reconstrucao": "recon-controle-us17",
+                "versoes_conjunto": [
+                  "0716b3683108d8e08a85de4a42fadd42",
+                  "16a5c9f03618055e829aea8e95f640b9"
+                ]
+              }
+            },
+            "referencia": "2026-11",
+            "sentido": "0",
+            "tipo": "ESPERA",
+            "trecho": null,
+            "unidade": "min",
+            "valor": 8.333333,
+            "versao_calculo": "espera-1.0",
+            "versao_conjunto": "b702ba67d3bac6b0ae0ae5c7e7348a45",
+            "versao_correspondencia": "correspondencia-controlada-us17",
+            "versao_gtfs_id": "23f90508-fa6c-5e60-b0d0-3e2d155558bb"
+          }
+        ],
+        "paginacao": {
+          "page": 1,
+          "page_size": 100,
+          "total": 1
+        }
+      }
+    },
+    {
+      "id": "C19",
+      "titulo": "Mês com faixa diária",
+      "escala": "mes",
+      "status": "CONFERIU_EXEMPLO",
+      "calculo_manual": "Faixa 06:00–07:00: intervalos 360, 360, 720, 720 s (13:20 fica fora): Σh = 2160; Σh² = 1296000; E = 300 s = 5 min. Vigentes na faixa (H = 600 s): E_prog = 300 s; excesso 0.",
+      "consulta": {
+        "tipo": "ESPERA",
+        "linha": "SINT-US17",
+        "sentido": "0",
+        "parada": "B",
+        "inicio": "2026-11-24T03:00:00+00:00",
+        "fim": "2026-11-26T03:00:00+00:00",
+        "agregacao": "mes",
+        "hora_inicio": "06:00",
+        "hora_fim": "07:00"
+      },
+      "comparacoes": [
+        {
+          "campo": "http_status",
+          "manual": 200,
+          "obtido": 200,
+          "confere": true
+        },
+        {
+          "campo": "quantidade_itens",
+          "manual": 1,
+          "obtido": 1,
+          "confere": true
+        },
+        {
+          "campo": "espera_min",
+          "manual": 5,
+          "obtido": 5.0,
+          "confere": true
+        },
+        {
+          "campo": "excesso_min",
+          "manual": 0,
+          "obtido": 0.0,
+          "confere": true
+        },
+        {
+          "campo": "motivo_espera",
+          "manual": null,
+          "obtido": null,
+          "confere": true
+        },
+        {
+          "campo": "motivo_excesso",
+          "manual": null,
+          "obtido": null,
+          "confere": true
+        },
+        {
+          "campo": "unidades",
+          "manual": [
+            "min",
+            "min"
+          ],
+          "obtido": [
+            "min",
+            "min"
+          ],
+          "confere": true
+        },
+        {
+          "campo": "parada",
+          "manual": "B",
+          "obtido": "B",
+          "confere": true
+        },
+        {
+          "campo": "ausencia_nao_e_zero",
+          "manual": [
+            false,
+            false
+          ],
+          "obtido": [
+            false,
+            false
+          ],
+          "confere": true
+        }
+      ],
+      "resposta_api": {
+        "dados": [
+          {
+            "agregacao": "mes",
+            "contagens": {
+              "denominador": null,
+              "numerador": 4
+            },
+            "duracao_horas": 2.0,
+            "espera_estimada": {
+              "lacunas": [],
+              "motivo_ausencia": null,
+              "situacao": "CALCULADA",
+              "unidade": "min",
+              "valor": 5.0
+            },
+            "excesso_espera": {
+              "espera_programada_min": 5.0,
+              "intervalos_programados_seg": [
+                600,
+                600,
+                600,
+                600,
+                600,
+                600,
+                600,
+                600,
+                600,
+                600,
+                600,
+                600
+              ],
+              "lacunas": [],
+              "motivo_ausencia": null,
+              "situacao": "CALCULADA",
+              "unidade": "min",
+              "valor": 0.0
+            },
+            "fim": "2026-11-25T10:00:00+00:00",
+            "indicador": "ESPERA",
+            "inicio": "2026-11-24T09:00:00+00:00",
+            "intervalos": 4,
+            "linha": "SINT-US17",
+            "parada": "B",
+            "qualidade": {
+              "datas_operacao": [
+                "2026-11-24",
+                "2026-11-25"
+              ],
+              "faixa": {
+                "fuso": "America/Sao_Paulo",
+                "hora_fim": "07:00",
+                "hora_inicio": "06:00"
+              },
+              "formula_espera": "E = Σh² ÷ (2·Σh) dos intervalos h entre passagens sucessivas (s), publicada em minutos",
+              "minimo_passagens": 3,
+              "oferta": "FREQUENCIA",
+              "regra_excesso": "excesso = E − E_prog; E_prog = ΣH² ÷ (2·ΣH) dos intervalos programados vigentes na janela (= H ÷ 2 com intervalo único); excesso negativo mantido, sem truncar",
+              "regra_fronteira": "cada intervalo pertence à janela [início, fim) da sua passagem posterior",
+              "regra_vigencia": "partida da oferta por frequência da captura da US04 cujo intervalo [saída, saída + H) cruza a janela",
+              "versoes": {
+                "capturas_programacao": [
+                  {
+                    "fonte": "OFICIAL",
+                    "importacao_id": "7774030a-707d-5329-9e5b-d62f7dee1732",
+                    "tipo_dia": "UTIL",
+                    "versao_fonte": "programacao-2026-11-25"
+                  },
+                  {
+                    "fonte": "OFICIAL",
+                    "importacao_id": "abf3c802-fa6a-5480-b55c-f70e84a1abef",
+                    "tipo_dia": "UTIL",
+                    "versao_fonte": "programacao-2026-11-24"
+                  }
+                ],
+                "versao_calculo": "espera-1.0",
+                "versao_correspondencia": "correspondencia-controlada-us17",
+                "versao_estimativa": "us15-t01-v1-lacuna120s",
+                "versao_gtfs_id": "22a84032-f143-56fc-8bab-fd8b622176c8",
+                "versao_reconstrucao": "recon-controle-us17",
+                "versoes_conjunto": [
+                  "88ecbcc236c2ee726edc738780931782",
+                  "eb3f67558f18e4e5d4debbc8db6a0ee2"
+                ]
+              }
+            },
+            "referencia": "2026-11",
+            "sentido": "0",
+            "tipo": "ESPERA",
+            "trecho": null,
+            "unidade": "min",
+            "valor": 5.0,
+            "versao_calculo": "espera-1.0",
+            "versao_conjunto": "e169e1b81b482699605d228d56ce0aba",
+            "versao_correspondencia": "correspondencia-controlada-us17",
+            "versao_gtfs_id": "22a84032-f143-56fc-8bab-fd8b622176c8"
+          }
+        ],
+        "paginacao": {
+          "page": 1,
+          "page_size": 100,
+          "total": 1
+        }
+      }
+    },
+    {
+      "id": "C20",
+      "titulo": "Mês sem passagens",
+      "escala": "mes",
+      "status": "CONFERIU_EXEMPLO",
+      "calculo_manual": "Nenhuma passagem em B com coleta completa: sem espera e sem excesso; nunca zero.",
+      "consulta": {
+        "tipo": "ESPERA",
+        "linha": "SINT-US17",
+        "sentido": "0",
+        "parada": "B",
+        "inicio": "2026-11-24T03:00:00+00:00",
+        "fim": "2026-11-26T03:00:00+00:00",
+        "agregacao": "mes"
+      },
+      "comparacoes": [
+        {
+          "campo": "http_status",
+          "manual": 200,
+          "obtido": 200,
+          "confere": true
+        },
+        {
+          "campo": "quantidade_itens",
+          "manual": 1,
+          "obtido": 1,
+          "confere": true
+        },
+        {
+          "campo": "espera_min",
+          "manual": null,
+          "obtido": null,
+          "confere": true
+        },
+        {
+          "campo": "excesso_min",
+          "manual": null,
+          "obtido": null,
+          "confere": true
+        },
+        {
+          "campo": "motivo_espera",
+          "manual": "passagens_insuficientes",
+          "obtido": "passagens_insuficientes",
+          "confere": true
+        },
+        {
+          "campo": "motivo_excesso",
+          "manual": "passagens_insuficientes",
+          "obtido": "passagens_insuficientes",
+          "confere": true
+        },
+        {
+          "campo": "unidades",
+          "manual": [
+            "min",
+            "min"
+          ],
+          "obtido": [
+            "min",
+            "min"
+          ],
+          "confere": true
+        },
+        {
+          "campo": "parada",
+          "manual": "B",
+          "obtido": "B",
+          "confere": true
+        },
+        {
+          "campo": "ausencia_nao_e_zero",
+          "manual": [
+            true,
+            true
+          ],
+          "obtido": [
+            true,
+            true
+          ],
+          "confere": true
+        }
+      ],
+      "resposta_api": {
+        "dados": [
+          {
+            "agregacao": "mes",
+            "contagens": {
+              "denominador": null,
+              "numerador": null
+            },
+            "duracao_horas": 48.0,
+            "espera_estimada": {
+              "lacunas": [],
+              "motivo_ausencia": "passagens_insuficientes",
+              "situacao": "DADOS_INSUFICIENTES",
+              "unidade": "min",
+              "valor": null
+            },
+            "excesso_espera": {
+              "espera_programada_min": 5.0,
+              "intervalos_programados_seg": [
+                600,
+                600,
+                600,
+                600,
+                600,
+                600,
+                600,
+                600,
+                600,
+                600,
+                600,
+                600,
+                600,
+                600,
+                600,
+                600,
+                600,
+                600,
+                600,
+                600,
+                600,
+                600,
+                600,
+                600,
+                600,
+                600,
+                600,
+                600,
+                600,
+                600,
+                600,
+                600,
+                600,
+                600,
+                600,
+                600
+              ],
+              "lacunas": [],
+              "motivo_ausencia": "passagens_insuficientes",
+              "situacao": "DADOS_INSUFICIENTES",
+              "unidade": "min",
+              "valor": null
+            },
+            "fim": "2026-11-26T03:00:00+00:00",
+            "indicador": "ESPERA",
+            "inicio": "2026-11-24T03:00:00+00:00",
+            "intervalos": null,
+            "linha": "SINT-US17",
+            "parada": "B",
+            "qualidade": {
+              "datas_operacao": [
+                "2026-11-24",
+                "2026-11-25"
+              ],
+              "faixa": null,
+              "formula_espera": "E = Σh² ÷ (2·Σh) dos intervalos h entre passagens sucessivas (s), publicada em minutos",
+              "minimo_passagens": 3,
+              "oferta": "FREQUENCIA",
+              "regra_excesso": "excesso = E − E_prog; E_prog = ΣH² ÷ (2·ΣH) dos intervalos programados vigentes na janela (= H ÷ 2 com intervalo único); excesso negativo mantido, sem truncar",
+              "regra_fronteira": "cada intervalo pertence à janela [início, fim) da sua passagem posterior",
+              "regra_vigencia": "partida da oferta por frequência da captura da US04 cujo intervalo [saída, saída + H) cruza a janela",
+              "versoes": {
+                "capturas_programacao": [
+                  {
+                    "fonte": "OFICIAL",
+                    "importacao_id": "494c9bfd-39d2-5d73-af22-3750373d0bdc",
+                    "tipo_dia": "UTIL",
+                    "versao_fonte": "programacao-2026-11-24"
+                  },
+                  {
+                    "fonte": "OFICIAL",
+                    "importacao_id": "689988ee-581f-5791-ad5b-8fbebe5299c5",
+                    "tipo_dia": "UTIL",
+                    "versao_fonte": "programacao-2026-11-25"
+                  }
+                ],
+                "versao_calculo": "espera-1.0",
+                "versao_correspondencia": "correspondencia-controlada-us17",
+                "versao_estimativa": "us15-t01-v1-lacuna120s",
+                "versao_gtfs_id": "7cd49dbd-30e9-5b19-9297-7d097d1c0586",
+                "versao_reconstrucao": "recon-controle-us17",
+                "versoes_conjunto": [
+                  "33ff21406b9fce0c745e677a60aff6d5",
+                  "59f987f635357e39fe4e7516a4e5ff8b"
+                ]
+              }
+            },
+            "referencia": "2026-11",
+            "sentido": "0",
+            "tipo": "ESPERA",
+            "trecho": null,
+            "unidade": "min",
+            "valor": null,
+            "versao_calculo": "espera-1.0",
+            "versao_conjunto": "0f60b913695c3e5a876a939c1c771240",
+            "versao_correspondencia": "correspondencia-controlada-us17",
+            "versao_gtfs_id": "7cd49dbd-30e9-5b19-9297-7d097d1c0586"
+          }
+        ],
+        "paginacao": {
+          "page": 1,
+          "page_size": 100,
+          "total": 1
+        }
+      }
+    }
+  ]
+}

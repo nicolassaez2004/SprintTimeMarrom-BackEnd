@@ -292,6 +292,8 @@ components:
         Janela nula, lacuna de publicação ou conjuntos sobrepostos tornam o agregado null, com motivos.
         Também com tipo=REGULARIDADE_INTERVALOS (US17-T03A), com as mesmas exigências: o CV é
         recalculado sobre a união dos intervalos das janelas, nunca pela média dos CVs.
+        Também com tipo=ESPERA (US18-T03A): espera estimada e excesso de espera recalculados
+        sobre a união dos intervalos observados e programados das janelas.
       schema: { type: string, enum: [janela, faixa, dia, mes], default: janela }
     hora_inicio:
       name: hora_inicio
@@ -319,7 +321,7 @@ components:
       name: tipo
       in: query
       required: false
-      description: Tipo de indicador; inclui PONTUALIDADE_VIAGENS, FREQUENCIA_OBSERVADA, FREQUENCIA_PROGRAMADA FREQUENCIA (observada e programada lado a lado, com agregacao) e REGULARIDADE_INTERVALOS (US17: CV dos intervalos entre passagens da oferta por frequência, por parada, com agregacao, agrupamento e motivo_ausencia). Na pontualidade, numerador conta saídas entre -60 s e +300 s, denominador inclui viagens fixas classificáveis; dados insuficientes são indicados em qualidade e valor null. Alias indicador preservado por compatibilidade.
+      description: Tipo de indicador; inclui PONTUALIDADE_VIAGENS, FREQUENCIA_OBSERVADA, FREQUENCIA_PROGRAMADA FREQUENCIA (observada e programada lado a lado, com agregacao) REGULARIDADE_INTERVALOS (US17, CV dos intervalos entre passagens da oferta por frequência, por parada, com agregacao, agrupamento e motivo_ausencia) e ESPERA (US18, espera_estimada e excesso_espera separados, em min, por parada; as janelas publicadas são ESPERA_ESTIMADA e EXCESSO_ESPERA). Na pontualidade, numerador conta saídas entre -60 s e +300 s, denominador inclui viagens fixas classificáveis; dados insuficientes são indicados em qualidade e valor null. Alias indicador preservado por compatibilidade.
       schema: { type: string, pattern: '^[A-Za-z0-9_.:-]{1,64}$' }
     indicador:
       name: indicador
@@ -401,8 +403,8 @@ components:
         versao_calculo: { type: string, nullable: true }
         contagens: { $ref: '#/components/schemas/Contagens' }
         qualidade: { $ref: '#/components/schemas/Qualidade' }
-        agregacao: { type: string, enum: [janela, faixa, dia, mes], description: Somente em tipo=FREQUENCIA ou REGULARIDADE_INTERVALOS. }
-        referencia: { type: string, description: 'Data operacional (AAAA-MM-DD) ou mês (AAAA-MM); somente em tipo=FREQUENCIA ou REGULARIDADE_INTERVALOS.' }
+        agregacao: { type: string, enum: [janela, faixa, dia, mes], description: Somente em tipo=FREQUENCIA, REGULARIDADE_INTERVALOS ou ESPERA. }
+        referencia: { type: string, description: 'Data operacional (AAAA-MM-DD) ou mês (AAAA-MM); somente em tipo=FREQUENCIA, REGULARIDADE_INTERVALOS ou ESPERA.' }
         duracao_horas: { type: number, description: Soma das durações das janelas usadas como denominador. }
         observada: { $ref: '#/components/schemas/LadoFrequencia' }
         programada: { $ref: '#/components/schemas/LadoFrequencia' }
@@ -422,6 +424,26 @@ components:
         intervalos: { type: integer, nullable: true, description: 'Intervalos entre passagens usados no CV.' }
         media_intervalo_seg: { type: number, nullable: true }
         desvio_padrao_seg: { type: number, nullable: true, description: 'Desvio padrão populacional (divisor n).' }
+        espera_estimada:
+          description: >-
+            Somente em tipo=ESPERA (US18-T01): E = Σh² ÷ (2·Σh) dos intervalos entre passagens, em min.
+            valor null com motivo_ausencia (passagens_insuficientes, divisor_invalido, coleta_*, ...).
+          $ref: '#/components/schemas/LadoEspera'
+        excesso_espera:
+          description: >-
+            Somente em tipo=ESPERA (US18-T02): espera estimada − espera programada (ΣH² ÷ 2ΣH dos
+            intervalos programados vigentes; H ÷ 2 com intervalo único), em min. Negativo é mantido.
+            Sem intervalo programado: null com intervalo_programado_ausente.
+          $ref: '#/components/schemas/LadoEspera'
+    LadoEspera:
+      type: object
+      properties:
+        valor: { type: number, nullable: true }
+        unidade: { type: string, enum: [min] }
+        situacao: { type: string, enum: [CALCULADA, DADOS_INSUFICIENTES, DADOS_AUSENTES, CONJUNTOS_INCOMPATIVEIS] }
+        motivo_ausencia: { type: string, nullable: true }
+        espera_programada_min: { type: number, nullable: true, description: Somente em excesso_espera. }
+        intervalos_programados_seg: { type: array, items: { type: integer }, description: Somente em excesso_espera. }
     LadoFrequencia:
       type: object
       description: 'US15-T03: valor null nunca é zero; motivos e cobertura explicam a ausência.'
