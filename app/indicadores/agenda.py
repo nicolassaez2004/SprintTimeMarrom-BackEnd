@@ -3,15 +3,21 @@
 Executada pelo processo de tarefas (US01-T04, ``python -m app.tarefas``) como
 tarefa periódica ``atualizar_indicadores(agora)``; nunca dentro do HTTP.
 
-- Atualização: a cada janela de 15 min fechada, recalcula cumprimento (US14) e
-  pontualidade (US16) dessa janela para cada linha/sentido/versões com viagens
-  reconstruídas na data operacional. Janelas perdidas (processo parado) não são
-  recalculadas em rajada; a consolidação do dia as cobre.
+- Atualização: a cada janela de 15 min fechada, recalcula essa janela para cada
+  linha/sentido/versões com viagens reconstruídas na data operacional:
+  cumprimento (US14) e pontualidade (US16), calculados por janela, e
+  frequência (US15), regularidade (US17) e espera/excesso (US18), calculados
+  pela data operacional inteira e gravados só na janela. Janelas perdidas
+  (processo parado) não são recalculadas em rajada; a consolidação do dia as cobre.
 - Consolidação: a partir de 04:00 de D+1 (São Paulo), recalcula todas as janelas
-  de 15 min do dia D, com prazo até 06:00 de D+1.
+  de 15 min do dia civil D, com prazo até 06:00 de D+1. Janelas após 24h de D-1
+  (horário GTFS > 24h) caem no dia civil D e entram aqui.
 - Conjunto consistente: cada atualização/consolidação grava todos os registros e
-  a sua ``ExecucaoProcessamento`` (estado PRONTO) numa única transação. Falha
-  em qualquer ponto desfaz tudo; o painel continua com o conjunto anterior.
+  a sua ``ExecucaoProcessamento`` (estado PRONTO) numa única transação. Registros
+  anteriores do mesmo escopo (linha, sentido, GTFS, correspondência, indicador e
+  regra) que o novo conjunto não reproduz são removidos na mesma transação, para
+  que a publicação nunca misture conjuntos antigos e novos. Falha em qualquer
+  ponto desfaz tudo; o painel continua com o conjunto anterior.
 """
 
 from datetime import datetime, time, timedelta, timezone
@@ -25,12 +31,20 @@ from app.core.tempo import FUSO
 from app.indicadores.cumprimento import (
     VERSAO_ALGORITMO, calcular_indicador_cumprimento, gravar_indicador,
 )
+from app.indicadores.espera import ESPERA, EXCESSO, TIPO_PUBLICO as ESPERA_PUBLICO, CalculoEspera
+from app.indicadores.espera import VERSAO_CALCULO as VERSAO_ESPERA
+from app.indicadores.frequencia import (
+    OBSERVADA, PROGRAMADA, TIPO_PUBLICO as FREQUENCIA_PUBLICO, VERSAO_CALCULO as VERSAO_FREQUENCIA,
+    CalculoFrequencia,
+)
 from app.indicadores.pontualidade import (
     VERSAO_ALGORITMO_PONTUALIDADE, calcular_indicador_pontualidade,
 )
+from app.indicadores.regularidade import REGULARIDADE, CalculoRegularidade
+from app.indicadores.regularidade import VERSAO_CALCULO as VERSAO_REGULARIDADE
 from app.models import (
-    ExecucaoProcessamento, ImportacaoProgramacao, PartidaProgramada, RegistroBrutoGPS,
-    ViagemObservada,
+    ExecucaoProcessamento, ImportacaoProgramacao, IndicadorOperacional, PartidaProgramada,
+    RegistroBrutoGPS, ViagemObservada,
 )
 
 logger = logging.getLogger(__name__)
@@ -39,9 +53,22 @@ INTERVALO = timedelta(minutes=15)
 INICIO_CONSOLIDACAO = time(4, 0)
 PRAZO_CONSOLIDACAO = time(6, 0)
 ATUALIZACAO, CONSOLIDACAO = "ATUALIZACAO_INDICADORES", "CONSOLIDACAO_DIA"
-VERSAO_AGENDA = "us23-t03-v1"
+VERSAO_AGENDA = "us23-t03-v2"
+# Calculados por janela (US14/US16) e pela data operacional inteira (US15/US17/US18).
 CALCULOS = (calcular_indicador_cumprimento, calcular_indicador_pontualidade)
-VERSAO_REGRA = f"{VERSAO_ALGORITMO}+{VERSAO_ALGORITMO_PONTUALIDADE}"
+DIARIOS = (CalculoFrequencia, CalculoRegularidade, CalculoEspera)
+# (indicador, regra) que cada publicação recalcula e, portanto, substitui.
+PUBLICADOS = (
+    ("CUMPRIMENTO_VIAGENS", VERSAO_ALGORITMO), ("PONTUALIDADE_VIAGENS", VERSAO_ALGORITMO_PONTUALIDADE),
+    (OBSERVADA, VERSAO_FREQUENCIA), (PROGRAMADA, VERSAO_FREQUENCIA),
+    (REGULARIDADE, VERSAO_REGULARIDADE), (ESPERA, VERSAO_ESPERA), (EXCESSO, VERSAO_ESPERA),
+)
+INDICADORES = sorted({t for t, _ in PUBLICADOS})
+# Execuções gravadas pela v1 só recalculavam cumprimento e pontualidade.
+INDICADORES_V1 = ("CUMPRIMENTO_VIAGENS", "PONTUALIDADE_VIAGENS")
+# Tipos públicos agregados da API → indicadores persistidos que os compõem.
+COMPOSTOS = {ESPERA_PUBLICO: (ESPERA, EXCESSO), FREQUENCIA_PUBLICO: (OBSERVADA, PROGRAMADA)}
+VERSAO_REGRA = "+".join(sorted({v for _, v in PUBLICADOS}))
 
 
 def _utc(instante):
@@ -63,18 +90,39 @@ def _meia_noite(data):
 
 
 def _contextos(datas):
-    """(linha, sentido, versão GTFS, correspondência, reconstrução) com viagens
-    reconstruídas nas datas operacionais. Sem viagem não há como afirmar 0%."""
+    """(data operacional, linha, sentido, versão GTFS, correspondência, reconstrução)
+    com viagens reconstruídas nas datas. Sem viagem não há como afirmar 0%."""
     V, Pt, I = ViagemObservada, PartidaProgramada, ImportacaoProgramacao
     return (
-        db.session.query(I.linha_codigo, I.sentido, I.versao_gtfs_id,
+        db.session.query(I.data_operacao, I.linha_codigo, I.sentido, I.versao_gtfs_id,
                          V.versao_correspondencia, V.versao_reconstrucao)
         .join(Pt, Pt.importacao_id == I.id).join(V, V.partida_programada_id == Pt.id)
         .filter(I.data_operacao.in_(sorted(datas)))
-        .distinct().order_by(I.linha_codigo, I.sentido, I.versao_gtfs_id,
+        .distinct().order_by(I.data_operacao, I.linha_codigo, I.sentido, I.versao_gtfs_id,
                              V.versao_correspondencia, V.versao_reconstrucao)
         .all()
     )
+
+
+def _substituir(inicio, fim, escopos, escritas):
+    """Remove, na transação da publicação, registros do mesmo escopo e regra dentro de
+    [inicio, fim) que o novo conjunto não reproduziu (ex.: captura de programação
+    trocada). Sem isso, API e CSV mostrariam conjuntos antigos e novos lado a lado."""
+    if not escopos:
+        return 0
+    I = IndicadorOperacional
+    regras = db.or_(*(db.and_(I.indicador == t, I.versao_calculo == v) for t, v in PUBLICADOS))
+    removidos = 0
+    for linha, sentido, gtfs, correspondencia in sorted(escopos):
+        for registro in I.query.filter(
+                I.linha_codigo == linha, I.sentido == sentido, I.versao_gtfs_id == gtfs,
+                I.versao_correspondencia == correspondencia, regras,
+                I.periodo_inicio >= inicio, I.periodo_fim <= fim):
+            if registro.chave_resultado not in escritas:
+                db.session.delete(registro)
+                removidos += 1
+    db.session.flush()
+    return removidos
 
 
 def _publicar(tipo, chave, inicio, fim, janelas, datas, agora, extra=None):
@@ -85,20 +133,42 @@ def _publicar(tipo, chave, inicio, fim, janelas, datas, agora, extra=None):
     tentativas = (execucao.tentativas if execucao else 0) + 1
     try:
         contextos = _contextos(datas)
-        registros, falhas = 0, []
-        for linha, sentido, gtfs, correspondencia, reconstrucao in contextos:
+        escritas, escopos, falhas = set(), set(), []
+
+        def gravar(campos):
+            gravar_indicador(campos, commit=False).publicado_em = agora
+            escritas.add(campos["chave_resultado"])
+
+        def falha(linha, sentido, referencia, calculo, erro):  # registrada, não silenciada
+            falhas.append({"linha": linha, "sentido": sentido, "inicio": referencia,
+                           "calculo": calculo, "erro": str(erro)[:200]})
+
+        for linha, sentido, gtfs, correspondencia, reconstrucao in sorted({c[1:] for c in contextos}):
+            escopos.add((linha, sentido, gtfs, correspondencia))
             for a, b in janelas:
                 for calcular in CALCULOS:
                     try:
                         campos = calcular(linha=linha, sentido=sentido, inicio=a, fim=b,
                                           versao_gtfs_id=gtfs, versao_correspondencia=correspondencia,
                                           versao_reconstrucao=reconstrucao)
-                    except ValueError as erro:  # ex.: grade ambígua; registrado, não silenciado
-                        falhas.append({"linha": linha, "sentido": sentido, "inicio": a.isoformat(),
-                                       "calculo": calcular.__name__, "erro": str(erro)[:200]})
+                    except ValueError as erro:  # ex.: grade ambígua
+                        falha(linha, sentido, a.isoformat(), calcular.__name__, erro)
                         continue
-                    gravar_indicador(campos, commit=False).publicado_em = agora
-                    registros += 1
+                    gravar(campos)
+        for data, linha, sentido, gtfs, correspondencia, reconstrucao in contextos:
+            for Calculo in DIARIOS:
+                try:
+                    todos = Calculo(linha=linha, sentido=sentido, data_operacao=data, versao_gtfs_id=gtfs,
+                                    versao_correspondencia=correspondencia,
+                                    versao_reconstrucao=reconstrucao, agora=agora).calcular()
+                except ValueError as erro:  # ex.: percurso da linha indisponível
+                    falha(linha, sentido, data.isoformat(), Calculo.__name__, erro)
+                    continue
+                for campos in todos:  # só as janelas desta publicação
+                    if inicio <= campos["periodo_inicio"] and campos["periodo_fim"] <= fim:
+                        gravar(campos)
+        removidos = _substituir(inicio, fim, escopos, escritas)
+        registros = len(escritas)
         bruto_maximo = db.session.query(func.coalesce(func.max(RegistroBrutoGPS.id), 0)).scalar()
         if execucao is None:  # criada só agora, já completa, para não ser gravada pela metade
             execucao = ExecucaoProcessamento(chave_logica=chave, criada_em=agora)
@@ -111,7 +181,8 @@ def _publicar(tipo, chave, inicio, fim, janelas, datas, agora, extra=None):
         execucao.tentativas = tentativas
         execucao.iniciada_em, execucao.finalizada_em, execucao.erro = agora, agora, None
         execucao.parametros = {"contextos": len(contextos), "janelas": len(janelas),
-                               "registros": registros, "falhas": falhas,
+                               "registros": registros, "substituidos": removidos, "falhas": falhas,
+                               "indicadores": INDICADORES,
                                "datas_operacao": [d.isoformat() for d in sorted(datas)],
                                **(extra or {})}
         db.session.commit()  # registros e execução ficam visíveis juntos
@@ -222,20 +293,38 @@ def estado_atualizacao():
     }
 
 
+def _coberto(a, b, intervalos):
+    """``[a, b)`` coberto pela união de ``intervalos`` [(início, fim, consolidado_em)]?
+    Devolve a última consolidação usada, ou None."""
+    ultimo = None
+    for x, y, em in sorted(intervalos):
+        if x > a:
+            break
+        if y > a:
+            a, ultimo = y, max(ultimo or em, em)
+        if a >= b:
+            return ultimo
+    return None
+
+
 def marcar_consolidados(dados, estado):
-    """Cada ponto informa se a sua janela pertence a um dia já consolidado."""
+    """Cada item informa se o seu período pertence a dias consolidados **que
+    recalcularam o seu indicador** (agregações de vários dias exigem todos)."""
     if not dados or estado["consolidacao"]["dia"] is None:
         for item in dados:
             item["consolidado"], item["consolidado_em"] = False, None
         return dados
     limites = [(datetime.fromisoformat(d["inicio"]), datetime.fromisoformat(d["fim"])) for d in dados]
     E = ExecucaoProcessamento
-    dias = (db.session.query(E.periodo_inicio, E.periodo_fim, E.finalizada_em)
+    dias = (db.session.query(E.periodo_inicio, E.periodo_fim, E.finalizada_em, E.parametros)
             .filter(E.tipo == CONSOLIDACAO, E.estado == "PRONTO",
                     E.periodo_fim > min(a for a, _ in limites),
                     E.periodo_inicio < max(b for _, b in limites)).all())
     for item, (a, b) in zip(dados, limites):
-        dia = next((em for x, y, em in dias if x <= a and b <= y), None)
-        item["consolidado"] = dia is not None
-        item["consolidado_em"] = dia.isoformat() if dia is not None else None
+        tipos = COMPOSTOS.get(item.get("tipo"), (item.get("tipo"),))
+        cobertos = [(x, y, em) for x, y, em, p in dias
+                    if set(tipos) <= set((p or {}).get("indicadores") or INDICADORES_V1)]
+        em = _coberto(a, b, cobertos)
+        item["consolidado"] = em is not None
+        item["consolidado_em"] = em.isoformat() if em is not None else None
     return dados

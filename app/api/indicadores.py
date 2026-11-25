@@ -168,12 +168,17 @@ def _responder(*, serie=False):
             marcar_consolidados(corpo["dados"], corpo["atualizacao"])
             return corpo, 200
         if filtros.get("agregacao") and filtros["tipo"] == REGULARIDADE:
-            return consultar_regularidade(filtros), 200
-        if filtros.get("agregacao") and filtros["tipo"] == ESPERA:
-            return consultar_espera(filtros), 200
-        if filtros.get("agregacao"):
-            return consultar_frequencias(filtros), 200
-        return consultar_indicadores(filtros), 200
+            corpo = consultar_regularidade(filtros)
+        elif filtros.get("agregacao") and filtros["tipo"] == ESPERA:
+            corpo = consultar_espera(filtros)
+        elif filtros.get("agregacao"):
+            corpo = consultar_frequencias(filtros)
+        else:
+            corpo = consultar_indicadores(filtros)
+        # US23-T03: o mesmo estado de atualização/consolidação de /series (provisório × consolidado).
+        corpo["atualizacao"] = estado_atualizacao()
+        marcar_consolidados(corpo["dados"], corpo["atualizacao"])
+        return corpo, 200
     except SQLAlchemyError as erro:
         db.session.rollback()
         current_app.logger.error("Falha ao consultar indicadores (%s)", type(erro).__name__)

@@ -60,7 +60,10 @@ paths:
         Pode filtrar linha, sentido e tipo. O dia só é anunciado após a
         consolidação e publicação; enquanto indisponível, a API retorna JSON
         404, nunca um CSV vazio de sucesso. Disponibilidade prevista até 06:00
-        de D+1 no horário de São Paulo.
+        de D+1 no horário de São Paulo. Os tipos públicos de /indicadores valem
+        aqui: ESPERA = ESPERA_ESTIMADA + EXCESSO_ESPERA; FREQUENCIA = observada +
+        programada. Licença CC BY 4.0; cada linha traz as colunas `fonte` e
+        `licenca`; as condições da SPTrans estão em /downloads/indicadores/metadados.
       security: []
       parameters:
         - name: formato
@@ -553,7 +556,7 @@ components:
         versao_calculo: { type: string, nullable: true }
         contagens: { $ref: '#/components/schemas/Contagens' }
         qualidade: { $ref: '#/components/schemas/Qualidade' }
-        consolidado: { type: boolean, description: "US23-T03: a janela pertence a um dia já consolidado; false = valor provisório da atualização de 15 min." }
+        consolidado: { type: boolean, description: "US23-T03: a janela pertence a um dia já consolidado cuja consolidação recalculou este indicador; false = valor provisório da atualização de 15 min." }
         consolidado_em: { type: string, format: date-time, nullable: true }
     Paginacao:
       type: object
@@ -566,8 +569,15 @@ components:
       type: object
       required: [dados, paginacao]
       properties:
-        dados: { type: array, items: { $ref: '#/components/schemas/Indicador' } }
+        dados:
+          type: array
+          description: >-
+            Cada item traz também `consolidado` (boolean) e `consolidado_em`
+            (date-time ou null), com a mesma regra de /series; agregações de vários
+            dias só são consolidadas se todos os dias foram consolidados para o indicador.
+          items: { $ref: '#/components/schemas/Indicador' }
         paginacao: { $ref: '#/components/schemas/Paginacao' }
+        atualizacao: { $ref: '#/components/schemas/PaginaSeries/properties/atualizacao' }
     PaginaSeries:
       type: object
       required: [dados, paginacao, lacunas, historico, consulta, atualizacao]

@@ -39,6 +39,7 @@ UNIDADE = "CV (adimensional)"
 OFERTA = "FREQUENCIA"
 LIMITE_AGRUPAMENTO = 0.5
 MINIMO_PASSAGENS = 3
+CASAS = 6  # o CV é publicado com 6 casas; o agrupamento é decidido sobre esse valor
 CONVENCAO = ("CV = desvio padrão populacional (divisor n) ÷ média dos intervalos entre "
              "passagens sucessivas, em segundos")
 REGRA_FRONTEIRA = "cada intervalo pertence à janela [início, fim) da sua passagem posterior"
@@ -64,8 +65,14 @@ def coeficiente_variacao(intervalos_seg):
     return pstdev(intervalos_seg) / media, None
 
 
+def publicado(cv):
+    return None if cv is None else round(cv, CASAS)
+
+
 def agrupamento(cv):
-    return None if cv is None else cv > LIMITE_AGRUPAMENTO
+    """``CV > 0,5`` sobre o valor publicado: um CV 0,5 com erro de ponto flutuante
+    (0,5000000000000001, comum com intervalos fracionários) não é agrupamento."""
+    return None if cv is None else publicado(cv) > LIMITE_AGRUPAMENTO
 
 
 def _inicio_15min(instante):
@@ -148,7 +155,7 @@ class CalculoRegularidade(CalculoFrequencia):
             "chave_resultado": chave, "versao_gtfs_id": self.versao_gtfs_id,
             "linha_codigo": self.linha, "sentido": self.sentido, "parada_codigo": parada,
             "trecho_id": None, "indicador": REGULARIDADE,
-            "valor": None if cv is None else round(cv, 6), "unidade": UNIDADE,
+            "valor": publicado(cv), "unidade": UNIDADE,
             "periodo_inicio": inicio, "periodo_fim": fim,
             "contagem_numerador": None if bloqueio else len(intervalos_seg),
             "contagem_denominador": None,
@@ -221,7 +228,7 @@ class PublicacaoRegularidade(PublicacaoFrequencia):
         return {
             "linha": linha, "sentido": sentido, "tipo": REGULARIDADE, "indicador": REGULARIDADE,
             "parada": parada, "trecho": None, "agregacao": self.agregacao, "referencia": referencia,
-            "valor": None if cv is None else round(cv, 6), "unidade": UNIDADE,
+            "valor": publicado(cv), "unidade": UNIDADE,
             "agrupamento": agrupamento(cv), "limite_agrupamento": LIMITE_AGRUPAMENTO,
             "situacao": situacao, "motivo_ausencia": "_".join(motivos) if cv is None else None,
             "motivos": motivos,

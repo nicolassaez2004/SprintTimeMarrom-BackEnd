@@ -129,3 +129,42 @@ def test_api_separa_espera_excesso_e_ausencia(frequencia, app):
     assert faixa["espera_estimada"]["valor"] == pytest.approx(2.1875)
     assert faixa["excesso_espera"]["valor"] == pytest.approx(-0.3125)
     assert faixa["excesso_espera"]["intervalos_programados_seg"] == [300, 300]
+
+
+# --- Review US18 (24-25/11/2026) -----------------------------------------------------
+
+def test_horarios_apos_24h_usam_a_programacao_da_data_operacional(frequencia):
+    """Partida às 24:00 (00:00 de 25/11 em São Paulo, 03:00 UTC) da data 24/11, H = 300 s.
+
+    Passagens 03:01, 03:05 e 03:10 UTC → intervalos 240 e 300 s na janela 03:00–03:15.
+    E = (240² + 300²) ÷ (2 × 540) = 147600 ÷ 1080 = 136,666667 s = 2,277778 min;
+    E_prog = 150 s; excesso = −13,333333 s = −0,222222 min (negativo mantido)."""
+    from app.models import ExecucaoColeta
+
+    meia_noite = T0 + timedelta(minutes=900)  # 25/11 03:00 UTC
+    db.session.add_all(ExecucaoColeta(prevista_em=meia_noite + timedelta(minutes=m),
+                                      iniciada_em=meia_noite + timedelta(minutes=m), estado="OK", recebidos=1)
+                       for m in range(-15, 30))
+    db.session.add(PartidaProgramada(importacao=frequencia["importacao"], ordem=50, saida_prevista=meia_noite,
+                                     tipo_oferta="FREQUENCIA", intervalo_seg=300))
+    db.session.commit()
+    passar(frequencia, "B", (901, 905, 910))
+    campos = calcular(frequencia)
+    espera, excesso = janela(campos, ESPERA, 900), janela(campos, EXCESSO, 900)
+    assert espera["qualidade"]["data_operacao"] == "2026-11-24"
+    assert espera["valor"] == pytest.approx(147600 / 1080 / 60, abs=1e-6)
+    assert excesso["qualidade"]["espera_programada_min"] == 2.5
+    assert excesso["valor"] == pytest.approx(-0.222222, abs=1e-6)
+
+
+def test_excesso_nulo_nunca_vira_zero_na_api(frequencia, app):
+    passar(frequencia, "B", (45, 50, 55))  # sem partida vigente: excesso NULL com motivo
+    calcular_e_publicar_espera(linha="3762-10", sentido="0", data_operacao=date(2026, 11, 24),
+                               versao_gtfs_id=frequencia["versao"].id, versao_correspondencia=MATCH,
+                               versao_reconstrucao=RECON, agora=DEPOIS, intervalo=60)
+    inicio = (T0 + timedelta(minutes=45)).isoformat()
+    (item,) = consultar(app, inicio=inicio, fim=inicio)
+    assert item["espera_estimada"]["valor"] == pytest.approx(2.5)
+    assert item["excesso_espera"]["valor"] is None
+    assert item["excesso_espera"]["motivo_ausencia"] == "intervalo_programado_ausente"
+    assert item["excesso_espera"]["situacao"] == "DADOS_AUSENTES"

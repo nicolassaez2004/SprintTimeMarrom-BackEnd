@@ -196,3 +196,33 @@ def test_api_retorna_regularidade_agrupamento_e_ausencia_sem_zero(frequencia, ap
                        fim="2026-11-25T00:00:00-03:00")
     assert dia["valor"] is None  # o dia tem janelas sem coleta: não se afirma CV
     assert dia["motivo_ausencia"].startswith("coleta_")
+
+
+# --- Review US17 (24-25/11/2026) -----------------------------------------------------
+
+def test_limite_05_com_intervalos_fracionarios_nao_vira_agrupamento():
+    """Regressão: 0,1 e 0,3 s dão CV 0,5000000000000001 em ponto flutuante.
+
+    O valor publicado (6 casas) é 0,5 e o agrupamento exige CV > 0,5: publicar
+    0,5 com agrupamento = sim seria contraditório."""
+    for intervalos in ([0.1, 0.3], [240.4, 721.2], [0.7, 2.1]):
+        cv, _ = coeficiente_variacao(intervalos)
+        assert cv != 0.5  # o erro de arredondamento existe
+        assert round(cv, 6) == 0.5 and agrupamento(cv) is False
+    assert agrupamento(0.5000006) is True  # acima de 0,5 no valor publicado
+
+
+def test_agregacao_usa_uniao_dos_intervalos_e_nao_media_dos_cvs(frequencia, app):
+    passar(frequencia, "B", (0, 2, 4, 15, 25, 35))  # janela 1: 120,120 (CV 0); janela 2: 660,600,600
+    calcular_e_publicar_regularidade(
+        linha="3762-10", sentido="0", data_operacao=date(2026, 11, 24), versao_gtfs_id=frequencia["versao"].id,
+        versao_correspondencia=MATCH, versao_reconstrucao=RECON, agora=DEPOIS, intervalo=60)
+    (faixa,) = consultar(app, agregacao="faixa", hora_inicio="09:00", hora_fim="09:45",
+                         inicio="2026-11-24T00:00:00-03:00", fim="2026-11-25T00:00:00-03:00")
+    uniao = [120, 120, 660, 600, 600]
+    media = sum(uniao) / 5
+    esperado = sqrt(sum((x - media) ** 2 for x in uniao) / 5) / media
+    assert faixa["valor"] == pytest.approx(esperado, abs=1e-6)
+    janelas = consultar(app, inicio=T0.isoformat(), fim=(T0 + timedelta(minutes=44)).isoformat())
+    cvs = [j["valor"] for j in janelas if j["valor"] is not None]
+    assert faixa["valor"] != pytest.approx(sum(cvs) / len(cvs), abs=1e-3)  # média ingênua diverge

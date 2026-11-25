@@ -1,13 +1,14 @@
 {
   "tarefa": "US18-T03B",
   "origem": "SINTETICA_CONTROLADA",
-  "executado_em": "2026-11-24T17:43:40.973457+00:00",
-  "aceite_institucional": "DISPENSADO_PELO_RESPONSAVEL",
-  "envio_instituicao_parceira": "DISPENSADO_PELO_RESPONSAVEL",
-  "pronto": true,
+  "executado_em": "2026-11-25T13:25:11.437587+00:00",
+  "aceite_institucional": "PENDENTE",
+  "envio_instituicao_parceira": "NAO_ENVIADO",
+  "conferencia_tecnica_ok": true,
+  "pronto": false,
   "fonte_casos": "docs/validacoes/US18-T03B-casos.json",
-  "sha256_caderno": "b30b1aa38655048450129eab5e8ab93678333f850eb97f1106aac34423f218ba",
-  "codigo_base": "526b196d253165c5de69f708e89672318a01adfb",
+  "sha256_caderno": "9ce67489c22765d48fe9efbeddbb7d86fe983bf9bb3509fc2633e404bacd05ea",
+  "codigo_base": "3f1ab82c3031807b6b83e03848877ed5e69ed24f",
   "banco": "SQLite em memória; FK ON; sem Aiven",
   "relogio_ensaio": "2026-12-03T00:00:00+00:00",
   "resumo": {
@@ -97,9 +98,23 @@
         }
       ],
       "resposta_api": {
+        "atualizacao": {
+          "consolidacao": {
+            "consolidado_ate": null,
+            "consolidado_em": null,
+            "dia": null,
+            "no_prazo": null,
+            "regra": "dia D consolidado a partir de 04:00 e até 06:00 de D+1 (America/Sao_Paulo)"
+          },
+          "intervalo_minutos": 15,
+          "proxima_atualizacao_prevista": null,
+          "ultima_atualizacao": null
+        },
         "dados": [
           {
             "agregacao": "janela",
+            "consolidado": false,
+            "consolidado_em": null,
             "contagens": {
               "denominador": null,
               "numerador": 3
@@ -263,9 +278,23 @@
         }
       ],
       "resposta_api": {
+        "atualizacao": {
+          "consolidacao": {
+            "consolidado_ate": null,
+            "consolidado_em": null,
+            "dia": null,
+            "no_prazo": null,
+            "regra": "dia D consolidado a partir de 04:00 e até 06:00 de D+1 (America/Sao_Paulo)"
+          },
+          "intervalo_minutos": 15,
+          "proxima_atualizacao_prevista": null,
+          "ultima_atualizacao": null
+        },
         "dados": [
           {
             "agregacao": "janela",
+            "consolidado": false,
+            "consolidado_em": null,
             "contagens": {
               "denominador": null,
               "numerador": 3
@@ -429,9 +458,23 @@
         }
       ],
       "resposta_api": {
+        "atualizacao": {
+          "consolidacao": {
+            "consolidado_ate": null,
+            "consolidado_em": null,
+            "dia": null,
+            "no_prazo": null,
+            "regra": "dia D consolidado a partir de 04:00 e até 06:00 de D+1 (America/Sao_Paulo)"
+          },
+          "intervalo_minutos": 15,
+          "proxima_atualizacao_prevista": null,
+          "ultima_atualizacao": null
+        },
         "dados": [
           {
             "agregacao": "janela",
+            "consolidado": false,
+            "consolidado_em": null,
             "contagens": {
               "denominador": null,
               "numerador": 3
@@ -595,9 +638,23 @@
         }
       ],
       "resposta_api": {
+        "atualizacao": {
+          "consolidacao": {
+            "consolidado_ate": null,
+            "consolidado_em": null,
+            "dia": null,
+            "no_prazo": null,
+            "regra": "dia D consolidado a partir de 04:00 e até 06:00 de D+1 (America/Sao_Paulo)"
+          },
+          "intervalo_minutos": 15,
+          "proxima_atualizacao_prevista": null,
+          "ultima_atualizacao": null
+        },
         "dados": [
           {
             "agregacao": "janela",
+            "consolidado": false,
+            "consolidado_em": null,
             "contagens": {
               "denominador": null,
               "numerador": 3
@@ -760,9 +817,23 @@
         }
       ],
       "resposta_api": {
+        "atualizacao": {
+          "consolidacao": {
+            "consolidado_ate": null,
+            "consolidado_em": null,
+            "dia": null,
+            "no_prazo": null,
+            "regra": "dia D consolidado a partir de 04:00 e até 06:00 de D+1 (America/Sao_Paulo)"
+          },
+          "intervalo_minutos": 15,
+          "proxima_atualizacao_prevista": null,
+          "ultima_atualizacao": null
+        },
         "dados": [
           {
             "agregacao": "janela",
+            "consolidado": false,
+            "consolidado_em": null,
             "contagens": {
               "denominador": null,
               "numerador": null
@@ -929,9 +1000,23 @@
         }
       ],
       "resposta_api": {
+        "atualizacao": {
+          "consolidacao": {
+            "consolidado_ate": null,
+            "consolidado_em": null,
+            "dia": null,
+            "no_prazo": null,
+            "regra": "dia D consolidado a partir de 04:00 e até 06:00 de D+1 (America/Sao_Paulo)"
+          },
+          "intervalo_minutos": 15,
+          "proxima_atualizacao_prevista": null,
+          "ultima_atualizacao": null
+        },
         "dados": [
           {
             "agregacao": "faixa",
+            "consolidado": false,
+            "consolidado_em": null,
             "contagens": {
               "denominador": null,
               "numerador": 9
@@ -1109,9 +1194,23 @@
         }
       ],
       "resposta_api": {
+        "atualizacao": {
+          "consolidacao": {
+            "consolidado_ate": null,
+            "consolidado_em": null,
+            "dia": null,
+            "no_prazo": null,
+            "regra": "dia D consolidado a partir de 04:00 e até 06:00 de D+1 (America/Sao_Paulo)"
+          },
+          "intervalo_minutos": 15,
+          "proxima_atualizacao_prevista": null,
+          "ultima_atualizacao": null
+        },
         "dados": [
           {
             "agregacao": "faixa",
+            "consolidado": false,
+            "consolidado_em": null,
             "contagens": {
               "denominador": null,
               "numerador": 3
@@ -1278,9 +1377,23 @@
         }
       ],
       "resposta_api": {
+        "atualizacao": {
+          "consolidacao": {
+            "consolidado_ate": null,
+            "consolidado_em": null,
+            "dia": null,
+            "no_prazo": null,
+            "regra": "dia D consolidado a partir de 04:00 e até 06:00 de D+1 (America/Sao_Paulo)"
+          },
+          "intervalo_minutos": 15,
+          "proxima_atualizacao_prevista": null,
+          "ultima_atualizacao": null
+        },
         "dados": [
           {
             "agregacao": "faixa",
+            "consolidado": false,
+            "consolidado_em": null,
             "contagens": {
               "denominador": null,
               "numerador": 3
@@ -1454,9 +1567,23 @@
         }
       ],
       "resposta_api": {
+        "atualizacao": {
+          "consolidacao": {
+            "consolidado_ate": null,
+            "consolidado_em": null,
+            "dia": null,
+            "no_prazo": null,
+            "regra": "dia D consolidado a partir de 04:00 e até 06:00 de D+1 (America/Sao_Paulo)"
+          },
+          "intervalo_minutos": 15,
+          "proxima_atualizacao_prevista": null,
+          "ultima_atualizacao": null
+        },
         "dados": [
           {
             "agregacao": "faixa",
+            "consolidado": false,
+            "consolidado_em": null,
             "contagens": {
               "denominador": null,
               "numerador": 3
@@ -1630,9 +1757,23 @@
         }
       ],
       "resposta_api": {
+        "atualizacao": {
+          "consolidacao": {
+            "consolidado_ate": null,
+            "consolidado_em": null,
+            "dia": null,
+            "no_prazo": null,
+            "regra": "dia D consolidado a partir de 04:00 e até 06:00 de D+1 (America/Sao_Paulo)"
+          },
+          "intervalo_minutos": 15,
+          "proxima_atualizacao_prevista": null,
+          "ultima_atualizacao": null
+        },
         "dados": [
           {
             "agregacao": "faixa",
+            "consolidado": false,
+            "consolidado_em": null,
             "contagens": {
               "denominador": null,
               "numerador": null
@@ -1810,9 +1951,23 @@
         }
       ],
       "resposta_api": {
+        "atualizacao": {
+          "consolidacao": {
+            "consolidado_ate": null,
+            "consolidado_em": null,
+            "dia": null,
+            "no_prazo": null,
+            "regra": "dia D consolidado a partir de 04:00 e até 06:00 de D+1 (America/Sao_Paulo)"
+          },
+          "intervalo_minutos": 15,
+          "proxima_atualizacao_prevista": null,
+          "ultima_atualizacao": null
+        },
         "dados": [
           {
             "agregacao": "dia",
+            "consolidado": false,
+            "consolidado_em": null,
             "contagens": {
               "denominador": null,
               "numerador": 13
@@ -1976,10 +2131,10 @@
     },
     {
       "id": "C12",
-      "titulo": "Dia com duas passagens",
+      "titulo": "Operação após a meia-noite (horário GTFS > 24h)",
       "escala": "dia",
       "status": "CONFERIU_EXEMPLO",
-      "calculo_manual": "Um intervalo no dia: sem espera e sem excesso.",
+      "calculo_manual": "Programação 23:00–25:00 (H = 600 s) da data 24/11; passagens 23:40, 23:50, 24:05 e 24:20 (00:05 e 00:20 de 25/11) pertencem à data operacional 24/11. Intervalos 600, 900, 900 s (o de 23:50→24:05 atravessa a meia-noite): Σh = 2400; Σh² = 1980000; E = 412,5 s = 6,875 min. E_prog = 300 s; excesso = 112,5 s = 1,875 min.",
       "consulta": {
         "tipo": "ESPERA",
         "linha": "SINT-US17",
@@ -2004,26 +2159,26 @@
         },
         {
           "campo": "espera_min",
-          "manual": null,
-          "obtido": null,
+          "manual": 6.875,
+          "obtido": 6.875,
           "confere": true
         },
         {
           "campo": "excesso_min",
+          "manual": 1.875,
+          "obtido": 1.875,
+          "confere": true
+        },
+        {
+          "campo": "motivo_espera",
           "manual": null,
           "obtido": null,
           "confere": true
         },
         {
-          "campo": "motivo_espera",
-          "manual": "passagens_insuficientes",
-          "obtido": "passagens_insuficientes",
-          "confere": true
-        },
-        {
           "campo": "motivo_excesso",
-          "manual": "passagens_insuficientes",
-          "obtido": "passagens_insuficientes",
+          "manual": null,
+          "obtido": null,
           "confere": true
         },
         {
@@ -2047,31 +2202,45 @@
         {
           "campo": "ausencia_nao_e_zero",
           "manual": [
-            true,
-            true
+            false,
+            false
           ],
           "obtido": [
-            true,
-            true
+            false,
+            false
           ],
           "confere": true
         }
       ],
       "resposta_api": {
+        "atualizacao": {
+          "consolidacao": {
+            "consolidado_ate": null,
+            "consolidado_em": null,
+            "dia": null,
+            "no_prazo": null,
+            "regra": "dia D consolidado a partir de 04:00 e até 06:00 de D+1 (America/Sao_Paulo)"
+          },
+          "intervalo_minutos": 15,
+          "proxima_atualizacao_prevista": null,
+          "ultima_atualizacao": null
+        },
         "dados": [
           {
             "agregacao": "dia",
+            "consolidado": false,
+            "consolidado_em": null,
             "contagens": {
               "denominador": null,
-              "numerador": null
+              "numerador": 3
             },
-            "duracao_horas": 24.0,
+            "duracao_horas": 25.0,
             "espera_estimada": {
               "lacunas": [],
-              "motivo_ausencia": "passagens_insuficientes",
-              "situacao": "DADOS_INSUFICIENTES",
+              "motivo_ausencia": null,
+              "situacao": "CALCULADA",
               "unidade": "min",
-              "valor": null
+              "valor": 6.875
             },
             "excesso_espera": {
               "espera_programada_min": 5.0,
@@ -2090,15 +2259,15 @@
                 600
               ],
               "lacunas": [],
-              "motivo_ausencia": "passagens_insuficientes",
-              "situacao": "DADOS_INSUFICIENTES",
+              "motivo_ausencia": null,
+              "situacao": "CALCULADA",
               "unidade": "min",
-              "valor": null
+              "valor": 1.875
             },
-            "fim": "2026-11-25T03:00:00+00:00",
+            "fim": "2026-11-25T04:00:00+00:00",
             "indicador": "ESPERA",
             "inicio": "2026-11-24T03:00:00+00:00",
-            "intervalos": null,
+            "intervalos": 3,
             "linha": "SINT-US17",
             "parada": "B",
             "qualidade": {
@@ -2136,7 +2305,7 @@
             "tipo": "ESPERA",
             "trecho": null,
             "unidade": "min",
-            "valor": null,
+            "valor": 6.875,
             "versao_calculo": "espera-1.0",
             "versao_conjunto": "66fcc357ff5d5026dfb4c25aec4f30d4",
             "versao_correspondencia": "correspondencia-controlada-us17",
@@ -2234,9 +2403,23 @@
         }
       ],
       "resposta_api": {
+        "atualizacao": {
+          "consolidacao": {
+            "consolidado_ate": null,
+            "consolidado_em": null,
+            "dia": null,
+            "no_prazo": null,
+            "regra": "dia D consolidado a partir de 04:00 e até 06:00 de D+1 (America/Sao_Paulo)"
+          },
+          "intervalo_minutos": 15,
+          "proxima_atualizacao_prevista": null,
+          "ultima_atualizacao": null
+        },
         "dados": [
           {
             "agregacao": "dia",
+            "consolidado": false,
+            "consolidado_em": null,
             "contagens": {
               "denominador": null,
               "numerador": null
@@ -2410,9 +2593,23 @@
         }
       ],
       "resposta_api": {
+        "atualizacao": {
+          "consolidacao": {
+            "consolidado_ate": null,
+            "consolidado_em": null,
+            "dia": null,
+            "no_prazo": null,
+            "regra": "dia D consolidado a partir de 04:00 e até 06:00 de D+1 (America/Sao_Paulo)"
+          },
+          "intervalo_minutos": 15,
+          "proxima_atualizacao_prevista": null,
+          "ultima_atualizacao": null
+        },
         "dados": [
           {
             "agregacao": "dia",
+            "consolidado": false,
+            "consolidado_em": null,
             "contagens": {
               "denominador": null,
               "numerador": null
@@ -2586,9 +2783,23 @@
         }
       ],
       "resposta_api": {
+        "atualizacao": {
+          "consolidacao": {
+            "consolidado_ate": null,
+            "consolidado_em": null,
+            "dia": null,
+            "no_prazo": null,
+            "regra": "dia D consolidado a partir de 04:00 e até 06:00 de D+1 (America/Sao_Paulo)"
+          },
+          "intervalo_minutos": 15,
+          "proxima_atualizacao_prevista": null,
+          "ultima_atualizacao": null
+        },
         "dados": [
           {
             "agregacao": "dia",
+            "consolidado": false,
+            "consolidado_em": null,
             "contagens": {
               "denominador": null,
               "numerador": null
@@ -2749,9 +2960,23 @@
         }
       ],
       "resposta_api": {
+        "atualizacao": {
+          "consolidacao": {
+            "consolidado_ate": null,
+            "consolidado_em": null,
+            "dia": null,
+            "no_prazo": null,
+            "regra": "dia D consolidado a partir de 04:00 e até 06:00 de D+1 (America/Sao_Paulo)"
+          },
+          "intervalo_minutos": 15,
+          "proxima_atualizacao_prevista": null,
+          "ultima_atualizacao": null
+        },
         "dados": [
           {
             "agregacao": "mes",
+            "consolidado": false,
+            "consolidado_em": null,
             "contagens": {
               "denominador": null,
               "numerador": 4
@@ -2957,9 +3182,23 @@
         }
       ],
       "resposta_api": {
+        "atualizacao": {
+          "consolidacao": {
+            "consolidado_ate": null,
+            "consolidado_em": null,
+            "dia": null,
+            "no_prazo": null,
+            "regra": "dia D consolidado a partir de 04:00 e até 06:00 de D+1 (America/Sao_Paulo)"
+          },
+          "intervalo_minutos": 15,
+          "proxima_atualizacao_prevista": null,
+          "ultima_atualizacao": null
+        },
         "dados": [
           {
             "agregacao": "mes",
+            "consolidado": false,
+            "consolidado_em": null,
             "contagens": {
               "denominador": null,
               "numerador": null
@@ -3149,9 +3388,23 @@
         }
       ],
       "resposta_api": {
+        "atualizacao": {
+          "consolidacao": {
+            "consolidado_ate": null,
+            "consolidado_em": null,
+            "dia": null,
+            "no_prazo": null,
+            "regra": "dia D consolidado a partir de 04:00 e até 06:00 de D+1 (America/Sao_Paulo)"
+          },
+          "intervalo_minutos": 15,
+          "proxima_atualizacao_prevista": null,
+          "ultima_atualizacao": null
+        },
         "dados": [
           {
             "agregacao": "mes",
+            "consolidado": false,
+            "consolidado_em": null,
             "contagens": {
               "denominador": null,
               "numerador": 2
@@ -3359,9 +3612,23 @@
         }
       ],
       "resposta_api": {
+        "atualizacao": {
+          "consolidacao": {
+            "consolidado_ate": null,
+            "consolidado_em": null,
+            "dia": null,
+            "no_prazo": null,
+            "regra": "dia D consolidado a partir de 04:00 e até 06:00 de D+1 (America/Sao_Paulo)"
+          },
+          "intervalo_minutos": 15,
+          "proxima_atualizacao_prevista": null,
+          "ultima_atualizacao": null
+        },
         "dados": [
           {
             "agregacao": "mes",
+            "consolidado": false,
+            "consolidado_em": null,
             "contagens": {
               "denominador": null,
               "numerador": 4
@@ -3547,9 +3814,23 @@
         }
       ],
       "resposta_api": {
+        "atualizacao": {
+          "consolidacao": {
+            "consolidado_ate": null,
+            "consolidado_em": null,
+            "dia": null,
+            "no_prazo": null,
+            "regra": "dia D consolidado a partir de 04:00 e até 06:00 de D+1 (America/Sao_Paulo)"
+          },
+          "intervalo_minutos": 15,
+          "proxima_atualizacao_prevista": null,
+          "ultima_atualizacao": null
+        },
         "dados": [
           {
             "agregacao": "mes",
+            "consolidado": false,
+            "consolidado_em": null,
             "contagens": {
               "denominador": null,
               "numerador": null
