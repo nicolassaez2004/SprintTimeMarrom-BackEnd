@@ -18,6 +18,7 @@ from app.indicadores.service import filtrar_periodo, consulta_base, serializar
 from app.models import ExecucaoProcessamento, IndicadorOperacional, Linha
 from app.operacao.arquivos import gravar_json
 from app.exportacoes.parquet import diretorio_exportacoes, periodo_utc
+from app.qualidade.anotacoes import adicionar_qualidade_coleta
 
 FONTE = ("Observa SP; indicadores calculados a partir de dados públicos da SPTrans "
          "(API Olho Vivo e GTFS/programação oficial)")
@@ -38,11 +39,11 @@ CAMPOS = (
     "linha", "nome_linha", "sentido", "tipo", "valor", "unidade", "inicio", "fim",
     "parada", "trecho", "versao_gtfs_id", "versao_conjunto",
     "versao_correspondencia", "versao_calculo", "contagem_numerador",
-    "contagem_denominador", "qualidade", "fonte", "licenca",
+    "contagem_denominador", "qualidade", "qualidade_coleta", "fonte", "licenca",
 )
 
 
-def _serializar_linhas(registros):
+def _serializar_linhas(registros, *, agora=None):
     pares = {(r.versao_gtfs_id, r.linha_codigo) for r in registros}
     nomes = {}
     if pares:
@@ -50,22 +51,27 @@ def _serializar_linhas(registros):
                      for versao, codigo in pares]
         nomes = {(versao, codigo): nome for versao, codigo, nome in db.session.query(
             Linha.versao_gtfs_id, Linha.codigo, Linha.nome).filter(or_(*condicoes)).all()}
+    linhas = []
+    for modelo in registros:
+        registro = serializar(modelo)
+        linhas.append({
+            **registro,
+            "nome_linha": nomes.get((registro["versao_gtfs_id"], registro["linha"]), ""),
+            "contagem_numerador": registro["contagens"]["numerador"],
+            "contagem_denominador": registro["contagens"]["denominador"],
+            "fonte": FONTE, "licenca": LICENCA,
+        })
+    adicionar_qualidade_coleta(linhas, agora=agora)
     buffer = io.StringIO(newline="")
     escritor = csv.DictWriter(
         buffer, fieldnames=CAMPOS, extrasaction="ignore", lineterminator="\r\n",
     )
     escritor.writeheader()
-    for modelo in registros:
-        registro = serializar(modelo)
-        linha = {
-            **registro,
-            "nome_linha": nomes.get((registro["versao_gtfs_id"], registro["linha"]), ""),
-            "contagem_numerador": registro["contagens"]["numerador"],
-            "contagem_denominador": registro["contagens"]["denominador"],
-            "qualidade": json.dumps(registro["qualidade"], ensure_ascii=False,
-                                     separators=(",", ":")),
-            "fonte": FONTE, "licenca": LICENCA,
-        }
+    for linha in linhas:
+        linha["qualidade"] = json.dumps(linha["qualidade"], ensure_ascii=False,
+                                        separators=(",", ":"))
+        linha["qualidade_coleta"] = json.dumps(linha["qualidade_coleta"], ensure_ascii=False,
+                                               separators=(",", ":"))
         escritor.writerow(linha)
     return buffer.getvalue().encode("utf-8-sig")
 
@@ -102,7 +108,7 @@ def publicar_csv_indicadores(dia, agora):
     filtros = {"linha": None, "sentido": None, "tipo": None, "parada": None, "trecho": None,
                "versao_gtfs_id": None, "inicio": inicio, "fim": fim}
     registros = filtrar_periodo(consulta_base(filtros), filtros).order_by(*_ORDEM).all()
-    conteudo = _serializar_linhas(registros)
+    conteudo = _serializar_linhas(registros, agora=agora)
     destino = caminho_indicadores(dia)
     _gravar_atomico(destino, conteudo)
     recibo = {
@@ -240,7 +246,7 @@ def preservar_conjunto(execucao):
                  .filter(_I.periodo_inicio >= execucao.periodo_inicio,
                          _I.periodo_fim <= execucao.periodo_fim)
                  .order_by(*_ORDEM).all())
-    conteudo = _serializar_linhas(registros)
+    conteudo = _serializar_linhas(registros, agora=execucao.finalizada_em)
     destino = caminho_conjunto(execucao.id)
     _gravar_atomico(destino, conteudo)
     gravar_json(Path(f"{destino}.publicacao.json"), {

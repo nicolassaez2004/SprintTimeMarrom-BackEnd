@@ -10,6 +10,7 @@ from app import db
 from app.api.comum import ParametroInvalido, erro_json, limitar_por_ip
 from app.api.indicadores import ler_filtros
 from app.consultas.mapas import VersaoTerritorialNaoEncontrada, consultar_mapa
+from app.qualidade.anotacoes import adicionar_qualidade_coleta
 
 mapas_bp = Blueprint("mapas", __name__)
 
@@ -60,6 +61,8 @@ def consultar_mapa_indicadores():
         corpo = consultar_mapa(filtros, escopo, base=base,
                                codigo=request.args.get("codigo", "").strip() or None,
                                versao_territorial_id=versao_id)
+        propriedades = [feature["properties"] for feature in corpo["features"]]
+        adicionar_qualidade_coleta(propriedades)
     except VersaoTerritorialNaoEncontrada:
         return erro_json("PARAMETRO_INVALIDO", "Versão territorial não encontrada.", 400, "versao_territorial_id")
     except SQLAlchemyError as erro:
