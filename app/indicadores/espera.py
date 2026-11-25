@@ -132,7 +132,7 @@ def calcular_espera(**parametros):
 def calcular_e_publicar_espera(**parametros):
     """Espera e excesso de cada janela gravados juntos, numa transação."""
     try:
-        falhas = FalhasColeta()
+        falhas = FalhasColeta(agora=parametros.get("agora"), intervalo=parametros.get("intervalo"))
         registros = [gravar_indicador(c, commit=False, falhas=falhas)
                      for c in calcular_espera(**parametros)]
         db.session.commit()

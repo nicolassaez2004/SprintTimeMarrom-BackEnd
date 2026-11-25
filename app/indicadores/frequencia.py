@@ -233,7 +233,7 @@ def calcular_frequencias(**parametros):
 def calcular_e_publicar_frequencias(**parametros):
     """Calcula e grava o conjunto numa única transação (upsert por chave)."""
     try:
-        falhas = FalhasColeta()
+        falhas = FalhasColeta(agora=parametros.get("agora"), intervalo=parametros.get("intervalo"))
         registros = [gravar_indicador(c, commit=False, falhas=falhas)
                      for c in calcular_frequencias(**parametros)]
         db.session.commit()
@@ -338,11 +338,21 @@ class PublicacaoFrequencia:
                      r.versao_calculo, q.get("versao_reconstrucao"), q.get("versao_estimativa"),
                      r.periodo_fim - r.periodo_inicio, balde)
             grupos.setdefault(chave, []).append(r)
-        itens = sorted((self._item(chave, rs) for chave, rs in grupos.items()),
+        itens = sorted((self._com_falhas_coleta(self._item(chave, rs), rs) for chave, rs in grupos.items()),
                        key=lambda x: (x["inicio"], x["sentido"] or "", x["parada"] or "", x["versao_conjunto"]))
         pagina, tamanho = self.f["page"], self.f["page_size"]
         return {"dados": itens[(pagina - 1) * tamanho:pagina * tamanho],
                 "paginacao": {"page": pagina, "page_size": tamanho, "total": len(itens)}}
+
+    def _com_falhas_coleta(self, item, registros):
+        """US26: na agregação ``janela`` a janela exibida é a publicada; repassa o bloco
+        gravado (o mesmo para todos os registros da janela). Nas demais agregações a
+        janela exibida é outra e o bloco não se aplica."""
+        bloco = next(((r.qualidade or {}).get("falhas_coleta") for r in registros
+                      if "falhas_coleta" in (r.qualidade or {})), None)
+        if self.agregacao == "janela" and bloco is not None:
+            item["qualidade"]["falhas_coleta"] = bloco
+        return item
 
     @staticmethod
     def _lado(registros, esperado, zero, ausente):

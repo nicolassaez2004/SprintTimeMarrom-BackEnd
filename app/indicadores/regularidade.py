@@ -182,7 +182,7 @@ def calcular_regularidade(**parametros):
 def calcular_e_publicar_regularidade(**parametros):
     """Calcula e grava o conjunto numa única transação (upsert por chave)."""
     try:
-        falhas = FalhasColeta()
+        falhas = FalhasColeta(agora=parametros.get("agora"), intervalo=parametros.get("intervalo"))
         registros = [gravar_indicador(c, commit=False, falhas=falhas)
                      for c in calcular_regularidade(**parametros)]
         db.session.commit()
