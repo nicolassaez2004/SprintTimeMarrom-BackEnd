@@ -16,7 +16,7 @@ from werkzeug.middleware.proxy_fix import ProxyFix
 
 from app import create_app, db
 from app.core.limites import comando_consumo
-from app.indicadores import routes
+from app.api import indicadores as routes
 from app.models import ExecucaoColeta, IndicadorOperacional, LimiteConsultaIP
 
 

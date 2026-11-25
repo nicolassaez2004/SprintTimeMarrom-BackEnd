@@ -1,16 +1,15 @@
 """US23: leitura paginada de séries; nenhum recálculo de indicadores no HTTP."""
 
 from datetime import datetime, time, timedelta, timezone
-from zoneinfo import ZoneInfo
 
 from sqlalchemy import and_, func, or_
 from sqlalchemy.sql.expression import Grouping
 
 from app import db
+from app.core.tempo import FUSO
 from app.indicadores.service import consulta_base, serializar
 from app.models import ExecucaoColeta, IndicadorOperacional as Indicador
 
-FUSO = ZoneInfo("America/Sao_Paulo")
 UTC = timezone.utc
 
 

@@ -20,7 +20,7 @@ from app.indicadores.pontualidade import (
     publicar_pontualidade,
 )
 from app.models import ImportacaoProgramacao, IndicadorOperacional, PartidaProgramada
-from app.viagens.separacao import ViagemObservada
+from app.viagens.separacao import ViagemSeparada
 
 UTC = timezone.utc
 DIA_OPERACIONAL = date(2026, 1, 31)
@@ -72,7 +72,7 @@ def partida(
 
 def entrada(caso_id, delta=None, *, linha_codigo="8000-10", versao_gtfs_id="gtfs-v1"):
     inicio = PREVISTA if delta is None else PREVISTA + timedelta(seconds=delta)
-    viagem = ViagemObservada(
+    viagem = ViagemSeparada(
         prefixo=f"bus-{caso_id}", linha_codigo=linha_codigo, sentido_gtfs="0",
         inicio=PREVISTA, fim=PREVISTA + timedelta(minutes=20),
         motivo_encerramento="fim_da_amostra",

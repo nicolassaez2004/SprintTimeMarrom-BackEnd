@@ -9,7 +9,6 @@ import re
 import tempfile
 from datetime import date, datetime, time, timedelta, timezone
 from pathlib import Path
-from zoneinfo import ZoneInfo
 
 import pyarrow as pa
 import pyarrow.parquet as pq
@@ -18,6 +17,7 @@ from sqlalchemy import and_, or_, select
 from flask import current_app
 
 from app import db
+from app.core.tempo import FUSO
 from app.models import ExecucaoColeta, RegistroBrutoGPS
 from app.operacao.arquivos import gravar_json
 from app.storage import hash_arquivo
@@ -28,7 +28,6 @@ FONTE_URL = "https://api.olhovivo.sptrans.com.br/v2.1/Posicao"
 LICENCA = "CC BY 4.0"
 LICENCA_URL = "https://creativecommons.org/licenses/by/4.0/"
 # Dia operacional de São Paulo, como nas demais rotinas diárias do projeto.
-FUSO = ZoneInfo("America/Sao_Paulo")
 # Folga após a meia-noite para os últimos ciclos do dia serem gravados (US29:
 # registro em até 60 s). Exportação anterior a isso não é considerada completa.
 MARGEM_FECHAMENTO = timedelta(minutes=10)

@@ -311,7 +311,7 @@ def executar(caderno=None):
         "sha256_caderno": hash_texto(CADERNO), "normalizacao_hash_texto": "UTF-8 com quebras LF",
         "codigo_base": commit.stdout.strip() if commit.returncode == 0 else None,
         "sha256_codigo": {p: hash_texto(RAIZ / p) for p in (
-            "app/viagens/passagens.py", "app/indicadores/frequencia.py", "app/indicadores/routes.py",
+            "app/viagens/passagens.py", "app/indicadores/frequencia.py", "app/api/indicadores.py",
             "scripts/validar_us15_t04.py")},
         "ambiente": {"python": platform.python_version(), "sistema": platform.system(),
                      "banco": "SQLite em memoria; FK ON; sem Aiven", "relogio_ensaio": AGORA.isoformat(),

@@ -10,7 +10,7 @@ from sqlalchemy import text
 from app import create_app, db
 from app.config import validar_intervalo_coleta
 from app.integrations.sptrans import SPTransClient
-from app.models import ExecucaoColeta, RegistroBrutoGPS, Veiculo
+from app.models import RegistroBrutoGPS, Veiculo
 from app.coleta.qualidade import validar_registro_gps, validar_unicidade_chave
 
 

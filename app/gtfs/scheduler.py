@@ -4,20 +4,16 @@ import hashlib
 import json
 import logging
 import time
-from datetime import datetime, timedelta, timezone
+from datetime import timedelta, timezone
 
 from app import db
 from app.gtfs.service import capturar_gtfs_com_resultado
-from app.models import VerificacaoGTFS
+from app.models import VerificacaoGTFS, agora_utc
 
 logger = logging.getLogger(__name__)
 INTERVALO_DIARIO = timedelta(days=1)
 INTERVALO_REPETICAO = timedelta(minutes=15)
 TOLERANCIA_ATRASO = timedelta(minutes=1)
-
-
-def agora_utc():
-    return datetime.now(timezone.utc)
 
 
 def _instante(relogio):

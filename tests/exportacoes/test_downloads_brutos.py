@@ -11,7 +11,7 @@ import pytest
 
 from app import create_app, db
 from app.exportacoes import parquet
-from app.exportacoes import routes
+from app.api import downloads as routes
 from app.exportacoes.parquet import (
     FUSO, arquivo_completo, datas_disponiveis, dia_a_publicar, gerar_parquet_diario,
     nome_arquivo, publicar_brutos,

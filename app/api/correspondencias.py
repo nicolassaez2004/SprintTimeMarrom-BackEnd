@@ -1,13 +1,15 @@
+"""GET /qualidade/correspondencias: relatório diário da associação Olho Vivo ↔ GTFS (US03)."""
+
 from datetime import date
 import re
 from flask import Blueprint, request
-from .relatorio import relatorio_diario
+from app.correspondencia.relatorio import relatorio_diario
 
-qualidade_bp=Blueprint('qualidade_correspondencias',__name__)
+correspondencias_bp=Blueprint('qualidade_correspondencias',__name__)
 
 
-@qualidade_bp.get('/qualidade/correspondencias')
-@qualidade_bp.get('/api/qualidade/correspondencias')
+@correspondencias_bp.get('/qualidade/correspondencias')
+@correspondencias_bp.get('/api/qualidade/correspondencias')
 def qualidade_correspondencias():
     raw=request.args.get('data','')
     limite=request.args.get('amostra','20')

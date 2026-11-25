@@ -12,7 +12,7 @@ from app.indicadores.cumprimento import (
     COBERTURA_MINIMA, gravar_indicador, programacao_da_janela, viagens_observadas,
 )
 from app.models import IndicadorOperacional, PartidaProgramada
-from app.viagens.separacao import ViagemObservada
+from app.viagens.separacao import ViagemSeparada
 
 VERSAO_ALGORITMO_PONTUALIDADE = "pontualidade-1.0"
 LIMITE_ADIANTAMENTO_SEGUNDOS = 60
@@ -29,7 +29,7 @@ class SaidaObservada:
     """
 
     viagem_id: str
-    viagem: ViagemObservada
+    viagem: ViagemSeparada
     data_operacao: date
     versao_gtfs_id: str
     saida_observada: datetime | None = None

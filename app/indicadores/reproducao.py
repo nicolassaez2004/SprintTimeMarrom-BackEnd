@@ -17,11 +17,11 @@ import json
 from pathlib import Path
 import subprocess
 import sys
-from zoneinfo import ZoneInfo
 
 from sqlalchemy import func, inspect, text
 
 from app import db
+from app.core.tempo import FUSO
 from app.indicadores.cumprimento import VERSAO_ALGORITMO, calcular_indicador_cumprimento
 from app.indicadores.frequencia import (
     OBSERVADA, PROGRAMADA, VERSAO_CALCULO as VERSAO_FREQUENCIA, calcular_frequencias,
@@ -34,7 +34,6 @@ from app.persistencia.reprocessamento import (
     criar_execucao_reprocessamento, executar_reprocessamento,
 )
 
-FUSO = ZoneInfo("America/Sao_Paulo")
 CALCULOS = {
     "CUMPRIMENTO_VIAGENS": (calcular_indicador_cumprimento, VERSAO_ALGORITMO),
     "PONTUALIDADE_VIAGENS": (calcular_indicador_pontualidade, VERSAO_ALGORITMO_PONTUALIDADE),

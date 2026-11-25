@@ -10,6 +10,8 @@ from sqlalchemy.exc import SQLAlchemyError
 from werkzeug.datastructures import MultiDict
 
 from app import db
+from app.api.comum import ParametroInvalido, erro_json
+from app.api.indicadores import ler_filtros
 from app.exportacoes.csv import (
     FONTE as FONTE_INDICADORES,
     FONTE_URL as FONTE_INDICADORES_URL,
@@ -23,14 +25,9 @@ from app.exportacoes.parquet import (
     FONTE, FUSO, LICENCA, MIME_PARQUET, arquivo_completo, datas_disponiveis,
     diretorio_exportacoes, dicionario_dados, nome_arquivo, prazo_publicacao, periodo_utc,
 )
-from app.indicadores.routes import ParametroInvalido, ler_filtros
 from app.models import agora_utc
 
 downloads_bp = Blueprint("downloads", __name__)
-
-
-def _erro(codigo, mensagem, status, **extra):
-    return {"erro": {"codigo": codigo, "mensagem": mensagem, **extra}}, status
 
 
 def _publico(resumo):
@@ -59,17 +56,17 @@ def dicionario():
 def baixar():
     for campo in request.args:
         if campo != "data":
-            return _erro("PARAMETRO_INVALIDO", "Parâmetro não reconhecido.", 400, campo=campo)
+            return erro_json("PARAMETRO_INVALIDO", "Parâmetro não reconhecido.", 400, campo=campo)
     valores = request.args.getlist("data")
     if len(valores) != 1:
-        return _erro("PARAMETRO_INVALIDO", "Informe data uma única vez, no formato AAAA-MM-DD.",
+        return erro_json("PARAMETRO_INVALIDO", "Informe data uma única vez, no formato AAAA-MM-DD.",
                      400, campo="data")
     try:
         if not re.fullmatch(r"[0-9]{4}-[0-9]{2}-[0-9]{2}", valores[0].strip()):
             raise ValueError()
         dia = date.fromisoformat(valores[0].strip())
     except ValueError:
-        return _erro("PARAMETRO_INVALIDO", "Informe uma data válida no formato AAAA-MM-DD.",
+        return erro_json("PARAMETRO_INVALIDO", "Informe uma data válida no formato AAAA-MM-DD.",
                      400, campo="data")
 
     resumo = arquivo_completo(diretorio_exportacoes(), dia)
@@ -79,10 +76,10 @@ def baixar():
         except OverflowError:  # 9999-12-31: D+1 não é representável
             prazo = None
         if prazo is None or agora_utc() < prazo:
-            return _erro("ARQUIVO_AINDA_INDISPONIVEL",
+            return erro_json("ARQUIVO_AINDA_INDISPONIVEL",
                          "Os dados deste dia ainda não foram consolidados.", 404,
                          previsto_ate=prazo.isoformat() if prazo else None)
-        return _erro("ARQUIVO_INEXISTENTE", "Não há arquivo de brutos publicado para esta data.", 404)
+        return erro_json("ARQUIVO_INEXISTENTE", "Não há arquivo de brutos publicado para esta data.", 404)
     resposta = send_file(resumo["caminho"], mimetype=MIME_PARQUET, as_attachment=True,
                          download_name=nome_arquivo(dia), max_age=0)
     resposta.headers["X-Content-Type-Options"] = "nosniff"
@@ -103,17 +100,17 @@ def baixar_indicadores_csv():
                   "parada", "trecho", "versao_gtfs_id", "inicio", "fim"}
     for campo in request.args:
         if campo not in permitidos:
-            return _erro("PARAMETRO_INVALIDO", "Parâmetro não reconhecido.", 400, campo=campo)
+            return erro_json("PARAMETRO_INVALIDO", "Parâmetro não reconhecido.", 400, campo=campo)
         if len(request.args.getlist(campo)) != 1:
-            return _erro("PARAMETRO_INVALIDO", "Informe cada parâmetro uma única vez.", 400,
+            return erro_json("PARAMETRO_INVALIDO", "Informe cada parâmetro uma única vez.", 400,
                          campo=campo)
     if request.args.get("formato", "").strip().lower() != "csv" or len(request.args.getlist("formato")) != 1:
-        return _erro("FORMATO_NAO_SUPORTADO", "Informe formato=csv.", 400, campo="formato")
+        return erro_json("FORMATO_NAO_SUPORTADO", "Informe formato=csv.", 400, campo="formato")
     if "data" in request.args and ({"inicio", "fim"} & set(request.args)):
-        return _erro("PARAMETRO_INVALIDO", "Use data ou início/fim, não ambos.", 400, campo="data")
+        return erro_json("PARAMETRO_INVALIDO", "Use data ou início/fim, não ambos.", 400, campo="data")
     if ("data" not in request.args and
             not {"inicio", "fim"}.issubset(request.args)):
-        return _erro("PARAMETRO_INVALIDO", "Informe data ou inicio e fim para selecionar o período.",
+        return erro_json("PARAMETRO_INVALIDO", "Informe data ou inicio e fim para selecionar o período.",
                      400, campo="data")
     try:
         filtros = ler_filtros(MultiDict(
@@ -130,16 +127,16 @@ def baixar_indicadores_csv():
         else:
             inicio, fim = filtros["inicio"], filtros["fim"]
             if inicio is None or fim is None:
-                return _erro("PARAMETRO_INVALIDO", "Informe inicio e fim juntos.", 400, campo="inicio")
+                return erro_json("PARAMETRO_INVALIDO", "Informe inicio e fim juntos.", 400, campo="inicio")
             dia = inicio.astimezone(FUSO).date()
             limite_inicio, limite_fim = periodo_utc(dia)
             if inicio < limite_inicio or fim > limite_fim:
-                return _erro("PARAMETRO_INVALIDO", "O período deve estar contido em um único dia de São Paulo.",
+                return erro_json("PARAMETRO_INVALIDO", "O período deve estar contido em um único dia de São Paulo.",
                              400, campo="inicio")
     except ParametroInvalido as erro:
-        return _erro("PARAMETRO_INVALIDO", str(erro), 400, campo=erro.campo)
+        return erro_json("PARAMETRO_INVALIDO", str(erro), 400, campo=erro.campo)
     except (ValueError, OverflowError):
-        return _erro("PARAMETRO_INVALIDO", "Informe data válida no formato AAAA-MM-DD.",
+        return erro_json("PARAMETRO_INVALIDO", "Informe data válida no formato AAAA-MM-DD.",
                      400, campo="data")
 
     try:
@@ -147,17 +144,17 @@ def baixar_indicadores_csv():
     except SQLAlchemyError as erro:
         db.session.rollback()
         current_app.logger.error("Falha ao verificar CSV de indicadores (%s)", type(erro).__name__)
-        return _erro("DOWNLOAD_INDISPONIVEL", "Não foi possível verificar o arquivo consolidado.", 503)
+        return erro_json("DOWNLOAD_INDISPONIVEL", "Não foi possível verificar o arquivo consolidado.", 503)
     if arquivo is None:
         try:
             prazo = prazo_publicacao(dia)
         except OverflowError:
             prazo = None
         if prazo is not None and agora_utc() < prazo:
-            return _erro("PERIODO_AINDA_NAO_CONSOLIDADO",
+            return erro_json("PERIODO_AINDA_NAO_CONSOLIDADO",
                          "O CSV deste período ainda não foi consolidado e publicado.", 404,
                          data=dia.isoformat(), previsto_em=prazo.astimezone(FUSO).isoformat())
-        return _erro("CONSOLIDACAO_NAO_PUBLICADA",
+        return erro_json("CONSOLIDACAO_NAO_PUBLICADA",
                      "A consolidação deste período ainda não está disponível para download.", 404,
                      data=dia.isoformat())
 
@@ -197,7 +194,7 @@ def baixar_indicadores_csv():
         conteudo = buffer.getvalue().encode("utf-8-sig")
     except (UnicodeDecodeError, csv.Error, ValueError, KeyError) as erro:
         current_app.logger.error("CSV diário de indicadores inválido (%s)", type(erro).__name__)
-        return _erro("ARQUIVO_INVALIDO", "O arquivo consolidado não pôde ser lido.", 503)
+        return erro_json("ARQUIVO_INVALIDO", "O arquivo consolidado não pôde ser lido.", 503)
 
     resposta = current_app.response_class(
         conteudo, content_type="text/csv; charset=utf-8",

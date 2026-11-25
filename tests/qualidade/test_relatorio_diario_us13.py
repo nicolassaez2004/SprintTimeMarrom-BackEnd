@@ -46,7 +46,7 @@ def criar_cenario():
 def application(monkeypatch):
     app = create_app({"TESTING": True, "SQLALCHEMY_DATABASE_URI": "sqlite://",
                       "MYSQL_SSL_CA": None, "GPS_COLLECTION_INTERVAL_SECONDS": 30})
-    monkeypatch.setattr("app.qualidade.routes.agora_utc", lambda: instante(TERCEIRO + timedelta(days=1)))
+    monkeypatch.setattr("app.api.qualidade.agora_utc", lambda: instante(TERCEIRO + timedelta(days=1)))
     with app.app_context():
         db.create_all()
         criar_cenario()
@@ -96,7 +96,7 @@ def test_antes_do_monitoramento_mantem_percentual_desconhecido(application):
 
 
 def test_lacuna_aberta_do_dia_corrente_termina_no_instante_observado(application, monkeypatch):
-    monkeypatch.setattr("app.qualidade.routes.agora_utc", lambda: instante(TERCEIRO, 10, 30))
+    monkeypatch.setattr("app.api.qualidade.agora_utc", lambda: instante(TERCEIRO, 10, 30))
     dia = application.test_client().get("/qualidade?inicio=2026-11-20&janelas=true").get_json()["dias"][0]
     lacuna = dia["lacunas"][0]
     assert lacuna["fim_no_dia"] == "2026-11-20T13:30:00+00:00"

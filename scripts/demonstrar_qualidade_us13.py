@@ -11,7 +11,7 @@ from datetime import date
 from pathlib import Path
 
 from app import create_app, db
-from app.qualidade import routes
+from app.api import qualidade as routes
 
 
 def main():

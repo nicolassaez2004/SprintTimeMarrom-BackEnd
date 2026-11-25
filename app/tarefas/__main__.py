@@ -11,8 +11,9 @@ from app.exportacoes.parquet import publicar_brutos
 from app.indicadores.agenda import atualizar_indicadores
 from app.gtfs.scheduler import (
     executar_tarefas, nome_lock_gtfs, proxima_verificacao,
-    recuperar_interrompidas, verificar_gtfs, agora_utc,
+    recuperar_interrompidas, verificar_gtfs,
 )
+from app.models import agora_utc
 
 
 def main(argv=None):

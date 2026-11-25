@@ -1,6 +1,8 @@
+"""Separação das observações tratadas em viagens contínuas por veículo (US16-T01)."""
+
 from dataclasses import dataclass
 from datetime import datetime, timedelta
-from typing import Iterable, Optional
+from typing import Iterable
 
 
 @dataclass(frozen=True)
@@ -13,7 +15,10 @@ class ObservacaoViagem:
 
 
 @dataclass(frozen=True)
-class ViagemObservada:
+class ViagemSeparada:
+    """Trecho contínuo de GPS de um veículo; ainda não é a entidade persistida
+    `app.models.ViagemObservada`, que exige partida programada associada."""
+
     prefixo: str
     linha_codigo: str
     sentido_gtfs: str
@@ -87,8 +92,8 @@ class SeparadorViagens:
         observacao: ObservacaoViagem,
         fim: datetime,
         motivo: str,
-    ) -> ViagemObservada:
-        return ViagemObservada(
+    ) -> ViagemSeparada:
+        return ViagemSeparada(
             prefixo=observacao.prefixo,
             linha_codigo=observacao.linha_codigo,
             sentido_gtfs=observacao.sentido_gtfs,
