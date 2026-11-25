@@ -11,7 +11,8 @@ from werkzeug.datastructures import MultiDict
 
 from app import db
 from app.api.comum import ParametroInvalido, erro_json
-from app.api.indicadores import ler_filtros
+from app.api.indicadores import _CODIGO, ler_filtros
+from app.indicadores.agenda import COMPOSTOS
 from app.exportacoes.csv import (
     FONTE as FONTE_INDICADORES,
     FONTE_URL as FONTE_INDICADORES_URL,
@@ -112,10 +113,19 @@ def baixar_indicadores_csv():
             not {"inicio", "fim"}.issubset(request.args)):
         return erro_json("PARAMETRO_INVALIDO", "Informe data ou inicio e fim para selecionar o período.",
                      400, campo="data")
+    if "tipo" in request.args and "indicador" in request.args:
+        return erro_json("PARAMETRO_INVALIDO", "Use tipo ou indicador, não ambos.", 400, campo="tipo")
+    tipo = (request.args.get("tipo") or request.args.get("indicador") or "").strip() or None
+    if tipo is not None and not _CODIGO.fullmatch(tipo):
+        return erro_json("PARAMETRO_INVALIDO", "Use de 1 a 64 letras, números ou os caracteres _ . : -.",
+                         400, campo="tipo")
+    # Mesmos tipos públicos de GET /indicadores: ESPERA e FREQUENCIA reúnem dois indicadores.
+    # O tipo é filtrado aqui: as regras de agregação da consulta não se aplicam ao arquivo diário.
+    tipos = set(COMPOSTOS.get(tipo, (tipo,))) if tipo else None
     try:
         filtros = ler_filtros(MultiDict(
             (chave, valor) for chave, valor in request.args.items(multi=True)
-            if chave not in ("data", "formato")
+            if chave not in ("data", "formato", "tipo", "indicador")
         ))
         dia = None
         if "data" in request.args:
@@ -169,7 +179,7 @@ def baixar_indicadores_csv():
                 continue
             if filtros["sentido"] is not None and registro["sentido"] != filtros["sentido"]:
                 continue
-            if filtros["tipo"] is not None and registro["tipo"] != filtros["tipo"]:
+            if tipos is not None and registro["tipo"] not in tipos:
                 continue
             if filtros["parada"] is not None and registro["parada"] != filtros["parada"]:
                 continue

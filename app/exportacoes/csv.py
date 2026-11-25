@@ -17,22 +17,26 @@ from app.models import ExecucaoProcessamento, IndicadorOperacional, Linha
 from app.operacao.arquivos import gravar_json
 from app.exportacoes.parquet import diretorio_exportacoes, periodo_utc
 
-FONTE = "Observa SP; indicadores calculados a partir de dados públicos da SPTrans"
+FONTE = ("Observa SP; indicadores calculados a partir de dados públicos da SPTrans "
+         "(API Olho Vivo e GTFS/programação oficial)")
 FONTE_URL = "https://www.sptrans.com.br/desenvolvedores/"
-LICENCA = (
-    "Condições de acesso da SPTrans: acesso gratuito; dados não podem ser alugados, "
-    "sublicenciados ou vendidos. Licença própria do indicador derivado não declarada."
-)
-LICENCA_URL = (
+# US10: "mesmo prazo e licença da US09" (requisito), a mesma do Parquet dos brutos.
+LICENCA = "CC BY 4.0"
+LICENCA_URL = "https://creativecommons.org/licenses/by/4.0/"
+# Condições de uso da fonte, preservadas junto à licença (confirmação jurídica: pendência do PO).
+CONDICOES_FONTE = ("Condições de acesso da SPTrans: acesso gratuito; dados não podem ser alugados, "
+                   "sublicenciados ou vendidos.")
+CONDICOES_FONTE_URL = (
     "https://www.sptrans.com.br/desenvolvedores/cadastro-desenvolvedores/"
     "registro-desenvolvedores-pj"
 )
 
+# Fonte e licença também em cada linha: o arquivo baixado as indica por si só (US09/US10).
 CAMPOS = (
     "linha", "nome_linha", "sentido", "tipo", "valor", "unidade", "inicio", "fim",
     "parada", "trecho", "versao_gtfs_id", "versao_conjunto",
     "versao_correspondencia", "versao_calculo", "contagem_numerador",
-    "contagem_denominador", "qualidade",
+    "contagem_denominador", "qualidade", "fonte", "licenca",
 )
 
 
@@ -58,6 +62,7 @@ def _serializar_linhas(registros):
             "contagem_denominador": registro["contagens"]["denominador"],
             "qualidade": json.dumps(registro["qualidade"], ensure_ascii=False,
                                      separators=(",", ":")),
+            "fonte": FONTE, "licenca": LICENCA,
         }
         escritor.writerow(linha)
     return buffer.getvalue().encode("utf-8-sig")
@@ -148,8 +153,12 @@ def disponibilidade_csv():
         "fonte_url": FONTE_URL,
         "licenca": LICENCA,
         "licenca_url": LICENCA_URL,
-        "licenca_propria_indicadores": "não declarada",
-        "disponibilidade": "CSV diário publicado após consolidação; disponível até 06:00 do dia seguinte",
+        "condicoes_fonte": CONDICOES_FONTE,
+        "condicoes_fonte_url": CONDICOES_FONTE_URL,
+        "disponibilidade": ("CSV do dia D (America/Sao_Paulo) publicado após a consolidação, "
+                            "a partir de 04:00 e até 06:00 de D+1; antes disso o download responde 404"),
+        "tipos_compostos": {"ESPERA": ["ESPERA_ESTIMADA", "EXCESSO_ESPERA"],
+                            "FREQUENCIA": ["FREQUENCIA_OBSERVADA", "FREQUENCIA_PROGRAMADA"]},
         "codificacao": "UTF-8 com BOM",
         "separador": ",",
         "nulos": "campos vazios",

@@ -155,8 +155,12 @@ def executar(caderno=None):
     commit = subprocess.run(["git", "-C", str(RAIZ), "rev-parse", "HEAD"], capture_output=True, text=True)
     return {"tarefa": "US18-T03B", "origem": caderno["origem"], "executado_em": datetime.now(UTC).isoformat(),
             "aceite_institucional": caderno["aceite_institucional"],
-            "envio_instituicao_parceira": "DISPENSADO_PELO_RESPONSAVEL",
-            "pronto": all(r["status"] == "CONFERIU_EXEMPLO" for r in resultados),
+            # O critério comum US14–US19 exige os 20 casos aprovados pela Instituição Parceira:
+            # a conferência técnica sozinha não deixa a tarefa pronta (review 25/11/2026).
+            "envio_instituicao_parceira": caderno.get("envio_instituicao_parceira", "NAO_ENVIADO"),
+            "conferencia_tecnica_ok": all(r["status"] == "CONFERIU_EXEMPLO" for r in resultados),
+            "pronto": (all(r["status"] == "CONFERIU_EXEMPLO" for r in resultados)
+                       and caderno["aceite_institucional"] == "APROVADO"),
             "fonte_casos": "docs/validacoes/US18-T03B-casos.json", "sha256_caderno": hash_texto(CADERNO),
             "codigo_base": commit.stdout.strip() if commit.returncode == 0 else None,
             "banco": "SQLite em memória; FK ON; sem Aiven", "relogio_ensaio": AGORA.isoformat(),
@@ -170,8 +174,9 @@ def main():
     relatorio = executar()
     args.saida.write_text(json.dumps(relatorio, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
     print(json.dumps({"resumo": relatorio["resumo"], "aceite": relatorio["aceite_institucional"],
+                      "conferencia_tecnica_ok": relatorio["conferencia_tecnica_ok"],
                       "pronto": relatorio["pronto"]}, ensure_ascii=False))
-    return 0 if relatorio["pronto"] else 1
+    return 0 if relatorio["conferencia_tecnica_ok"] else 1
 
 
 if __name__ == "__main__":

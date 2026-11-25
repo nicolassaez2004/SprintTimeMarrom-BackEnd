@@ -194,10 +194,11 @@ def test_metadados_e_filtro_de_linha_sentido_periodo(cliente):
     assert metadados["fonte"] == FONTE
     assert metadados["fonte_url"] == FONTE_URL
     assert metadados["licenca_url"] == LICENCA_URL
-    assert metadados["licenca_propria_indicadores"] == "não declarada"
-    assert "não podem ser alugados" in LICENCA
-    assert "sublicenciados ou vendidos" in LICENCA
-    assert "CC BY" not in LICENCA
+    # US10: mesma licença da US09 (CC BY 4.0); as condições da SPTrans seguem informadas.
+    assert LICENCA == "CC BY 4.0" and "creativecommons.org/licenses/by/4.0" in LICENCA_URL
+    assert "não podem ser alugados" in metadados["condicoes_fonte"]
+    assert "sublicenciados ou vendidos" in metadados["condicoes_fonte"]
+    assert registros[0]["fonte"] == FONTE and registros[0]["licenca"] == LICENCA
     assert metadados["nulos"] == "campos vazios"
 
 
@@ -219,3 +220,16 @@ def test_csv_rejeita_periodos_invalidos_e_parametros_desconhecidos(cliente, quer
     resposta = cliente.get("/downloads/indicadores?formato=csv" + query)
     assert resposta.status_code == 400
     assert resposta.get_json()["erro"]["codigo"] == "PARAMETRO_INVALIDO"
+
+
+def test_filtro_por_tipo_publico_da_api_funciona_no_csv(cliente):
+    """Regressão: tipo=REGULARIDADE_INTERVALOS/ESPERA/FREQUENCIA exigia as regras de
+    agregação de /indicadores (inicio/fim) e respondia 400 com data=."""
+    for tipo in ("REGULARIDADE_INTERVALOS", "ESPERA", "FREQUENCIA"):
+        resposta = cliente.get(f"/downloads/indicadores?formato=csv&data=2026-11-24&tipo={tipo}")
+        assert resposta.status_code == 200, resposta.get_json()
+        assert resposta.headers["X-Total-Registros"] == "0"
+    resposta = cliente.get("/downloads/indicadores?formato=csv&data=2026-11-24&indicador=PONTUALIDADE_VIAGENS")
+    assert resposta.headers["X-Total-Registros"] == "2"
+    duplo = cliente.get("/downloads/indicadores?formato=csv&data=2026-11-24&tipo=A&indicador=B")
+    assert duplo.status_code == 400
