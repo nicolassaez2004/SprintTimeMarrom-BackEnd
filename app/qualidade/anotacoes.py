@@ -1,201 +1,77 @@
-"""Associa a qualidade de coleta US13/US26 aos períodos publicados."""
+"""``qualidade_coleta``: resumo público da qualidade da coleta (US26-T02).
 
-from datetime import date, datetime, timedelta, timezone
+Fonte única: o bloco ``qualidade.falhas_coleta`` gravado com cada indicador na
+publicação (US26-T01, ``FalhasColeta``). Nada é recalculado na consulta: API,
+mapa e CSV da mesma versão mostram exatamente a qualidade publicada com o valor.
+Agregações (faixa/dia/mês, territórios) somam as contagens dos blocos das suas
+janelas — nunca a média de percentuais — com a mesma regra (``classificar_falhas``).
+"""
+
+from datetime import datetime
 from decimal import Decimal
 
-from flask import current_app
-from sqlalchemy.exc import SQLAlchemyError
+from app.qualidade.service import (
+    ESCOPO_FALHAS, LIMITE_INCOMPLETO_PCT, VERSAO_REGRA_FALHAS, classificar_falhas,
+)
 
-from app import db
-from app.core.tempo import FUSO
-from app.qualidade.service import consolidar_qualidade
-
-UTC = timezone.utc
-LIMITE_DIAS_POR_CONSULTA = 31
-SITUACOES_MEDIDAS = {"COMPLETA", "COM_FALHAS", "INCOMPLETA", "SEM_DADOS"}
-
-
-def _data_final(inicio, fim):
-    ultimo_instante = fim - timedelta(microseconds=1)
-    return ultimo_instante.astimezone(FUSO).date()
-
-
-def _sem_qualidade(item, motivo, situacao="NAO_DISPONIVEL"):
-    return {
-        "inicio": item.get("inicio"),
-        "fim": item.get("fim"),
-        "versao_gtfs_id": item.get("versao_gtfs_id"),
-        "situacao": situacao,
-        "percentual_falhas": None,
-        "incompleto": None,
-        "motivo": motivo,
-        "motivos": [],
-        "limite_incompleto_percentual": 10.0,
-    }
+LIMITE = float(LIMITE_INCOMPLETO_PCT)
+_CONTAGENS = ("ciclos_esperados", "ciclos_registrados", "ciclos_com_dados", "ciclos_falha",
+              "ciclos_em_andamento", "falhas_da_fonte", "sem_registro", "falhas", "denominador",
+              "janelas_15min", "janelas_sem_expectativa")
 
 
 def _instante(valor):
-    if isinstance(valor, str):
-        valor = datetime.fromisoformat(valor.replace("Z", "+00:00"))
-    if valor.tzinfo is None:
-        raise ValueError("período de indicador precisa conter fuso")
-    return valor.astimezone(UTC)
+    return datetime.fromisoformat(valor.replace("Z", "+00:00")) if isinstance(valor, str) else valor
 
 
-def _relatorios_por_dia(itens, agora):
-    periodos = []
-    for item in itens:
-        inicio, fim = _instante(item["inicio"]), _instante(item["fim"])
-        if fim <= inicio:
-            item["qualidade_coleta"] = _sem_qualidade(item, "PERIODO_INVALIDO")
-        else:
-            periodos.append((inicio, fim))
-    if not periodos:
-        return {}, None
-    inicio = min(a for a, _ in periodos).astimezone(FUSO).date()
-    fim = max(_data_final(a, b) for a, b in periodos)
-    relatorios, limite_pct = {}, None
-    parte = inicio
-    while parte <= fim:
-        limite_dias = min(fim, parte + timedelta(days=LIMITE_DIAS_POR_CONSULTA - 1))
-        relatorio = consolidar_qualidade(parte, limite_dias, agora=agora, incluir_janelas=True)
-        limite_pct = relatorio["limite_incompleto_percentual"]
-        relatorios.update((date.fromisoformat(dia["data"]), dia) for dia in relatorio["dias"])
-        parte = limite_dias + timedelta(days=1)
-    return relatorios, limite_pct
+def _base(item):
+    return {"inicio": item.get("inicio"), "fim": item.get("fim"),
+            "versao_gtfs_id": item.get("versao_gtfs_id"), "escopo": ESCOPO_FALHAS,
+            "versao_regra": VERSAO_REGRA_FALHAS, "limite_incompleto_percentual": LIMITE}
 
 
-def _causas_do_periodo(dia, inicio, fim):
-    causas = set()
-    for lacuna in dia["lacunas"]:
-        a = _instante(lacuna["inicio_no_dia"])
-        b = _instante(lacuna["fim_no_dia"]) if lacuna["fim_no_dia"] else fim
-        if max(a, inicio) < min(b, fim):
-            causas.add(lacuna["causa"])
-    return causas
+def _indeterminada(item, motivo):
+    """Sem bloco publicado não se afirma nada: percentual e marca ficam nulos."""
+    return {**_base(item), "situacao": "NAO_REGISTRADA", "percentual_falhas": None,
+            "incompleto": None, "motivo": motivo, "causas": [], "contagens": None}
 
 
-def _resumo_periodo(item, inicio, fim, relatorios, limite):
-    versao_id = item.get("versao_gtfs_id")
-    if not versao_id:
-        return _sem_qualidade(item, "SEM_VERSAO_GTFS")
-
-    primeiro_dia = inicio.astimezone(FUSO).date()
-    ultimo_dia = _data_final(inicio, fim)
-    dias = []
-    dia_atual = primeiro_dia
-    while dia_atual <= ultimo_dia:
-        dia = relatorios.get(dia_atual)
-        if dia is None:
-            return _sem_qualidade(item, "QUALIDADE_DO_PERIODO_INDISPONIVEL")
-        versao_dia = (dia.get("gtfs") or {}).get("versao") or {}
-        if versao_dia.get("id") != versao_id:
-            return _sem_qualidade(item, "VERSAO_GTFS_DIVERGENTE", "VERSAO_DIVERGENTE")
-        dias.append((dia_atual, dia))
-        dia_atual += timedelta(days=1)
-
-    janelas = []
-    causas = set()
-    for dia_data, dia in dias:
-        for janela in dia["janelas"]:
-            a, b = _instante(janela["inicio"]), _instante(janela["fim"])
-            if inicio <= a and b <= fim:
-                janelas.append(janela)
-                causas.update(_causas_do_periodo(dia, a, b))
-
-    cobertura = sum(
-        (_instante(janela["fim"]) - _instante(janela["inicio"])).total_seconds()
-        for janela in janelas
-    )
-    if not janelas or cobertura != (fim - inicio).total_seconds():
-        return _sem_qualidade(item, "PERIODO_NAO_ALINHADO_A_JANELAS_DE_15_MIN")
-
-    situacoes = {janela["situacao"] for janela in janelas}
-    nao_medidas = situacoes - SITUACOES_MEDIDAS
-    if nao_medidas:
-        situacao = "PENDENTE" if "PENDENTE" in nao_medidas else "FORA_DO_MONITORAMENTO"
-        motivo = "PERIODO_AINDA_NAO_MEDIDO" if situacao == "PENDENTE" else "FORA_DO_MONITORAMENTO"
-        return _sem_qualidade(item, motivo, situacao)
-
-    esperados = sum(janela["ciclos_esperados"] for janela in janelas)
-    registrados = sum(janela["ciclos_registrados"] for janela in janelas)
-    com_dados = sum(janela["ciclos_com_dados"] for janela in janelas)
-    denominador = max(esperados, registrados)
-    percentual_decimal = (
-        (Decimal(max(denominador - com_dados, 0)) * 100 / Decimal(denominador)).quantize(Decimal("0.01"))
-        if denominador else None
-    )
-    percentual = float(percentual_decimal) if percentual_decimal is not None else None
-    incompleto = percentual_decimal > Decimal(str(limite)) if percentual_decimal is not None else None
-    if percentual is None:
-        situacao = "SEM_DADOS"
-    elif incompleto:
-        situacao = "INCOMPLETA"
-    elif percentual:
-        situacao = "COM_FALHAS"
-    else:
-        situacao = "COMPLETA"
-
-    motivos = sorted(causas)
-    if percentual and not motivos:
-        motivos = ["FALHAS_SEM_LACUNA_REGISTRADA"]
-    motivo = motivos[0] if len(motivos) == 1 else ("MULTIPLAS_CAUSAS" if motivos else None)
+def resumo_coleta(blocos, item):
+    """Resumo de ``item`` a partir dos blocos ``falhas_coleta`` das janelas que o compõem."""
+    if item.get("inicio") is None or item.get("fim") is None:
+        return _indeterminada(item, "SEM_PERIODO_ASSOCIADO")
+    if not blocos or any(not isinstance(b, dict) for b in blocos):
+        # Publicado antes da US26-T01 (ou parte do agregado): só o reprocessamento grava o bloco.
+        return _indeterminada(item, "PUBLICADO_SEM_QUALIDADE_DE_COLETA")
+    inicio, fim = _instante(item["inicio"]), _instante(item["fim"])
+    janelas = {}
+    for bloco in blocos:  # coleta global: a mesma janela aparece em vários indicadores
+        a, b = _instante(bloco["inicio"]), _instante(bloco["fim"])
+        if a < inicio or b > fim:
+            return _indeterminada(item, "PERIODO_DIVERGENTE")
+        janelas.setdefault((a, b), bloco)
+    unicos = list(janelas.values())
+    soma = {k: sum(b.get(k) or 0 for b in unicos) for k in _CONTAGENS}
+    sem_expectativa = sorted({b["motivo"] for b in unicos if b["situacao"] == "SEM_EXPECTATIVA"})
+    situacao, motivo = classificar_falhas(
+        soma["falhas"], soma["denominador"], soma["ciclos_com_dados"],
+        sem_expectativa[0] if len(sem_expectativa) == 1 else "MULTIPLOS_MOTIVOS")
+    medido = situacao != "SEM_EXPECTATIVA"
+    pct = (Decimal(soma["falhas"]) * 100 / soma["denominador"]).quantize(Decimal("0.01")) if medido else None
     return {
-        "inicio": item["inicio"],
-        "fim": item["fim"],
-        "versao_gtfs_id": versao_id,
-        "situacao": situacao,
-        "percentual_falhas": percentual,
-        "incompleto": incompleto,
+        **_base(item), "situacao": situacao,
+        "percentual_falhas": float(pct) if medido else None,
+        "incompleto": soma["falhas"] * 100 > LIMITE_INCOMPLETO_PCT * soma["denominador"] if medido else None,
         "motivo": motivo,
-        "motivos": motivos,
-        "limite_incompleto_percentual": limite,
-        "contagens": {
-            "ciclos_esperados": esperados,
-            "ciclos_registrados": registrados,
-            "ciclos_com_dados": com_dados,
-            "ciclos_falha": sum(janela["ciclos_falha"] for janela in janelas),
-            "ciclos_em_andamento": sum(janela["ciclos_em_andamento"] for janela in janelas),
-            "falhas_da_fonte": sum(janela["falhas_da_fonte"] for janela in janelas),
-            "sem_registro": sum(janela["sem_registro"] for janela in janelas),
-        },
+        "causas": sorted({l["causa"] for b in unicos for l in b.get("lacunas") or ()}),
+        "contagens": soma,
     }
 
 
-def adicionar_qualidade_coleta(itens, *, agora=None):
-    """Anexa a qualidade da coleta sem misturar períodos ou versões GTFS.
-
-    Cada item precisa ter ``inicio``, ``fim`` e ``versao_gtfs_id``. A métrica
-    reutiliza a consolidação US13-T01/US26-T01 e agrega contagens, nunca médias
-    de percentuais. Erros apenas nesta consulta complementar deixam explícita
-    a qualidade indisponível sem remover a resposta operacional principal.
-    """
-    if not itens:
-        return itens
-    validos = []
+def adicionar_qualidade_coleta(itens):
+    """Anexa ``qualidade_coleta`` aos itens que ainda não o têm (somente leitura)."""
     for item in itens:
-        if item.get("inicio") is None or item.get("fim") is None:
-            item["qualidade_coleta"] = _sem_qualidade(item, "SEM_PERIODO_ASSOCIADO")
-        else:
-            validos.append(item)
-    if not validos:
-        return itens
-    agora = agora or datetime.now(UTC)
-    try:
-        with db.session.begin_nested():
-            relatorios, limite = _relatorios_por_dia(validos, agora)
-        for item in validos:
-            if item.get("qualidade_coleta") is not None:
-                continue
-            try:
-                inicio, fim = _instante(item["inicio"]), _instante(item["fim"])
-                if fim <= inicio:
-                    raise ValueError("período vazio")
-                item["qualidade_coleta"] = _resumo_periodo(item, inicio, fim, relatorios, limite)
-            except (KeyError, TypeError, ValueError):
-                item["qualidade_coleta"] = _sem_qualidade(item, "PERIODO_INVALIDO")
-    except SQLAlchemyError as erro:
-        current_app.logger.error("Qualidade de coleta indisponível (%s)", type(erro).__name__)
-        for item in validos:
-            item["qualidade_coleta"] = _sem_qualidade(item, "QUALIDADE_INDISPONIVEL")
+        if "qualidade_coleta" not in item:
+            bloco = (item.get("qualidade") or {}).get("falhas_coleta")
+            item["qualidade_coleta"] = resumo_coleta([bloco] if bloco else [], item)
     return itens

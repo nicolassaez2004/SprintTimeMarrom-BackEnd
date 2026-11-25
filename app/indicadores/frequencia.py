@@ -30,6 +30,7 @@ from app.models import (
     PassagemEstimada, ViagemObservada,
 )
 from app.qualidade.service import FUSO, JANELA, FalhasColeta, consolidar_qualidade
+from app.qualidade.anotacoes import resumo_coleta
 from app.repositories.programacao import consultar_por_dia
 from app.viagens.passagens import Percurso, lacuna_configurada, versao_estimativa
 
@@ -352,6 +353,9 @@ class PublicacaoFrequencia:
                       if "falhas_coleta" in (r.qualidade or {})), None)
         if self.agregacao == "janela" and bloco is not None:
             item["qualidade"]["falhas_coleta"] = bloco
+        # US26-T02: resumo público somando as contagens das janelas que compõem o item.
+        item["qualidade_coleta"] = resumo_coleta(
+            [(r.qualidade or {}).get("falhas_coleta") for r in registros], item)
         return item
 
     @staticmethod
