@@ -351,7 +351,12 @@ paths:
                       properties:
                         type: { type: string, enum: [Feature] }
                         geometry: { type: object, description: Geometria GeoJSON EPSG:4326. }
-                        properties: { type: object, additionalProperties: true }
+                        properties:
+                          type: object
+                          required: [qualidade_coleta]
+                          additionalProperties: true
+                          properties:
+                            qualidade_coleta: { $ref: '#/components/schemas/QualidadeColeta' }
                   legenda: { type: object, additionalProperties: true }
                   versao_territorial: { type: object, nullable: true, additionalProperties: true }
                   ausencia: { type: string, nullable: true }
@@ -494,6 +499,25 @@ components:
     Qualidade:
       type: object
       additionalProperties: true
+    QualidadeColeta:
+      type: object
+      required: [inicio, fim, versao_gtfs_id, situacao, percentual_falhas, incompleto, motivo, motivos, limite_incompleto_percentual]
+      description: >-
+        Qualidade da coleta nas mesmas janelas que o indicador, ligada à versão
+        GTFS vigente nesse período. Percentuais são recalculados por contagens,
+        não pela média das janelas. incompleto é true somente acima de 10%; null
+        indica período não medido ou associação indisponível.
+      properties:
+        inicio: { type: string, format: date-time, nullable: true }
+        fim: { type: string, format: date-time, nullable: true }
+        versao_gtfs_id: { type: string, format: uuid, nullable: true }
+        situacao: { type: string, enum: [COMPLETA, COM_FALHAS, INCOMPLETA, SEM_DADOS, PENDENTE, FORA_DO_MONITORAMENTO, VERSAO_DIVERGENTE, NAO_DISPONIVEL] }
+        percentual_falhas: { type: number, nullable: true, minimum: 0, maximum: 100 }
+        incompleto: { type: boolean, nullable: true }
+        motivo: { type: string, nullable: true }
+        motivos: { type: array, items: { type: string } }
+        limite_incompleto_percentual: { type: number, example: 10.0 }
+        contagens: { type: object, additionalProperties: { type: integer, minimum: 0 } }
     Contagens:
       type: object
       required: [numerador, denominador]
@@ -502,7 +526,7 @@ components:
         denominador: { type: integer, minimum: 0, nullable: true }
     Indicador:
       type: object
-      required: [linha, sentido, tipo, indicador, valor, unidade, inicio, fim, versao_conjunto, versao_gtfs_id, contagens, qualidade]
+      required: [linha, sentido, tipo, indicador, valor, unidade, inicio, fim, versao_conjunto, versao_gtfs_id, contagens, qualidade, qualidade_coleta]
       properties:
         linha: { type: string }
         sentido: { type: string, nullable: true, enum: ['0', '1'] }
@@ -520,6 +544,7 @@ components:
         versao_calculo: { type: string, nullable: true }
         contagens: { $ref: '#/components/schemas/Contagens' }
         qualidade: { $ref: '#/components/schemas/Qualidade' }
+        qualidade_coleta: { $ref: '#/components/schemas/QualidadeColeta' }
         agregacao: { type: string, enum: [janela, faixa, dia, mes], description: Somente em tipo=FREQUENCIA, REGULARIDADE_INTERVALOS ou ESPERA. }
         referencia: { type: string, description: 'Data operacional (AAAA-MM-DD) ou mês (AAAA-MM); somente em tipo=FREQUENCIA, REGULARIDADE_INTERVALOS ou ESPERA.' }
         duracao_horas: { type: number, description: Soma das durações das janelas usadas como denominador. }
@@ -573,7 +598,7 @@ components:
         cobertura: { type: object, additionalProperties: true }
     PontoSerie:
       type: object
-      required: [id, status, instante, linha, sentido, tipo, indicador, valor, unidade, inicio, fim, versao_conjunto, versao_gtfs_id, contagens, qualidade]
+      required: [id, status, instante, linha, sentido, tipo, indicador, valor, unidade, inicio, fim, versao_conjunto, versao_gtfs_id, contagens, qualidade, qualidade_coleta]
       properties:
         id: { type: string }
         status: { type: string, enum: [DISPONIVEL, SEM_RESULTADO] }
@@ -594,6 +619,7 @@ components:
         versao_calculo: { type: string, nullable: true }
         contagens: { $ref: '#/components/schemas/Contagens' }
         qualidade: { $ref: '#/components/schemas/Qualidade' }
+        qualidade_coleta: { $ref: '#/components/schemas/QualidadeColeta' }
         consolidado: { type: boolean, description: "US23-T03: a janela pertence a um dia já consolidado cuja consolidação recalculou este indicador; false = valor provisório da atualização de 15 min." }
         consolidado_em: { type: string, format: date-time, nullable: true }
     Paginacao:
