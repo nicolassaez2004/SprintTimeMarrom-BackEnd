@@ -13,7 +13,8 @@ from sqlalchemy.exc import OperationalError
 
 from app import db
 from app.models import ArquivoArmazenado, ImportacaoProgramacao, Linha, PartidaProgramada, VersaoGTFS
-from app.programacao import routes, service
+from app.api import partidas as routes
+from app.programacao import service
 from app.programacao.gtfs import OfertaGTFS
 from app.programacao.normalizacao import ProgramacaoNormalizada
 from app.repositories import programacao as repositorio

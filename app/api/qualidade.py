@@ -7,18 +7,14 @@ from flask import Blueprint, current_app, request
 from sqlalchemy.exc import SQLAlchemyError
 
 from app import db
+from app.api.comum import ParametroInvalido, erro_json
 from app.models import agora_utc
-from app.qualidade.service import FUSO, consolidar_qualidade
+from app.core.tempo import FUSO
+from app.qualidade.service import consolidar_qualidade
 
 qualidade_coleta_bp = Blueprint("qualidade_coleta", __name__)
 
 MAX_DIAS = 31
-
-
-class ParametroInvalido(ValueError):
-    def __init__(self, campo, mensagem):
-        self.campo = campo
-        super().__init__(mensagem)
 
 
 def _data(parametros, campo):
@@ -53,13 +49,6 @@ def ler_parametros(parametros, hoje):
     return inicio, fim, janelas == "true"
 
 
-def _erro(codigo, mensagem, status, campo=None):
-    detalhe = {"codigo": codigo, "mensagem": mensagem}
-    if campo is not None:
-        detalhe["campo"] = campo
-    return {"erro": detalhe}, status
-
-
 @qualidade_coleta_bp.get("/qualidade")
 @qualidade_coleta_bp.get("/api/qualidade")
 def qualidade():
@@ -67,12 +56,12 @@ def qualidade():
     try:
         inicio, fim, janelas = ler_parametros(request.args, agora.astimezone(FUSO).date())
     except ParametroInvalido as erro:
-        return _erro("PARAMETRO_INVALIDO", str(erro), 400, erro.campo)
+        return erro_json("PARAMETRO_INVALIDO", str(erro), 400, erro.campo)
     try:
         return consolidar_qualidade(inicio, fim, agora=agora, incluir_janelas=janelas), 200
     except SQLAlchemyError as falha:
         db.session.rollback()
         # A mensagem da exceção pode conter SQL ou credenciais da conexão.
         current_app.logger.error("Falha na consulta de qualidade (%s)", type(falha).__name__)
-        return _erro("CONSULTA_INDISPONIVEL",
+        return erro_json("CONSULTA_INDISPONIVEL",
                      "Não foi possível consultar a qualidade. Tente novamente.", 503)

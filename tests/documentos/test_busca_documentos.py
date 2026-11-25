@@ -7,7 +7,7 @@ from sqlalchemy import event
 from sqlalchemy.exc import OperationalError
 
 from app import create_app, db
-from app.documentos import routes
+from app.api import documentos as routes
 from app.documentos.service import caminho_original, catalogar_documento
 from app.models import ArquivoArmazenado, DocumentoOficial
 

@@ -19,7 +19,7 @@ from app.models import (
 )
 from app.models import ViagemObservada as ModeloViagemObservada
 from app.repositories import programacao as repositorio
-from app.viagens.separacao import ObservacaoViagem, SeparadorViagens, ViagemObservada
+from app.viagens.separacao import ObservacaoViagem, SeparadorViagens, ViagemSeparada
 
 UTC = timezone.utc
 SP = ZoneInfo("America/Sao_Paulo")
@@ -44,7 +44,7 @@ def partida(id="p1", *, horario=PREVISTA, tipo="FIXA", **contexto):
 
 
 def observada(id="v1", *, horario=PREVISTA, partida_id="p1", **contexto):
-    viagem = ViagemObservada("5810", "8000-10", "0", PREVISTA,
+    viagem = ViagemSeparada("5810", "8000-10", "0", PREVISTA,
                              PREVISTA + timedelta(hours=1), "mudanca_sentido")
     return SaidaObservada(id, viagem, contexto.get("data_operacao", DIA),
                          contexto.get("versao_gtfs_id", "gtfs1"), horario, partida_id)

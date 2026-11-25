@@ -210,7 +210,7 @@ def test_etag_responde_304_sem_ciclo_novo_e_200_apos_ciclo(client):
     assert primeira.headers["Cache-Control"] == "no-cache"
     assert "ETag" in primeira.headers["Access-Control-Expose-Headers"]
 
-    with patch("app.consultas.routes.ultimas_posicoes") as consulta:
+    with patch("app.api.posicoes.ultimas_posicoes") as consulta:
         repetida = client.get("/posicoes/atuais", headers={"If-None-Match": etag})
     assert repetida.status_code == 304 and repetida.data == b""
     consulta.assert_not_called()  # sem ciclo novo, nada de consulta pesada

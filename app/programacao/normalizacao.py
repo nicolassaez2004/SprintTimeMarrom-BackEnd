@@ -4,8 +4,8 @@ import json
 import re
 from dataclasses import dataclass
 from datetime import date, datetime, time, timedelta, timezone
-from zoneinfo import ZoneInfo
 
+from app.core.tempo import FUSO
 from app.integrations.programacao import (
     FonteOficialIndisponivel, ProgramacaoOficialInvalida, normalizar_linha,
 )
@@ -81,7 +81,7 @@ def normalizar(captura, linha, sentido, data_operacao, tipo_dia):
     if tipo_dia == "FERIADO" and not publicado:
         raise FonteOficialIndisponivel("FERIADO_NAO_PUBLICADO")
 
-    inicio = datetime.combine(data_operacao, time(), ZoneInfo("America/Sao_Paulo"))
+    inicio = datetime.combine(data_operacao, time(), FUSO)
     saidas = []
     dia_extra = 0
     anterior = None

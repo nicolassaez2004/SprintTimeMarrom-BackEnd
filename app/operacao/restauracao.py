@@ -7,11 +7,11 @@ import time
 from contextlib import closing
 from datetime import datetime, timezone
 from pathlib import Path
-from zoneinfo import ZoneInfo
 
 from sqlalchemy import create_engine
 from sqlalchemy.engine import make_url
 
+from app.core.tempo import FUSO
 from app.operacao.arquivos import caminho_interno, gravar_json
 from app.operacao.backup import validar_conjunto
 from app.repositories import recuperacao as repo
@@ -19,7 +19,7 @@ from app.storage import hash_arquivo
 
 
 def proximo_ensaio(agora):
-    local = agora.astimezone(ZoneInfo("America/Sao_Paulo"))
+    local = agora.astimezone(FUSO)
     datas = [datetime(ano, mes, 20, 10, tzinfo=local.tzinfo)
              for ano in (local.year, local.year + 1) for mes in (5, 11)]
     return min(data for data in datas if data > local).date().isoformat()

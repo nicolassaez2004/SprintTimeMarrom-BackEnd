@@ -7,25 +7,13 @@ from flask import Blueprint, current_app, request, send_file
 from sqlalchemy.exc import SQLAlchemyError
 
 from app import db
+from app.api.comum import ParametroInvalido, erro_json
 from app.documentos.service import buscar_documentos, caminho_original, consultar_documento
 
 documentos_bp = Blueprint("documentos", __name__)
 
 PARAMETROS = ("tipo", "data_inicio", "data_fim", "pagina", "por_pagina")
 POR_PAGINA_PADRAO, POR_PAGINA_MAX = 20, 100
-
-
-class ParametroInvalido(ValueError):
-    def __init__(self, campo, mensagem):
-        self.campo = campo
-        super().__init__(mensagem)
-
-
-def _erro(codigo, mensagem, status, campo=None):
-    detalhe = {"codigo": codigo, "mensagem": mensagem}
-    if campo is not None:
-        detalhe["campo"] = campo
-    return {"erro": detalhe}, status
 
 
 def _data(valor, campo):
@@ -71,7 +59,7 @@ def _falha_banco(falha):
     db.session.rollback()
     # A mensagem da exceção pode conter SQL ou credenciais da conexão.
     current_app.logger.error("Falha na consulta de documentos (%s)", type(falha).__name__)
-    return _erro("CONSULTA_INDISPONIVEL", "Não foi possível consultar o acervo. Tente novamente.", 503)
+    return erro_json("CONSULTA_INDISPONIVEL", "Não foi possível consultar o acervo. Tente novamente.", 503)
 
 
 @documentos_bp.get("/documentos")
@@ -80,7 +68,7 @@ def listar_documentos():
     try:
         filtros = ler_parametros(request.args)
     except ParametroInvalido as erro:
-        return _erro("PARAMETRO_INVALIDO", str(erro), 400, erro.campo)
+        return erro_json("PARAMETRO_INVALIDO", str(erro), 400, erro.campo)
     try:
         resultado = buscar_documentos(**filtros)
     except SQLAlchemyError as falha:
@@ -98,10 +86,10 @@ def baixar_arquivo(documento_id):
         documento = consultar_documento(documento_id)
         caminho = caminho_original(documento_id)
     except LookupError:
-        return _erro("DOCUMENTO_NAO_ENCONTRADO", "Documento oficial não catalogado.", 404)
+        return erro_json("DOCUMENTO_NAO_ENCONTRADO", "Documento oficial não catalogado.", 404)
     except FileNotFoundError:
         current_app.logger.error("PDF do documento %s ausente ou divergente do hash", documento_id)
-        return _erro("ARQUIVO_INDISPONIVEL",
+        return erro_json("ARQUIVO_INDISPONIVEL",
                      "O PDF original deste documento está indisponível no momento.", 503)
     except SQLAlchemyError as falha:
         return _falha_banco(falha)

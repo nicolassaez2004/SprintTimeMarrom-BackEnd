@@ -4,52 +4,27 @@ import re
 from datetime import datetime, time, timedelta
 from pathlib import Path
 
-from flask import Blueprint, current_app, g, request, send_file
+from flask import Blueprint, current_app, request, send_file
 from sqlalchemy.exc import SQLAlchemyError
 
 from app import db
-from app.core.limites import IdentidadeIPInvalida, consumir_limite, identificar_ip
+from app.api.comum import ParametroInvalido, erro_json, limitar_por_ip
 from app.indicadores.frequencia import AGREGACOES, TIPO_PUBLICO, consultar_frequencias
 from app.indicadores.regularidade import REGULARIDADE, consultar_regularidade
 from app.indicadores.espera import TIPO_PUBLICO as ESPERA, consultar_espera
 from app.indicadores.service import consultar_indicadores
-from app.qualidade.service import FUSO
 from app.indicadores.series import consultar_series
 from app.indicadores.agenda import estado_atualizacao, marcar_consolidados
+from app.core.tempo import FUSO
 
 indicadores_bp = Blueprint("indicadores", __name__)
 
 
-@indicadores_bp.before_request
-def limitar_consulta_publica():
-    if request.method not in ("GET", "HEAD") or request.endpoint not in (
-        "indicadores.indicadores", "indicadores.series",
-    ):
-        return None
-    try:
-        consumo = consumir_limite(identificar_ip(request))
-    except IdentidadeIPInvalida:
-        return _erro("IP_NAO_IDENTIFICADO", "Não foi possível identificar o IP da conexão ou do proxy.", 400)
-    except SQLAlchemyError as erro:
-        current_app.logger.error("Limitador de indicadores indisponível (%s)", type(erro).__name__)
-        resposta, status = _erro("LIMITE_INDISPONIVEL", "Não foi possível verificar o limite. Tente novamente em instantes.", 503)
-        return resposta, status, {"Retry-After": "5", "Cache-Control": "no-store"}
-    g.limite_indicadores = consumo
-    if not consumo.permitido:
-        return {"erro": {"codigo": "LIMITE_EXCEDIDO",
-            "mensagem": "Limite de 60 consultas por minuto por IP atingido. Aguarde e tente novamente.",
-            "tentar_em_segundos": consumo.tentar_em}}, 429, {
-                "Retry-After": str(consumo.tentar_em), "Cache-Control": "no-store"}
-    return None
-
-
-@indicadores_bp.after_request
-def informar_limite(resposta):
-    consumo = g.get("limite_indicadores")
-    if consumo is not None:
-        resposta.headers.update(consumo.cabecalhos())
-        resposta.headers["Cache-Control"] = "no-store"
-    return resposta
+limitar_por_ip(
+    indicadores_bp, recurso="indicadores",
+    endpoints=("indicadores.indicadores", "indicadores.series"),
+    mensagem_excedido="Limite de 60 consultas por minuto por IP atingido. Aguarde e tente novamente.",
+)
 
 _PARAMETROS = {
     "linha", "sentido", "tipo", "indicador", "parada", "trecho",
@@ -58,12 +33,6 @@ _PARAMETROS = {
 _INSTANTE = re.compile(r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})$")
 _CODIGO = re.compile(r"^[A-Za-z0-9_.:-]{1,64}$")
 PAGE_SIZE_MAX = 100
-
-
-class ParametroInvalido(ValueError):
-    def __init__(self, campo, mensagem):
-        self.campo = campo
-        super().__init__(mensagem)
 
 
 def _ler_instante(args, campo):
@@ -186,18 +155,11 @@ def _ler_agregacao(args, filtros):
     return agregacao
 
 
-def _erro(codigo, mensagem, status, campo=None):
-    detalhe = {"codigo": codigo, "mensagem": mensagem}
-    if campo is not None:
-        detalhe["campo"] = campo
-    return {"erro": detalhe}, status
-
-
 def _responder(*, serie=False):
     try:
         filtros = ler_filtros(request.args, serie=serie)
     except ParametroInvalido as erro:
-        return _erro("PARAMETRO_INVALIDO", str(erro), 400, erro.campo)
+        return erro_json("PARAMETRO_INVALIDO", str(erro), 400, erro.campo)
     try:
         if serie:
             # US23-T03: estado das agendas lido na mesma transação dos dados.
@@ -215,7 +177,7 @@ def _responder(*, serie=False):
     except SQLAlchemyError as erro:
         db.session.rollback()
         current_app.logger.error("Falha ao consultar indicadores (%s)", type(erro).__name__)
-        return _erro("CONSULTA_INDISPONIVEL", "Não foi possível consultar os indicadores. Tente novamente.", 503)
+        return erro_json("CONSULTA_INDISPONIVEL", "Não foi possível consultar os indicadores. Tente novamente.", 503)
 
 
 @indicadores_bp.get("/indicadores")

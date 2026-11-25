@@ -22,18 +22,17 @@ from bisect import bisect_left
 from datetime import date, datetime, time, timedelta, timezone
 from decimal import Decimal
 from math import ceil
-from zoneinfo import ZoneInfo
 
 from flask import current_app
 from sqlalchemy import func, or_
 
 from app import db
+from app.core.tempo import FUSO
 from app.config import validar_intervalo_coleta
 from app.gtfs.service import VersaoGTFSAmbigua, VersaoGTFSInexistente, versao_vigente
 from app.models import ExecucaoColeta, LacunaColeta, agora_utc
 from app.monitoramento.metricas import falha_da_fonte
 
-FUSO = ZoneInfo("America/Sao_Paulo")
 FONTE = "OLHO_VIVO"
 JANELA = timedelta(minutes=15)
 LIMITE_INCOMPLETO_PCT = Decimal("10")

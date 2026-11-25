@@ -14,14 +14,14 @@ tarefa periódica ``atualizar_indicadores(agora)``; nunca dentro do HTTP.
   em qualquer ponto desfaz tudo; o painel continua com o conjunto anterior.
 """
 
-from datetime import date, datetime, time, timedelta, timezone
+from datetime import datetime, time, timedelta, timezone
 import logging
-from zoneinfo import ZoneInfo
 
 from sqlalchemy import func
 from sqlalchemy.exc import OperationalError, ProgrammingError
 
 from app import db
+from app.core.tempo import FUSO
 from app.indicadores.cumprimento import (
     VERSAO_ALGORITMO, calcular_indicador_cumprimento, gravar_indicador,
 )
@@ -34,7 +34,6 @@ from app.models import (
 )
 
 logger = logging.getLogger(__name__)
-FUSO = ZoneInfo("America/Sao_Paulo")
 UTC = timezone.utc
 INTERVALO = timedelta(minutes=15)
 INICIO_CONSOLIDACAO = time(4, 0)

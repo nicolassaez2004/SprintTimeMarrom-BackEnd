@@ -89,27 +89,19 @@ def create_app(config_extra=None):
     def health():
         return {"status": "ok", "message": "Backend Flask funcionando"}, 200
 
-    # Registra as rotas da API
+    # Rotas HTTP ficam em app/api/; os serviços, em app/<módulo>/.
+    from app.api.correspondencias import correspondencias_bp
+    from app.api.documentos import documentos_bp
+    from app.api.downloads import downloads_bp
+    from app.api.indicadores import indicadores_bp
+    from app.api.mapas import mapas_bp
+    from app.api.partidas import partidas_bp
+    from app.api.posicoes import posicoes_bp
+    from app.api.qualidade import qualidade_coleta_bp
     from app.api.routes import api_bp
 
-    app.register_blueprint(api_bp)
-    from app.indicadores.routes import indicadores_bp
-
-    app.register_blueprint(indicadores_bp)
-    from app.api.mapas import mapas_bp
-    app.register_blueprint(mapas_bp)
-    from app.correspondencia.routes import qualidade_bp
-
-    app.register_blueprint(qualidade_bp)
-    from app.programacao.routes import partidas_bp
-    app.register_blueprint(partidas_bp)
-    from app.consultas.routes import posicoes_bp
-    app.register_blueprint(posicoes_bp)
-    from app.qualidade.routes import qualidade_coleta_bp
-    app.register_blueprint(qualidade_coleta_bp)
-    from app.documentos.routes import documentos_bp
-    app.register_blueprint(documentos_bp)
-    from app.exportacoes.routes import downloads_bp
-    app.register_blueprint(downloads_bp)
+    for blueprint in (api_bp, indicadores_bp, mapas_bp, correspondencias_bp, partidas_bp,
+                      posicoes_bp, qualidade_coleta_bp, documentos_bp, downloads_bp):
+        app.register_blueprint(blueprint)
 
     return app
