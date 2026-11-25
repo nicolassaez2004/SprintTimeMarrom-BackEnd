@@ -53,6 +53,7 @@ INTERVALO = timedelta(minutes=15)
 INICIO_CONSOLIDACAO = time(4, 0)
 PRAZO_CONSOLIDACAO = time(6, 0)
 ATUALIZACAO, CONSOLIDACAO = "ATUALIZACAO_INDICADORES", "CONSOLIDACAO_DIA"
+TIPOS_PUBLICACAO = (ATUALIZACAO, CONSOLIDACAO)
 VERSAO_AGENDA = "us23-t03-v2"
 # Calculados por janela (US14/US16) e pela data operacional inteira (US15/US17/US18).
 CALCULOS = (calcular_indicador_cumprimento, calcular_indicador_pontualidade)
@@ -185,6 +186,11 @@ def _publicar(tipo, chave, inicio, fim, janelas, datas, agora, extra=None):
                                "indicadores": INDICADORES,
                                "datas_operacao": [d.isoformat() for d in sorted(datas)],
                                **(extra or {})}
+        db.session.flush()
+        # US25-T01: o estado publicado é preservado antes do commit; sem arquivo, sem publicação.
+        from app.exportacoes.csv import preservar_conjunto
+
+        preservar_conjunto(execucao)
         db.session.commit()  # registros e execução ficam visíveis juntos
         return execucao
     except Exception as erro:
@@ -258,6 +264,29 @@ def atualizar_indicadores(agora):
             logger.exception("Falha ao publicar CSV diário de indicadores (%s)", type(erro).__name__)
             resultado["csv_indicadores"] = {"estado": "PENDENTE", "data": dia.isoformat()}
     return resultado
+
+
+def ordem_publicacao(execucao):
+    """Ordem total das publicações: no mesmo instante, a consolidação vem depois da
+    atualização (``atualizar_indicadores`` executa as duas nessa ordem)."""
+    return execucao.finalizada_em, execucao.tipo == CONSOLIDACAO, execucao.id
+
+
+def versao_vigente():
+    """US25-T01: versão do conjunto exibido = última publicação PRONTO da agenda,
+    lida na mesma transação dos dados. ``id`` é o ``versao_dados`` da exportação."""
+    E = ExecucaoProcessamento
+    try:
+        ultima = (E.query.filter(E.estado == "PRONTO", E.tipo.in_(TIPOS_PUBLICACAO))
+                  .order_by(E.finalizada_em.desc(), (E.tipo == CONSOLIDACAO).desc(), E.id.desc())
+                  .first())
+    except (OperationalError, ProgrammingError):
+        ultima = None
+    if ultima is None:
+        return None
+    return {"id": ultima.id, "tipo": ultima.tipo, "publicada_em": ultima.finalizada_em.isoformat(),
+            "periodo_inicio": ultima.periodo_inicio.isoformat(),
+            "periodo_fim": ultima.periodo_fim.isoformat()}
 
 
 def _ultima(tipo):

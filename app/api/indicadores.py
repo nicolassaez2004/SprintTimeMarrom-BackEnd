@@ -14,7 +14,7 @@ from app.indicadores.regularidade import REGULARIDADE, consultar_regularidade
 from app.indicadores.espera import TIPO_PUBLICO as ESPERA, consultar_espera
 from app.indicadores.service import consultar_indicadores
 from app.indicadores.series import consultar_series
-from app.indicadores.agenda import estado_atualizacao, marcar_consolidados
+from app.indicadores.agenda import estado_atualizacao, marcar_consolidados, versao_vigente
 from app.core.tempo import FUSO
 
 indicadores_bp = Blueprint("indicadores", __name__)
@@ -166,6 +166,8 @@ def _responder(*, serie=False):
             corpo = consultar_series(filtros)
             corpo["atualizacao"] = estado_atualizacao()
             marcar_consolidados(corpo["dados"], corpo["atualizacao"])
+            # US25-T01: versão a enviar em GET /downloads/indicadores?versao_dados=...
+            corpo["versao_dados"] = versao_vigente()
             return corpo, 200
         if filtros.get("agregacao") and filtros["tipo"] == REGULARIDADE:
             corpo = consultar_regularidade(filtros)
@@ -178,6 +180,7 @@ def _responder(*, serie=False):
         # US23-T03: o mesmo estado de atualização/consolidação de /series (provisório × consolidado).
         corpo["atualizacao"] = estado_atualizacao()
         marcar_consolidados(corpo["dados"], corpo["atualizacao"])
+        corpo["versao_dados"] = versao_vigente()
         return corpo, 200
     except SQLAlchemyError as erro:
         db.session.rollback()
