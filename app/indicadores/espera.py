@@ -29,6 +29,7 @@ from app.indicadores.frequencia import _hash, _horas, _lacunas
 from app.indicadores.regularidade import (
     INSUFICIENCIA, MINIMO_PASSAGENS, OFERTA, REGRA_FRONTEIRA, CalculoRegularidade, PublicacaoRegularidade,
 )
+from app.qualidade.service import FalhasColeta
 from app.repositories.programacao import consultar_por_dia
 
 TIPO_PUBLICO = "ESPERA"
@@ -131,7 +132,9 @@ def calcular_espera(**parametros):
 def calcular_e_publicar_espera(**parametros):
     """Espera e excesso de cada janela gravados juntos, numa transação."""
     try:
-        registros = [gravar_indicador(c, commit=False) for c in calcular_espera(**parametros)]
+        falhas = FalhasColeta()
+        registros = [gravar_indicador(c, commit=False, falhas=falhas)
+                     for c in calcular_espera(**parametros)]
         db.session.commit()
     except Exception:
         db.session.rollback()

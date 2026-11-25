@@ -29,7 +29,7 @@ from app.indicadores.cumprimento import gravar_indicador
 from app.indicadores.frequencia import (
     COLETA_CONFIAVEL, CalculoFrequencia, PublicacaoFrequencia, _hash, _horas, _lacunas,
 )
-from app.qualidade.service import JANELA
+from app.qualidade.service import JANELA, FalhasColeta
 from app.repositories.programacao import consultar_por_dia
 from app.viagens.passagens import Percurso
 
@@ -182,7 +182,9 @@ def calcular_regularidade(**parametros):
 def calcular_e_publicar_regularidade(**parametros):
     """Calcula e grava o conjunto numa única transação (upsert por chave)."""
     try:
-        registros = [gravar_indicador(c, commit=False) for c in calcular_regularidade(**parametros)]
+        falhas = FalhasColeta()
+        registros = [gravar_indicador(c, commit=False, falhas=falhas)
+                     for c in calcular_regularidade(**parametros)]
         db.session.commit()
     except Exception:
         db.session.rollback()

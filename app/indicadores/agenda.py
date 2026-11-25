@@ -46,6 +46,7 @@ from app.models import (
     ExecucaoProcessamento, ImportacaoProgramacao, IndicadorOperacional, PartidaProgramada,
     RegistroBrutoGPS, ViagemObservada,
 )
+from app.qualidade.service import FalhasColeta
 
 logger = logging.getLogger(__name__)
 UTC = timezone.utc
@@ -135,9 +136,10 @@ def _publicar(tipo, chave, inicio, fim, janelas, datas, agora, extra=None):
     try:
         contextos = _contextos(datas)
         escritas, escopos, falhas = set(), set(), []
+        coleta = FalhasColeta(agora=agora)
 
         def gravar(campos):
-            gravar_indicador(campos, commit=False).publicado_em = agora
+            gravar_indicador(campos, commit=False, falhas=coleta).publicado_em = agora
             escritas.add(campos["chave_resultado"])
 
         def falha(linha, sentido, referencia, calculo, erro):  # registrada, não silenciada

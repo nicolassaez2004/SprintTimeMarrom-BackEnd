@@ -22,6 +22,7 @@ from sqlalchemy import func, inspect, text
 
 from app import db
 from app.core.tempo import FUSO
+from app.qualidade.service import FalhasColeta, com_falhas_coleta
 from app.indicadores.cumprimento import VERSAO_ALGORITMO, calcular_indicador_cumprimento
 from app.indicadores.frequencia import (
     OBSERVADA, PROGRAMADA, VERSAO_CALCULO as VERSAO_FREQUENCIA, calcular_frequencias,
@@ -85,6 +86,7 @@ class ReproducaoIndicadores:
         self.dados_sinteticos = dados_sinteticos
         self.agora = agora or datetime.now(timezone.utc)
         self._frequencias = {}
+        self._falhas = FalhasColeta(agora=self.agora)
 
     # -- seleção e preservação -------------------------------------------------
     def _brutos(self):
@@ -252,6 +254,8 @@ class ReproducaoIndicadores:
         return self._resultado(registro, item, novo)
 
     def _resultado(self, registro, item, novo):
+        if "falhas_coleta" in (registro.qualidade or {}):  # publicado após a US26-T01
+            novo = {**novo, "qualidade": com_falhas_coleta(novo, self._falhas)}
         divergencias = [
             {"campo": c, "publicado": _iso(getattr(registro, c)), "recalculado": _iso(novo[c])}
             for c in CAMPOS if c != "valor" and getattr(registro, c) != novo[c]

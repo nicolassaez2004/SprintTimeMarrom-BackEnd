@@ -29,7 +29,7 @@ from app.models import (
     EstimativaPassagemViagem, IndicadorOperacional, ImportacaoProgramacao, PartidaProgramada,
     PassagemEstimada, ViagemObservada,
 )
-from app.qualidade.service import FUSO, JANELA, consolidar_qualidade
+from app.qualidade.service import FUSO, JANELA, FalhasColeta, consolidar_qualidade
 from app.repositories.programacao import consultar_por_dia
 from app.viagens.passagens import Percurso, lacuna_configurada, versao_estimativa
 
@@ -233,7 +233,9 @@ def calcular_frequencias(**parametros):
 def calcular_e_publicar_frequencias(**parametros):
     """Calcula e grava o conjunto numa única transação (upsert por chave)."""
     try:
-        registros = [gravar_indicador(c, commit=False) for c in calcular_frequencias(**parametros)]
+        falhas = FalhasColeta()
+        registros = [gravar_indicador(c, commit=False, falhas=falhas)
+                     for c in calcular_frequencias(**parametros)]
         db.session.commit()
     except Exception:
         db.session.rollback()
