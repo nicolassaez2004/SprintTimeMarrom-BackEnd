@@ -16,6 +16,9 @@ Regras (somente leitura; nada é gravado nem preenchido nos brutos):
   (processo parado), inferidos com causa `SEM_CICLO_REGISTRADO`.
 - Versão GTFS de cada dia: `versao_vigente` (US02-T03), sem escolher em
   silêncio quando não há versão ou há vigências sobrepostas.
+
+`FalhasColeta` (US26-T01) soma essas janelas de 15 min para a janela exibida
+num painel e grava o resultado em `IndicadorOperacional.qualidade`.
 """
 
 from bisect import bisect_left
@@ -30,7 +33,9 @@ from app import db
 from app.core.tempo import FUSO
 from app.config import validar_intervalo_coleta
 from app.gtfs.service import VersaoGTFSAmbigua, VersaoGTFSInexistente, versao_vigente
-from app.models import ExecucaoColeta, LacunaColeta, agora_utc
+from app.models import (
+    ExecucaoColeta, LacunaColeta, ObservacaoTratada, RegistroBrutoGPS, agora_utc,
+)
 from app.monitoramento.metricas import falha_da_fonte
 
 FONTE = "OLHO_VIVO"
@@ -55,11 +60,16 @@ def _iso(valor):
     return valor.isoformat() if valor else None
 
 
-def _percentual(c):
+def _falhas(c):
+    """(falhas, denominador) de uma janela: ciclos esperados sem dados."""
     denominador = max(c["ciclos_esperados"], c["ciclos_registrados"])
+    return max(denominador - c["ciclos_com_dados"], 0), denominador
+
+
+def _percentual(c):
+    falhas, denominador = _falhas(c)
     if denominador == 0:
         return None
-    falhas = max(denominador - c["ciclos_com_dados"], 0)
     return (Decimal(falhas) * 100 / denominador).quantize(Decimal("0.01"))
 
 
@@ -260,3 +270,118 @@ def consolidar_qualidade(inicio, fim, *, agora=None, intervalo=None, incluir_jan
         "lacunas": publicas,
         "dias": dias,
     }
+
+
+# --- US26-T01: percentual de falhas da janela exibida -------------------------------
+
+VERSAO_REGRA_FALHAS = "us26-falhas-coleta-1.0"
+# ExecucaoColeta não tem linha: cada ciclo consulta a frota inteira.
+ESCOPO_FALHAS = "COLETA_GLOBAL"
+SEM_EXPECTATIVA = ("PENDENTE", "FORA_DO_MONITORAMENTO")
+
+
+def _alinhado(instante):
+    local = instante.astimezone(FUSO)
+    return (local.minute * 60 + local.second) % JANELA.total_seconds() == 0 and not local.microsecond
+
+
+class FalhasColeta:
+    """Percentual de falhas de coleta de janelas [inicio, fim) alinhadas a 15 min.
+
+    Reaproveita as janelas da US13 (uma consulta por dia, em cache) e soma
+    as contagens; percentual = falhas ÷ denominador × 100, com o denominador
+    da US13 (max(esperados, registrados)) em cada janela de 15 min. Ciclos
+    são da frota inteira: o resultado vale para qualquer linha, sem ser
+    específico dela. Somente leitura.
+    """
+
+    def __init__(self, *, agora=None, intervalo=None):
+        self.agora = agora or agora_utc()
+        self.intervalo = intervalo
+        self._dias = {}
+
+    def _dia(self, dia):
+        if dia not in self._dias:
+            relatorio = consolidar_qualidade(dia, dia, agora=self.agora, intervalo=self.intervalo,
+                                             incluir_janelas=True)
+            self.intervalo = relatorio["intervalo_coleta_segundos"]
+            self._dias[dia] = relatorio["dias"][0]
+        return self._dias[dia]
+
+    def da_janela(self, inicio, fim, *, linha=None, versao_gtfs_id=None):
+        if inicio.tzinfo is None or fim.tzinfo is None:
+            raise ValueError("inicio e fim devem conter fuso horário")
+        if fim <= inicio:
+            raise ValueError("fim deve ser posterior ao início")
+        janelas, lacunas = [], {}
+        if _alinhado(inicio) and _alinhado(fim):
+            dia, ultimo = inicio.astimezone(FUSO).date(), (fim - timedelta(microseconds=1)).astimezone(FUSO).date()
+            while dia <= ultimo:
+                registro = self._dia(dia)
+                janelas += [j for j in registro["janelas"]
+                            if inicio <= datetime.fromisoformat(j["inicio"])
+                            and datetime.fromisoformat(j["fim"]) <= fim]
+                for l in registro["lacunas"]:
+                    if (datetime.fromisoformat(l["inicio"]) < fim
+                            and (l["fim"] is None or datetime.fromisoformat(l["fim"]) > inicio)):
+                        lacunas[l["id"]] = {k: l[k] for k in ("id", "origem", "causa", "inicio", "fim", "estado")}
+                dia += timedelta(days=1)
+        medidas = [j for j in janelas if j["situacao"] not in SEM_EXPECTATIVA]
+        contagens = _somar(medidas) if medidas else dict.fromkeys(_CONTADORES, 0)
+        pares = [_falhas(j) for j in medidas]  # soma por janela: sem compensar entre janelas
+        falhas, denominador = sum(f for f, _ in pares), sum(d for _, d in pares)
+
+        if not janelas:
+            situacao, motivo = "SEM_EXPECTATIVA", "JANELA_FORA_DA_GRADE_15MIN"
+        elif not medidas:
+            pendentes = all(j["situacao"] == "PENDENTE" for j in janelas)
+            situacao, motivo = "SEM_EXPECTATIVA", "JANELA_FUTURA" if pendentes else "FORA_DO_MONITORAMENTO"
+        elif denominador == 0:
+            situacao, motivo = "SEM_EXPECTATIVA", "DENOMINADOR_ZERO"
+        elif contagens["ciclos_com_dados"] == 0:
+            situacao, motivo = "SEM_DADOS", "NENHUM_CICLO_COM_DADOS"
+        elif falhas * 100 > LIMITE_INCOMPLETO_PCT * denominador:
+            situacao, motivo = "INCOMPLETA", "FALHAS_ACIMA_DO_LIMITE"
+        else:
+            situacao, motivo = ("COMPLETA" if falhas == 0 else "COM_FALHAS"), None
+        medido = situacao != "SEM_EXPECTATIVA"
+        pct = (Decimal(falhas) * 100 / denominador).quantize(Decimal("0.01")) if medido else None
+        return {
+            "versao_regra": VERSAO_REGRA_FALHAS, "escopo": ESCOPO_FALHAS, "fonte": FONTE,
+            "linha_exibida": linha, "inicio": _iso(inicio), "fim": _iso(fim),
+            "intervalo_coleta_segundos": self.intervalo,
+            "janelas_15min": len(janelas), "janelas_sem_expectativa": len(janelas) - len(medidas),
+            **contagens, "falhas": falhas, "denominador": denominador,
+            "percentual_falhas": float(pct) if medido else None,
+            "limite_percentual": float(LIMITE_INCOMPLETO_PCT),
+            # Critério oficial: estritamente acima de 10%; exatamente 10% não alerta.
+            "incompleto": falhas * 100 > LIMITE_INCOMPLETO_PCT * denominador if medido else None,
+            "situacao": situacao, "motivo": motivo,
+            "lacunas": sorted(lacunas.values(), key=lambda l: (l["inicio"], l["id"])),
+            "operacao_linha": self._operacao(linha, versao_gtfs_id, inicio, fim)
+            if linha and contagens["ciclos_com_dados"] else None,
+        }
+
+    def _operacao(self, linha, versao_gtfs_id, inicio, fim):
+        """Coleta válida sem posições da linha é ausência operacional, não falha."""
+        fim = min(fim, self.agora)
+        R, O = RegistroBrutoGPS, ObservacaoTratada
+        na_janela = (R.coletado_em >= inicio, R.coletado_em < fim)
+        da_linha = db.session.query(R.id).join(O, O.bruto_id == R.id).filter(
+            *na_janela, O.linha_codigo == linha,
+            *([O.versao_gtfs_id == versao_gtfs_id] if versao_gtfs_id else []))
+        if db.session.query(da_linha.exists()).scalar():
+            return "COM_POSICOES"
+        # Bruto sem tratamento: a US03 ainda não disse a que linha pertence.
+        pendente = db.session.query(R.id).outerjoin(O, O.bruto_id == R.id).filter(
+            *na_janela, O.id.is_(None))
+        if db.session.query(pendente.exists()).scalar():
+            return "CORRESPONDENCIA_PENDENTE"
+        return "AUSENCIA_OPERACIONAL"
+
+
+def com_falhas_coleta(campos, falhas):
+    """`qualidade` de um indicador acrescida do bloco US26 da sua janela."""
+    return {**(campos.get("qualidade") or {}), "falhas_coleta": falhas.da_janela(
+        campos["periodo_inicio"], campos["periodo_fim"],
+        linha=campos.get("linha_codigo"), versao_gtfs_id=campos.get("versao_gtfs_id"))}

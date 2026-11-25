@@ -13,6 +13,7 @@ from app.models import (
     PartidaProgramada,
     ViagemObservada,
 )
+from app.qualidade.service import FalhasColeta, com_falhas_coleta
 from app.repositories.programacao import consultar_por_dia
 
 COBERTURA_MINIMA = 0.80
@@ -237,11 +238,14 @@ def calcular_indicador_cumprimento(
     }
 
 
-def gravar_indicador(campos, *, commit=True):
+def gravar_indicador(campos, *, commit=True, falhas=None):
     """Upsert idempotente pela ``chave_resultado`` e commit (publicação).
 
     ``commit=False`` deixa a transação com quem publica um conjunto inteiro.
+    ``qualidade.falhas_coleta`` recebe as falhas de coleta da janela (US26-T01);
+    quem grava um lote passa o mesmo ``FalhasColeta`` para consultar cada dia uma vez.
     """
+    campos = {**campos, "qualidade": com_falhas_coleta(campos, falhas or FalhasColeta())}
     registro = IndicadorOperacional.query.filter_by(
         chave_resultado=campos["chave_resultado"]).one_or_none()
     if registro is None:
