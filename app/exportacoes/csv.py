@@ -61,7 +61,7 @@ def _serializar_linhas(registros, *, agora=None):
             "contagem_denominador": registro["contagens"]["denominador"],
             "fonte": FONTE, "licenca": LICENCA,
         })
-    adicionar_qualidade_coleta(linhas, agora=agora)
+    adicionar_qualidade_coleta(linhas)
     buffer = io.StringIO(newline="")
     escritor = csv.DictWriter(
         buffer, fieldnames=CAMPOS, extrasaction="ignore", lineterminator="\r\n",

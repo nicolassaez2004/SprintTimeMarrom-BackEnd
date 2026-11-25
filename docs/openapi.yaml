@@ -501,23 +501,34 @@ components:
       additionalProperties: true
     QualidadeColeta:
       type: object
-      required: [inicio, fim, versao_gtfs_id, situacao, percentual_falhas, incompleto, motivo, motivos, limite_incompleto_percentual]
+      required: [inicio, fim, versao_gtfs_id, escopo, versao_regra, situacao, percentual_falhas, incompleto, motivo, causas, limite_incompleto_percentual, contagens]
       description: >-
-        Qualidade da coleta nas mesmas janelas que o indicador, ligada à versão
-        GTFS vigente nesse período. Percentuais são recalculados por contagens,
-        não pela média das janelas. incompleto é true somente acima de 10%; null
-        indica período não medido ou associação indisponível.
+        Resumo da qualidade da coleta publicada com o indicador (US26-T01,
+        qualidade.falhas_coleta). Não é recalculado na consulta: API, mapa e CSV
+        da mesma publicação trazem o mesmo valor. Agregações (faixa/dia/mês e
+        territórios) somam as contagens das janelas de 15 min, sem média de
+        percentuais. A coleta é global (frota inteira), não específica da linha.
+        incompleto é true somente acima de 10%; null indica período sem medida
+        (SEM_EXPECTATIVA) ou indicador publicado sem o bloco (NAO_REGISTRADA).
       properties:
         inicio: { type: string, format: date-time, nullable: true }
         fim: { type: string, format: date-time, nullable: true }
         versao_gtfs_id: { type: string, format: uuid, nullable: true }
-        situacao: { type: string, enum: [COMPLETA, COM_FALHAS, INCOMPLETA, SEM_DADOS, PENDENTE, FORA_DO_MONITORAMENTO, VERSAO_DIVERGENTE, NAO_DISPONIVEL] }
+        escopo: { type: string, enum: [COLETA_GLOBAL] }
+        versao_regra: { type: string, example: us26-falhas-coleta-1.0 }
+        situacao: { type: string, enum: [COMPLETA, COM_FALHAS, INCOMPLETA, SEM_DADOS, SEM_EXPECTATIVA, NAO_REGISTRADA] }
         percentual_falhas: { type: number, nullable: true, minimum: 0, maximum: 100 }
         incompleto: { type: boolean, nullable: true }
-        motivo: { type: string, nullable: true }
-        motivos: { type: array, items: { type: string } }
+        motivo:
+          type: string
+          nullable: true
+          description: >-
+            FALHAS_ACIMA_DO_LIMITE, NENHUM_CICLO_COM_DADOS, FORA_DO_MONITORAMENTO,
+            JANELA_FUTURA, JANELA_FORA_DA_GRADE_15MIN, DENOMINADOR_ZERO, MULTIPLOS_MOTIVOS,
+            PUBLICADO_SEM_QUALIDADE_DE_COLETA, PERIODO_DIVERGENTE ou SEM_PERIODO_ASSOCIADO.
+        causas: { type: array, items: { type: string }, description: Causas das lacunas de coleta que tocam o período. }
         limite_incompleto_percentual: { type: number, example: 10.0 }
-        contagens: { type: object, additionalProperties: { type: integer, minimum: 0 } }
+        contagens: { type: object, nullable: true, additionalProperties: { type: integer, minimum: 0 } }
     Contagens:
       type: object
       required: [numerador, denominador]

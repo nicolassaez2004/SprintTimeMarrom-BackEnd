@@ -280,6 +280,18 @@ ESCOPO_FALHAS = "COLETA_GLOBAL"
 SEM_EXPECTATIVA = ("PENDENTE", "FORA_DO_MONITORAMENTO")
 
 
+def classificar_falhas(falhas, denominador, com_dados, motivo_sem_expectativa):
+    """(situacao, motivo) da regra US26: estritamente acima de 10% alerta; sem
+    ciclos esperados não há medida (nunca vira coleta completa)."""
+    if denominador == 0:
+        return "SEM_EXPECTATIVA", motivo_sem_expectativa
+    if com_dados == 0:
+        return "SEM_DADOS", "NENHUM_CICLO_COM_DADOS"
+    if falhas * 100 > LIMITE_INCOMPLETO_PCT * denominador:
+        return "INCOMPLETA", "FALHAS_ACIMA_DO_LIMITE"
+    return ("COMPLETA" if falhas == 0 else "COM_FALHAS"), None
+
+
 def _alinhado(instante):
     local = instante.astimezone(FUSO)
     return (local.minute * 60 + local.second) % JANELA.total_seconds() == 0 and not local.microsecond
@@ -332,18 +344,14 @@ class FalhasColeta:
         falhas, denominador = sum(f for f, _ in pares), sum(d for _, d in pares)
 
         if not janelas:
-            situacao, motivo = "SEM_EXPECTATIVA", "JANELA_FORA_DA_GRADE_15MIN"
+            sem_expectativa = "JANELA_FORA_DA_GRADE_15MIN"
         elif not medidas:
             pendentes = all(j["situacao"] == "PENDENTE" for j in janelas)
-            situacao, motivo = "SEM_EXPECTATIVA", "JANELA_FUTURA" if pendentes else "FORA_DO_MONITORAMENTO"
-        elif denominador == 0:
-            situacao, motivo = "SEM_EXPECTATIVA", "DENOMINADOR_ZERO"
-        elif contagens["ciclos_com_dados"] == 0:
-            situacao, motivo = "SEM_DADOS", "NENHUM_CICLO_COM_DADOS"
-        elif falhas * 100 > LIMITE_INCOMPLETO_PCT * denominador:
-            situacao, motivo = "INCOMPLETA", "FALHAS_ACIMA_DO_LIMITE"
+            sem_expectativa = "JANELA_FUTURA" if pendentes else "FORA_DO_MONITORAMENTO"
         else:
-            situacao, motivo = ("COMPLETA" if falhas == 0 else "COM_FALHAS"), None
+            sem_expectativa = "DENOMINADOR_ZERO"
+        situacao, motivo = classificar_falhas(falhas, denominador, contagens["ciclos_com_dados"],
+                                              sem_expectativa)
         medido = situacao != "SEM_EXPECTATIVA"
         pct = (Decimal(falhas) * 100 / denominador).quantize(Decimal("0.01")) if medido else None
         return {

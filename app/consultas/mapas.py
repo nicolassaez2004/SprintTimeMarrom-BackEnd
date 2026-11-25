@@ -14,6 +14,7 @@ from app.models import (
     UnidadeTerritorial,
     VersaoTerritorial,
 )
+from app.qualidade.anotacoes import resumo_coleta
 
 LEGENDA = {
     "tipo": "valor publicado; agregações territoriais recalculadas pelas contagens",
@@ -232,7 +233,7 @@ def _consulta_territorios(filtros, escopo, base, codigo, versao_territorial):
                                 IndicadorOperacional.id)
     grupos = defaultdict(lambda: {"numerador": 0, "denominador": 0,
                                   "tem_contagens": True, "insuficiente": False,
-                                  "registros": 0})
+                                  "registros": 0, "coleta": []})
     unidades = {}
     for indicador, unidade, _ in consulta.yield_per(1000):
         chave = (unidade.id,) + tuple(getattr(indicador, nome) for nome in _CHAVES_AGREGACAO)
@@ -249,6 +250,7 @@ def _consulta_territorios(filtros, escopo, base, codigo, versao_territorial):
         ):
             agregado["insuficiente"] = True
         agregado["registros"] += 1
+        agregado["coleta"].append((indicador.qualidade or {}).get("falhas_coleta"))
         unidades[unidade.id] = unidade
 
     features = []
@@ -289,6 +291,8 @@ def _consulta_territorios(filtros, escopo, base, codigo, versao_territorial):
             "qualidade": {"registros_agregados": agregado["registros"]},
             "ausencia": ausencia,
         }
+        # US26-T02: a mesma regra das contagens: soma os blocos publicados das janelas.
+        props["qualidade_coleta"] = resumo_coleta(agregado["coleta"], props)
         features.append(_feature(unidade.geometria, props))
     # Se há ao menos uma medida, incluir também unidades sem observação para
     # o mapa poder diferenciá-las de unidades que ficaram fora do recorte.

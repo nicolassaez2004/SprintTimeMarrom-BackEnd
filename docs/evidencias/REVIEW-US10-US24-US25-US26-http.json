@@ -1,0 +1,253 @@
+{
+ "origem": "SINTETICA",
+ "banco": "SQLite descartável",
+ "versao_A": "7144e071-b29c-4c83-8a98-7bd6462711c1",
+ "qualidade": [
+  {
+   "janela_sp": "07:45",
+   "janela_utc": "2026-11-24T10:45:00+00:00",
+   "percentual_falhas": null,
+   "incompleto": null,
+   "situacao": "SEM_EXPECTATIVA",
+   "motivo": "FORA_DO_MONITORAMENTO",
+   "causas": [],
+   "falhas/denominador": [
+    0,
+    0
+   ],
+   "api_igual_mapa_parada": true,
+   "api_igual_csv_diario": true,
+   "distrito_D1": {
+    "valor": 11.11111111111111,
+    "registros": 2,
+    "falhas/denominador": [
+     0,
+     0
+    ],
+    "incompleto": null
+   }
+  },
+  {
+   "janela_sp": "08:00",
+   "janela_utc": "2026-11-24T11:00:00+00:00",
+   "percentual_falhas": 13.33,
+   "incompleto": true,
+   "situacao": "INCOMPLETA",
+   "motivo": "FALHAS_ACIMA_DO_LIMITE",
+   "causas": [
+    "SPTransHTTPError: 503"
+   ],
+   "falhas/denominador": [
+    4,
+    30
+   ],
+   "api_igual_mapa_parada": true,
+   "api_igual_csv_diario": true,
+   "distrito_D1": {
+    "valor": 11.11111111111111,
+    "registros": 2,
+    "falhas/denominador": [
+     4,
+     30
+    ],
+    "incompleto": true
+   }
+  },
+  {
+   "janela_sp": "08:15",
+   "janela_utc": "2026-11-24T11:15:00+00:00",
+   "percentual_falhas": 10.0,
+   "incompleto": false,
+   "situacao": "COM_FALHAS",
+   "motivo": null,
+   "causas": [
+    "SEM_CICLO_REGISTRADO"
+   ],
+   "falhas/denominador": [
+    3,
+    30
+   ],
+   "api_igual_mapa_parada": true,
+   "api_igual_csv_diario": true,
+   "distrito_D1": {
+    "valor": 11.11111111111111,
+    "registros": 2,
+    "falhas/denominador": [
+     3,
+     30
+    ],
+    "incompleto": false
+   }
+  },
+  {
+   "janela_sp": "08:30",
+   "janela_utc": "2026-11-24T11:30:00+00:00",
+   "percentual_falhas": 0.0,
+   "incompleto": false,
+   "situacao": "COMPLETA",
+   "motivo": null,
+   "causas": [],
+   "falhas/denominador": [
+    0,
+    30
+   ],
+   "api_igual_mapa_parada": true,
+   "api_igual_csv_diario": true,
+   "distrito_D1": {
+    "valor": 11.11111111111111,
+    "registros": 2,
+    "falhas/denominador": [
+     0,
+     30
+    ],
+    "incompleto": false
+   }
+  },
+  {
+   "janela_sp": "08:45",
+   "janela_utc": "2026-11-24T11:45:00+00:00",
+   "percentual_falhas": 100.0,
+   "incompleto": true,
+   "situacao": "SEM_DADOS",
+   "motivo": "NENHUM_CICLO_COM_DADOS",
+   "causas": [],
+   "falhas/denominador": [
+    30,
+    30
+   ],
+   "api_igual_mapa_parada": true,
+   "api_igual_csv_diario": true,
+   "distrito_D1": {
+    "valor": 11.11111111111111,
+    "registros": 2,
+    "falhas/denominador": [
+     30,
+     30
+    ],
+    "incompleto": true
+   }
+  },
+  {
+   "janela_sp": "09:00",
+   "janela_utc": "2026-11-24T12:00:00+00:00",
+   "percentual_falhas": 10.1,
+   "incompleto": true,
+   "situacao": "INCOMPLETA",
+   "motivo": "FALHAS_ACIMA_DO_LIMITE",
+   "causas": [],
+   "falhas/denominador": [
+    101,
+    1000
+   ],
+   "api_igual_mapa_parada": true,
+   "api_igual_csv_diario": true,
+   "distrito_D1": {
+    "valor": 11.11111111111111,
+    "registros": 2,
+    "falhas/denominador": [
+     101,
+     1000
+    ],
+    "incompleto": true
+   }
+  }
+ ],
+ "mapa": {
+  "distritos": [
+   {
+    "codigo": "D1",
+    "valor": 11.11111111111111,
+    "unidade": "%",
+    "ausencia": null,
+    "registros_agregados": 2
+   },
+   {
+    "codigo": "D2",
+    "valor": null,
+    "unidade": null,
+    "ausencia": "SEM_DADOS",
+    "registros_agregados": 0
+   }
+  ],
+  "parada_null": [
+   {
+    "parada": "P1",
+    "valor": null,
+    "ausencia": "DENOMINADOR_ZERO",
+    "contagens": {
+     "denominador": 0,
+     "numerador": 0
+    }
+   }
+  ]
+ },
+ "versoes": {
+  "A": {
+   "id": "7144e071-b29c-4c83-8a98-7bd6462711c1",
+   "serie_valores": [
+    [
+     "2026-11-24T11:00:00+00:00",
+     75.0
+    ]
+   ],
+   "export_antes_de_B": [
+    [
+     "2026-11-24T11:00:00+00:00",
+     "75.0",
+     13.33
+    ]
+   ],
+   "export_depois_de_B": [
+    [
+     "2026-11-24T11:00:00+00:00",
+     "75.0",
+     13.33
+    ]
+   ],
+   "identico_byte_a_byte": true,
+   "sha256": "b889e3a9e6bf15cfa138642b6257fcf9c9b8603a3aa532ddfbeab76eced6ddaa",
+   "X-Versao-Dados": "7144e071-b29c-4c83-8a98-7bd6462711c1"
+  },
+  "B": {
+   "id": "16ed5236-f0cf-4d3c-a4f7-690a5336775b",
+   "serie_versao": "16ed5236-f0cf-4d3c-a4f7-690a5336775b",
+   "serie_valores": [
+    [
+     "2026-11-24T11:00:00+00:00",
+     50.0
+    ]
+   ],
+   "export": [
+    [
+     "2026-11-24T11:00:00+00:00",
+     "50.0",
+     13.33
+    ]
+   ]
+  },
+  "inexistente": {
+   "status": 404,
+   "codigo": "VERSAO_INEXISTENTE"
+  },
+  "arquivo_adulterado": {
+   "status": 410,
+   "erro": {
+    "codigo": "VERSAO_INDISPONIVEL",
+    "mensagem": "O conjunto preservado desta versão não está mais disponível ou não confere com o recibo.",
+    "motivo": "ARQUIVO_AUSENTE_OU_INVALIDO",
+    "publicacao": "16ed5236-f0cf-4d3c-a4f7-690a5336775b",
+    "versao_dados": "16ed5236-f0cf-4d3c-a4f7-690a5336775b"
+   }
+  },
+  "dia_nao_consolidado": {
+   "status": 404,
+   "codigo": "PERIODO_AINDA_NAO_CONSOLIDADO"
+  },
+  "csv_vazio": {
+   "status": 200,
+   "X-Total-Registros": "0",
+   "bytes": 223
+  },
+  "cors_expoe": "Content-Disposition, ETag, Retry-After, X-Disponibilizado-Em, X-Fonte, X-Fonte-URL, X-Licenca, X-Licenca-URL, X-RateLimit-Limit, X-RateLimit-Remaining, X-RateLimit-Reset, X-Total-Registros, X-Versao-Dados, X-Versao-Publicada-Em"
+ }
+}

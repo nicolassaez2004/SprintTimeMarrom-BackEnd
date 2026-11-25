@@ -61,6 +61,8 @@ def create_app(config_extra=None):
             "ETag", "Retry-After", "X-RateLimit-Limit", "X-RateLimit-Remaining",
             "X-RateLimit-Reset", "X-Fonte", "X-Fonte-URL", "X-Licenca",
             "X-Licenca-URL", "X-Disponibilizado-Em", "X-Total-Registros",
+            # US10/US25: nome do arquivo e versão exportada legíveis pelo frontend.
+            "Content-Disposition", "X-Versao-Dados", "X-Versao-Publicada-Em",
         ],
         resources={
             r"/api/*": {

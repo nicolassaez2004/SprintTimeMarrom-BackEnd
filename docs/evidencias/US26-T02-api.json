@@ -1,34 +1,83 @@
 {
+  "origem": "SINTETICA (ensaio da revisão, SQLite descartável)",
   "status_http": 200,
-  "endpoint": "/indicadores?linha=8000-10&inicio=2026-11-25T03:00:00+00:00&fim=2026-11-25T03:15:00+00:00",
+  "endpoint": "/indicadores?linha=8000-10&tipo=PONTUALIDADE_VIAGENS&parada=P1&inicio=2026-11-24T11:00:00Z&fim=2026-11-24T11:15:00Z",
   "indicador": {
+    "fim": "2026-11-24T11:15:00+00:00",
+    "inicio": "2026-11-24T11:00:00+00:00",
     "linha": "8000-10",
+    "qualidade": {
+      "dados_insuficientes": false,
+      "falhas_coleta": {
+        "ciclos_com_dados": 26,
+        "ciclos_em_andamento": 0,
+        "ciclos_esperados": 30,
+        "ciclos_falha": 4,
+        "ciclos_registrados": 30,
+        "denominador": 30,
+        "escopo": "COLETA_GLOBAL",
+        "falhas": 4,
+        "falhas_da_fonte": 4,
+        "fim": "2026-11-24T11:15:00+00:00",
+        "fonte": "OLHO_VIVO",
+        "incompleto": true,
+        "inicio": "2026-11-24T11:00:00+00:00",
+        "intervalo_coleta_segundos": 30,
+        "janelas_15min": 1,
+        "janelas_sem_expectativa": 0,
+        "lacunas": [
+          {
+            "causa": "SPTransHTTPError: 503",
+            "estado": "ENCERRADA",
+            "fim": "2026-11-24T11:15:00+00:00",
+            "id": "lacuna-ens",
+            "inicio": "2026-11-24T11:13:00+00:00",
+            "origem": "REGISTRADA"
+          }
+        ],
+        "limite_percentual": 10.0,
+        "linha_exibida": "8000-10",
+        "motivo": "FALHAS_ACIMA_DO_LIMITE",
+        "operacao_linha": "AUSENCIA_OPERACIONAL",
+        "percentual_falhas": 13.33,
+        "sem_registro": 0,
+        "situacao": "INCOMPLETA",
+        "versao_regra": "us26-falhas-coleta-1.0"
+      },
+      "origem": "SINTETICA"
+    },
+    "qualidade_coleta": {
+      "causas": [
+        "SPTransHTTPError: 503"
+      ],
+      "contagens": {
+        "ciclos_com_dados": 26,
+        "ciclos_em_andamento": 0,
+        "ciclos_esperados": 30,
+        "ciclos_falha": 4,
+        "ciclos_registrados": 30,
+        "denominador": 30,
+        "falhas": 4,
+        "falhas_da_fonte": 4,
+        "janelas_15min": 1,
+        "janelas_sem_expectativa": 0,
+        "sem_registro": 0
+      },
+      "escopo": "COLETA_GLOBAL",
+      "fim": "2026-11-24T11:15:00+00:00",
+      "incompleto": true,
+      "inicio": "2026-11-24T11:00:00+00:00",
+      "limite_incompleto_percentual": 10.0,
+      "motivo": "FALHAS_ACIMA_DO_LIMITE",
+      "percentual_falhas": 13.33,
+      "situacao": "INCOMPLETA",
+      "versao_gtfs_id": "00000000-0000-0000-0000-0000000000aa",
+      "versao_regra": "us26-falhas-coleta-1.0"
+    },
     "sentido": "0",
     "tipo": "PONTUALIDADE_VIAGENS",
-    "valor": 80.0,
     "unidade": "%",
-    "inicio": "2026-11-25T03:00:00+00:00",
-    "fim": "2026-11-25T03:15:00+00:00",
-    "versao_gtfs_id": "00000000-0000-0000-0000-000000000026",
-    "qualidade_coleta": {
-      "inicio": "2026-11-25T03:00:00+00:00",
-      "fim": "2026-11-25T03:15:00+00:00",
-      "versao_gtfs_id": "00000000-0000-0000-0000-000000000026",
-      "situacao": "INCOMPLETA",
-      "percentual_falhas": 13.33,
-      "incompleto": true,
-      "motivo": "SPTRANS_HTTP_503",
-      "motivos": ["SPTRANS_HTTP_503"],
-      "limite_incompleto_percentual": 10.0,
-      "contagens": {
-        "ciclos_esperados": 30,
-        "ciclos_registrados": 30,
-        "ciclos_com_dados": 26,
-        "ciclos_falha": 4,
-        "ciclos_em_andamento": 0,
-        "falhas_da_fonte": 4,
-        "sem_registro": 0
-      }
-    }
+    "valor": 25.0,
+    "versao_gtfs_id": "00000000-0000-0000-0000-0000000000aa"
   }
 }
