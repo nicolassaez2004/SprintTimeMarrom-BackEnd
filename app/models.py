@@ -418,6 +418,97 @@ class Trecho(db.Model):
     )
 
 
+class VersaoInfraestrutura(db.Model):
+    """Origem imutável de uma importação de corredores/faixas."""
+
+    __tablename__ = "versoes_infraestrutura"
+    __table_args__ = (
+        UniqueConstraint("fonte", "sha256", name="uq_versao_infra_fonte_hash"),
+        CheckConstraint("crs_origem <> ''", name="ck_versao_infra_crs"),
+    )
+
+    id = db.Column(db.String(36), primary_key=True, default=lambda: str(uuid4()))
+    fonte = db.Column(db.String(64), nullable=False)
+    url_fonte = db.Column(db.String(1024), nullable=False)
+    versao_fonte = db.Column(db.String(128), nullable=False)
+    sha256 = db.Column(db.String(64), nullable=False)
+    crs_origem = db.Column(db.String(32), nullable=False)
+    capturada_em = db.Column(UTCDateTime, nullable=False, default=agora_utc)
+    metadados = db.Column(db.JSON, nullable=False, default=dict)
+
+
+class AtualizacaoMensalInfraestrutura(db.Model):
+    """Recibo mensal da tentativa de atualização das fontes de infraestrutura."""
+
+    __tablename__ = "atualizacoes_mensais_infraestrutura"
+    __table_args__ = (CheckConstraint(
+        "estado IN ('EM_ANDAMENTO', 'OK', 'FALHA')", name="ck_atualizacao_mensal_infra_estado",
+    ),)
+    mes = db.Column(db.String(7), primary_key=True)  # YYYY-MM
+    iniciada_em = db.Column(UTCDateTime, nullable=False)
+    finalizada_em = db.Column(UTCDateTime, nullable=True)
+    estado = db.Column(db.String(16), nullable=False)
+    resultado = db.Column(db.JSON, nullable=False, default=dict)
+
+
+class ClassificacaoInfraestrutura(db.Model):
+    """Feição normalizada de corredor/faixa, vinculada à sua versão de origem."""
+
+    __tablename__ = "classificacoes_infraestrutura"
+    __table_args__ = (
+        db.ForeignKeyConstraint(
+            ["versao_id"], ["versoes_infraestrutura.id"],
+            name="fk_classificacao_infra_versao", ondelete="RESTRICT",
+        ),
+        UniqueConstraint("versao_id", "identificador_fonte", name="uq_classificacao_infra_origem"),
+        CheckConstraint("categoria IN ('CORREDOR', 'FAIXA_EXCLUSIVA')", name="ck_classificacao_infra_categoria"),
+        Index("ix_classificacao_infra_versao_categoria", "versao_id", "categoria"),
+    )
+
+    id = db.Column(db.String(36), primary_key=True, default=lambda: str(uuid4()))
+    versao_id = db.Column(db.String(36), nullable=False)
+    identificador_fonte = db.Column(db.String(128), nullable=False)
+    categoria = db.Column(db.String(32), nullable=False)
+    geometria = db.Column(db.JSON, nullable=False)  # GeoJSON WGS84, longitude/latitude
+    atributos = db.Column(db.JSON, nullable=False, default=dict)
+
+
+class AssociacaoInfraestruturaTrecho(db.Model):
+    """Resultado versionado da classificação espacial de um trecho GTFS."""
+
+    __tablename__ = "associacoes_infraestrutura_trechos"
+    __table_args__ = (
+        db.ForeignKeyConstraint(["trecho_id"], ["trechos.id"],
+                                name="fk_assoc_infra_trecho", ondelete="RESTRICT"),
+        UniqueConstraint("trecho_id", "versao_conjunto", name="uq_assoc_infra_trecho_conjunto"),
+        CheckConstraint(
+            "classificacao IN ('CORREDOR', 'FAIXA_EXCLUSIVA', 'MISTO', "
+            "'COBERTURA_PARCIAL', 'SEM_COBERTURA')",
+            name="ck_assoc_infra_classificacao",
+        ),
+        CheckConstraint("fracao_corredor >= 0 AND fracao_corredor <= 1",
+                        name="ck_assoc_infra_fracao_corredor"),
+        CheckConstraint("fracao_faixa >= 0 AND fracao_faixa <= 1",
+                        name="ck_assoc_infra_fracao_faixa"),
+        CheckConstraint("fracao_sem_cobertura >= 0 AND fracao_sem_cobertura <= 1",
+                        name="ck_assoc_infra_fracao_sem_cobertura"),
+        Index("ix_assoc_infra_conjunto_classificacao", "versao_conjunto", "classificacao"),
+    )
+
+    id = db.Column(db.String(36), primary_key=True, default=lambda: str(uuid4()))
+    trecho_id = db.Column(db.String(36), nullable=False)
+    versao_conjunto = db.Column(db.String(64), nullable=False)
+    versoes_infraestrutura = db.Column(db.JSON, nullable=False)
+    classificacao = db.Column(db.String(32), nullable=False)
+    fracao_corredor = db.Column(db.Float, nullable=False)
+    fracao_faixa = db.Column(db.Float, nullable=False)
+    fracao_sem_cobertura = db.Column(db.Float, nullable=False)
+    categorias_confirmadas = db.Column(db.JSON, nullable=False, default=list)
+    feicoes_associadas = db.Column(db.JSON, nullable=False, default=list)
+    regra = db.Column(db.JSON, nullable=False)
+    calculada_em = db.Column(UTCDateTime, nullable=False, default=agora_utc)
+
+
 class VersaoTerritorial(db.Model):
     """Fonte versionada dos limites de distritos e subprefeituras."""
 

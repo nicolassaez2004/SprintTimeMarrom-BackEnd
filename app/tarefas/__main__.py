@@ -10,6 +10,7 @@ from app.coleta.bus_collector import LockColetor
 from app.contexto.clima.coleta import coletar_clima
 from app.exportacoes.parquet import publicar_brutos
 from app.indicadores.agenda import atualizar_indicadores
+from app.contexto.infraestrutura.tarefa import atualizar_infraestrutura
 from app.gtfs.scheduler import (
     executar_tarefas, nome_lock_gtfs, proxima_verificacao,
     recuperar_interrompidas, verificar_gtfs,
@@ -52,8 +53,10 @@ def main(argv=None):
                 prevista = min(agora, proxima_verificacao(agora))
                 resultado = verificar_gtfs(prevista)
                 return 0 if resultado["estado"] == "OK" else 1
-            executar_tarefas(manter_ativo=lock.ativo, periodicas=(publicar_brutos, atualizar_indicadores,
-                                                                          coletar_clima))
+            executar_tarefas(manter_ativo=lock.ativo, periodicas=(
+                publicar_brutos, atualizar_indicadores, atualizar_infraestrutura,coletar_clima
+            ))
+
             return 1  # O loop contínuo só retorna se perder o lock.
     except KeyboardInterrupt:
         return 0

@@ -1,1 +1,1 @@
-"""ContextService e consultas de contexto por trecho (US06-08)."""
+"""ContextService, consultas e dados contextuais versionados por trecho (US06-08)."""

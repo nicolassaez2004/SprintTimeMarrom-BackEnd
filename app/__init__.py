@@ -98,13 +98,14 @@ def create_app(config_extra=None):
     from app.api.documentos import documentos_bp
     from app.api.downloads import downloads_bp
     from app.api.indicadores import indicadores_bp
+    from app.api.infraestrutura import infraestrutura_bp
     from app.api.mapas import mapas_bp
     from app.api.partidas import partidas_bp
     from app.api.posicoes import posicoes_bp
     from app.api.qualidade import qualidade_coleta_bp
     from app.api.routes import api_bp
 
-    for blueprint in (api_bp, indicadores_bp, mapas_bp, correspondencias_bp, partidas_bp,
+    for blueprint in (api_bp, indicadores_bp, infraestrutura_bp, mapas_bp, correspondencias_bp, partidas_bp,
                       posicoes_bp, qualidade_coleta_bp, documentos_bp, downloads_bp, contexto_bp):
         app.register_blueprint(blueprint)
 
