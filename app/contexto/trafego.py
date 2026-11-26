@@ -19,7 +19,7 @@ Nada é gravado: brutos, passagens e trechos são apenas lidos.
 
 import math
 from dataclasses import asdict, dataclass
-from datetime import timedelta
+from datetime import timedelta, timezone
 from hashlib import sha256
 from typing import Optional
 
@@ -383,6 +383,10 @@ def agregar_periodo(*, versao_gtfs_id, linha_codigo, sentido, inicio, fim, versa
                .order_by(V.saida_observada, V.id).all())
     trechos = sorted(t.id for t in Trecho.query.filter_by(
         versao_gtfs_id=versao_gtfs_id, linha_codigo=linha_codigo, sentido=sentido))
+    if limites is None:
+        # Mesma resolução de calcular_viagem; a lacuna está codificada na versão da estimativa.
+        estimativa = EstimativaPassagemViagem.query.filter_by(versao_estimativa=versao_estimativa).first()
+        limites = Limites.configurados(estimativa.lacuna_maxima_seg if estimativa else None)
     amostras = [a for v in viagens for a in calcular_viagem(v, versao_estimativa, limites)[0]]
     falhas = FalhasColeta(agora=agora)
     cache = {}
@@ -392,8 +396,11 @@ def agregar_periodo(*, versao_gtfs_id, linha_codigo, sentido, inicio, fim, versa
             cache[a] = falhas.da_janela(a, b, linha=linha_codigo, versao_gtfs_id=versao_gtfs_id)
         return cache[a]
 
+    # "calculo" (limites da T01) faz parte do escopo: quando o PO definir/alterar a
+    # plausibilidade, o resultado novo é gravado ao lado e o antigo é preservado.
     versoes = {"gtfs": versao_gtfs_id, "estimativa": versao_estimativa,
-               "reconstrucao": versao_reconstrucao, "correspondencia": versao_correspondencia}
+               "reconstrucao": versao_reconstrucao, "correspondencia": versao_correspondencia,
+               "calculo": limites.versao}
     agregador = AgregadorVelocidade(metodo, versoes)
     resultado = agregador.agregar(amostras, inicio, fim, trechos, qualidade)
     if not gravar:
@@ -402,7 +409,8 @@ def agregar_periodo(*, versao_gtfs_id, linha_codigo, sentido, inicio, fim, versa
     escopo = "|".join([TIPO_CONTEXTO, agregador.versao, *(f"{k}={v}" for k, v in sorted(versoes.items()))])
     chaves = set()
     for janela in (j for j in resultado if j.motivo != "sem_amostras"):
-        chave = sha256(f"{escopo}|{janela.trecho_id}|{janela.inicio.isoformat()}".encode()).hexdigest()
+        inicio_utc = janela.inicio.astimezone(timezone.utc).isoformat()  # chave independe do fuso pedido
+        chave = sha256(f"{escopo}|{janela.trecho_id}|{inicio_utc}".encode()).hexdigest()
         chaves.add(chave)
         registro = M.query.filter_by(chave=chave).one_or_none()
         if registro is not None and registro.dados == janela.dados:

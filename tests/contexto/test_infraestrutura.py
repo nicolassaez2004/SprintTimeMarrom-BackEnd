@@ -59,17 +59,16 @@ def test_historico_e_relatorio_de_mudancas_preservam_a_versao_antiga(tmp_path):
         resultado = atualizar_mensal(primeira_data.replace(day=26), lambda _: [{
             "origem": alterada, "fonte": "OpenStreetMap", "url_fonte": origem,
             "versao_fonte": "2026-11-26", "crs_origem": "EPSG:4326",
-            "categoria": "CORREDOR", "capturada_em": datetime(2026, 11, 26, tzinfo=timezone.utc),
+            "categoria": "FAIXA_EXCLUSIVA", "capturada_em": datetime(2026, 11, 26, tzinfo=timezone.utc),
         }])
         consulta_antiga = consultar_em("OpenStreetMap", "FAIXA_EXCLUSIVA", date(2026, 11, 10))
-        consulta_nova = consultar_em("OpenStreetMap", "CORREDOR", date(2026, 11, 27))
+        consulta_nova = consultar_em("OpenStreetMap", "FAIXA_EXCLUSIVA", date(2026, 11, 27))
         nova = consulta_nova["versao"]
         assert consulta_antiga["versao"].id == primeira.id
         assert consulta_antiga["classificacoes"][0].atributos["name"] == "Rua A"
         assert nova.metadados["versao_anterior_id"] == primeira.id
-        assert {m["tipo"] for m in nova.metadados["mudancas"]} == {
-            "CATEGORIA_ALTERADA", "GEOMETRIA_OU_ATRIBUTOS_ALTERADOS",
-        }
+        assert [(m["identificador_fonte"], m["tipo"]) for m in nova.metadados["mudancas"]] == [
+            ("way-7", "GEOMETRIA_OU_ATRIBUTOS_ALTERADOS"), ("way-8", "GEOMETRIA_OU_ATRIBUTOS_ALTERADOS")]
         assert resultado["versoes"][0]["versao_id"] == nova.id
         chamadas = []
         repetido = atualizar_mensal(primeira_data.replace(day=27), lambda _: chamadas.append(True))

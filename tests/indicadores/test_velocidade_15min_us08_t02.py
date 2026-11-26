@@ -210,7 +210,7 @@ def test_persiste_em_medicao_contexto_com_fonte_unidade_qualidade_e_versoes(cena
     assert r.dados["versoes"] == {
         "gtfs": cenario[0].id, "estimativa": VERSAO_EST, "reconstrucao": "recon-sint",
         "correspondencia": "match-sint", "agregado": r.versao_fonte,
-        "calculo_amostras": ["us08-t01-v1-lacuna120-vmin1-vmax80"]}
+        "calculo": "us08-t01-v1-lacuna120-vmin1-vmax80", "calculo_amostras": ["us08-t01-v1-lacuna120-vmin1-vmax80"]}
     assert r.dados["amostras"][0][0] == v1.id and r.dados["amostras"][0][3] == VALIDA
     falhas = r.dados["qualidade"]["falhas_coleta"]
     assert falhas["inicio"] == T0.isoformat() and "situacao" in falhas
@@ -296,3 +296,53 @@ def test_migracao_us08_0024_corresponde_ao_modelo_e_compila_para_mysql(app):
     sql = saida.getvalue()
     assert "CREATE TABLE medicoes_contexto" in sql and "DATETIME(6)" in sql
     assert "REFERENCES trechos (id)" in sql and "ENGINE=InnoDB" in sql
+
+
+# --- review US07/US08 ---------------------------------------------------------
+
+def test_mudar_limites_da_t01_grava_ao_lado_sem_sobrescrever(cenario):
+    """Quando o PO definir/alterar a plausibilidade, o resultado anterior é preservado."""
+    viagem(cenario, 0, "5810", (0, "A"), (30, "B"))
+    agregar_banco(cenario)
+    agregar_banco(cenario, limites=Limites(LACUNA, 1.0, 30.0))  # 36,8 km/h passa a ser inválida
+    registros = {r.dados["versoes"]["calculo"]: r for r in MedicaoContexto.query}
+    assert set(registros) == {"us08-t01-v1-lacuna120-vmin1-vmax80", "us08-t01-v1-lacuna120-vmin1-vmax30"}
+    assert registros["us08-t01-v1-lacuna120-vmin1-vmax80"].dados["velocidade_media_kmh"] == pytest.approx(
+        36.7558, rel=1e-4)
+    assert registros["us08-t01-v1-lacuna120-vmin1-vmax30"].dados["motivo"] == "sem_amostras_validas"
+
+
+def test_limites_do_config_entram_no_escopo(cenario, app):
+    app.config.update(VELOCIDADE_MINIMA_KMH="1", VELOCIDADE_MAXIMA_KMH="80", VELOCIDADE_LACUNA_MAXIMA_SEG="")
+    viagem(cenario, 0, "5810", (0, "A"), (30, "B"))
+    agregar_banco(cenario, limites=None)
+    r = MedicaoContexto.query.one()
+    assert r.dados["versoes"]["calculo"] == "us08-t01-v1-lacuna120-vmin1-vmax80"  # lacuna herdada da US15
+
+
+def test_chave_independe_do_fuso_do_periodo_pedido(cenario):
+    viagem(cenario, 0, "5810", (0, "A"), (30, "B"), (90, "C"))
+    agregar_banco(cenario)
+    antes = {r.chave: r.id for r in MedicaoContexto.query}
+    agregar_banco(cenario, inicio=T0.astimezone(FUSO), fim=(T0 + timedelta(minutes=45)).astimezone(FUSO))
+    assert {r.chave: r.id for r in MedicaoContexto.query} == antes
+
+
+def test_distancia_do_sistema_confere_com_a_geodesica():
+    """Conferência manual: 0,003° de longitude a 23,55° S ≈ 306,1 m (elipsoide WGS84)."""
+    from pyproj import Geod
+    from app.correspondencia.geografia import PROJECAO
+    geodesica = Geod(ellps="WGS84").line_length([PARADAS["A"], PARADAS["B"]], [LAT, LAT])
+    (x1, x2), (y1, y2) = PROJECAO.transform([PARADAS["A"], PARADAS["B"]], [LAT, LAT])
+    utm = ((x2 - x1) ** 2 + (y2 - y1) ** 2) ** 0.5
+    assert geodesica == pytest.approx(306.1, abs=0.5)
+    assert utm == pytest.approx(geodesica, rel=1e-3)  # fator de escala UTM 23S: < 0,1%
+    assert utm / 30 * 3.6 == pytest.approx(36.7558, rel=1e-4)  # mesmo valor da API (T03)
+
+
+def test_duas_versoes_gtfs_nao_se_misturam_na_janela():
+    a = amostra(0, 30, trecho="tr-v1", versao_gtfs="v1")
+    b = amostra(10, 50, trecho="tr-v2", versao_gtfs="v2")  # mesmo par de paradas, rede nova
+    janelas = agregar([a, b])
+    assert janelas["tr-v1", T0].velocidade_media_kmh == 30
+    assert janelas["tr-v2", T0].velocidade_media_kmh == 50

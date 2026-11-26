@@ -80,7 +80,8 @@ def test_resposta_tem_trecho_versao_fonte_metodo_qualidade_e_janelas_explicitas(
     assert serie["versao_fonte"] == "us08-t02-v1-mediaARITMETICA-INSTANTE_ORIGEM"
     assert (serie["metodo_media"], serie["atribuicao_janela"]) == ("ARITMETICA", "INSTANTE_ORIGEM")
     assert serie["versoes"] == {"agregado": serie["versao_fonte"], "correspondencia": "match-sint",
-                                "estimativa": VERSAO_EST, "gtfs": cenario[0].id, "reconstrucao": "recon-sint"}
+                                "estimativa": VERSAO_EST, "gtfs": cenario[0].id, "reconstrucao": "recon-sint",
+                                "calculo": "us08-t01-v1-lacuna120-vmin1-vmax80"}
     assert [j["inicio"][11:16] for j in serie["janelas"]] == ["12:00", "12:15", "12:30"]
     cheia, vazia, _ = serie["janelas"]
     assert cheia["cobertura"] == {"proporcao_validas": 1.0}

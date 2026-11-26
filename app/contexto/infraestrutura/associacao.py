@@ -10,6 +10,7 @@ sem base completa de vias, o resultado permanece SEM_COBERTURA/COBERTURA_PARCIAL
 from datetime import date, datetime, time, timezone
 import hashlib
 import json
+import math
 from uuid import NAMESPACE_URL, uuid5
 from zoneinfo import ZoneInfo
 
@@ -26,7 +27,7 @@ from app.models import (
 )
 
 CRS_METRICO = "EPSG:31983"
-VERSAO_REGRA = "us07-t02-espacial-1.0"
+VERSAO_REGRA = "us07-t02-espacial-1.1"  # 1.1: registra divergências OSM×GeoSampa
 TOLERANCIA_PROXIMIDADE_M = 10.0
 TOLERANCIA_COBERTURA = 0.99
 COMPRIMENTO_MINIMO_M = 5.0
@@ -39,6 +40,12 @@ def _limite_consulta(quando):
     if quando.tzinfo is None:
         raise ValueError("a classificação exige data ou instante com fuso")
     return quando.astimezone(timezone.utc)
+
+
+def conjunto_de(ids_versoes):
+    """Identidade do conjunto (snapshots + regra): mudar a regra grava ao lado, sem sobrescrever."""
+    chave = {"regra": VERSAO_REGRA, "versoes": sorted(ids_versoes)}
+    return hashlib.sha256(json.dumps(chave, separators=(",", ":")).encode()).hexdigest()
 
 
 def versoes_vigentes(quando):
@@ -124,20 +131,29 @@ def _classificar_linha(trecho, registros, arvore):
     else:
         classificacao = categorias[0]
     feicoes = []
+    oficial_por_categoria = {"CORREDOR": gc, "FAIXA_EXCLUSIVA": gf}
     for indice in candidatos:
         registro = registros[indice]
         intersecao = trecho.intersection(registro["geometria"])
+        base = {"fonte": registro["fonte"], "versao_id": registro["versao_id"],
+                "identificador_fonte": registro["identificador"],
+                "categoria": registro["categoria"]}
         if registro["fonte"] == fonte_osm:
+            # Divergência registrada, não apagada: trecho em que a OSM foi superada
+            # pela GeoSampa, separando concordância de categoria diferente.
+            sobreposta = intersecao.intersection(oficial)
+            if sobreposta.length >= COMPRIMENTO_MINIMO_M:
+                concordante = sobreposta.intersection(oficial_por_categoria[registro["categoria"]]).length
+                feicoes.append({**base, "uso": "SUPERADA_POR_GEOSAMPA",
+                                "comprimento_concordante_m": round(concordante, 3),
+                                "comprimento_divergente_m": round(sobreposta.length - concordante, 3)})
             intersecao = intersecao.difference(oficial)
             if registro["categoria"] == "FAIXA_EXCLUSIVA":
                 intersecao = intersecao.difference(corredor_osm)
         metros = intersecao.length
         if metros < COMPRIMENTO_MINIMO_M:
             continue
-        feicoes.append({"fonte": registro["fonte"], "versao_id": registro["versao_id"],
-                        "identificador_fonte": registro["identificador"],
-                        "categoria": registro["categoria"],
-                        "comprimento_proximo_m": round(metros, 3)})
+        feicoes.append({**base, "uso": "APLICADA", "comprimento_proximo_m": round(metros, 3)})
     regra = {"versao": VERSAO_REGRA, "crs_medicao": CRS_METRICO,
              "tolerancia_proximidade_m": TOLERANCIA_PROXIMIDADE_M,
              "comprimento_minimo_match_m": COMPRIMENTO_MINIMO_M,
@@ -162,7 +178,7 @@ def classificar_trechos(versao_gtfs_id, *, versoes=None, quando=None):
     if len(modelos) != len(ids_versoes):
         raise ValueError("uma ou mais versões de infraestrutura não existem")
     ids_versoes = sorted(modelos)
-    conjunto = hashlib.sha256(json.dumps(ids_versoes, separators=(",", ":")).encode()).hexdigest()
+    conjunto = conjunto_de(ids_versoes)
     transformer = Transformer.from_crs("EPSG:4326", CRS_METRICO, always_xy=True)
     registros = _geometrias(list(modelos.values()), transformer)
     geometrias = [registro["geometria"] for registro in registros]
@@ -170,16 +186,18 @@ def classificar_trechos(versao_gtfs_id, *, versoes=None, quando=None):
     trechos = Trecho.query.filter_by(versao_gtfs_id=versao_gtfs_id).order_by(Trecho.id).all()
     agora = agora_utc()
     criadas = 0
+    nao_classificados = []
     for trecho_model in trechos:
         existente = AssociacaoInfraestruturaTrecho.query.filter_by(
             trecho_id=trecho_model.id, versao_conjunto=conjunto,
         ).one_or_none()
         if existente:
             continue
-        linha = LineString(trecho_model.geometria)
-        linha = transform(linha, transformer.transform, interleaved=False)
-        if linha.is_empty or linha.length <= 0:
-            raise ValueError(f"trecho {trecho_model.id} tem geometria sem comprimento")
+        linha = transform(LineString(trecho_model.geometria), transformer.transform, interleaved=False)
+        if linha.is_empty or not math.isfinite(linha.length) or linha.length <= 0:
+            # Um trecho degenerado não bloqueia a rede nem recebe classe inventada.
+            nao_classificados.append({"trecho_id": trecho_model.id, "motivo": "geometria_sem_comprimento"})
+            continue
         classificacao, fracoes, categorias, feicoes, regra = _classificar_linha(
             linha, registros, arvore,
         )
@@ -197,10 +215,34 @@ def classificar_trechos(versao_gtfs_id, *, versoes=None, quando=None):
         versao_conjunto=conjunto, classificacao=nome,
     ).join(Trecho).filter(Trecho.versao_gtfs_id == versao_gtfs_id).count()
               for nome in ("CORREDOR", "FAIXA_EXCLUSIVA", "MISTO", "COBERTURA_PARCIAL", "SEM_COBERTURA")}
+    fundamentados = totais["CORREDOR"] + totais["FAIXA_EXCLUSIVA"] + totais["MISTO"]
     return {"versao_gtfs_id": versao_gtfs_id, "versoes_infraestrutura": ids_versoes,
-            "versao_conjunto": conjunto, "trechos": len(trechos), "associacoes_novas": criadas,
-            "classificacoes": totais,
-            "sem_cobertura": totais["SEM_COBERTURA"] + totais["COBERTURA_PARCIAL"]}
+            "versao_conjunto": conjunto, "versao_regra": VERSAO_REGRA, "trechos": len(trechos),
+            "associacoes_novas": criadas, "classificacoes": totais,
+            "sem_cobertura": totais["SEM_COBERTURA"] + totais["COBERTURA_PARCIAL"],
+            # Critério da US07 (100%): só CORREDOR/FAIXA/MISTO com cobertura completa contam.
+            "percentual_classificado": round(100 * fundamentados / len(trechos), 2) if trechos else None,
+            "nao_classificados": nao_classificados}
+
+
+def classificar_rede_vigente(agora, feitos=()):
+    """Classifica a rede GTFS vigente no dia com os snapshots vigentes no instante.
+
+    ``feitos``: pares (versao_gtfs_id, versao_conjunto) já processados, para não
+    repetir o trabalho. Devolve ``None`` se já feito, ou o resumo/motivo.
+    """
+    from app.gtfs.service import versao_vigente
+
+    try:
+        rede = versao_vigente(agora.astimezone(FUSO_MUNICIPIO).date())
+    except LookupError as erro:  # inexistente ou ambígua: não escolher uma rede às cegas
+        return {"motivo": type(erro).__name__}
+    versoes = versoes_vigentes(agora)
+    if not versoes:
+        return {"versao_gtfs_id": rede.id, "motivo": "sem_snapshots_de_infraestrutura"}
+    if (rede.id, conjunto_de([v.id for v in versoes])) in set(feitos):
+        return None
+    return classificar_trechos(rede.id, versoes=versoes)
 
 
 def detalhar_trecho(trecho_id, *, quando):
@@ -210,7 +252,7 @@ def detalhar_trecho(trecho_id, *, quando):
         return None
     versoes = versoes_vigentes(quando)
     ids = sorted(v.id for v in versoes)
-    conjunto = hashlib.sha256(json.dumps(ids, separators=(",", ":")).encode()).hexdigest()
+    conjunto = conjunto_de(ids)
     associacao = AssociacaoInfraestruturaTrecho.query.filter_by(
         trecho_id=trecho.id, versao_conjunto=conjunto,
     ).one_or_none()
