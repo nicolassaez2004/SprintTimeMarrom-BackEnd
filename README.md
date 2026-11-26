@@ -7,6 +7,14 @@ escalas de 15 minutos, faixa horária, dia e mês. Reproduzir com
 `python -m scripts.validar_us15_t04`; o ensaio usa somente SQLite descartável.
 Revisada em 24/11/2026; aceite da Instituição Parceira dispensado pelo responsável.
 
+## Chuva e temperatura por trecho — US06
+
+[Estações e observações de clima](docs/US06.md) (INMET horário; CGE só com
+acesso), vínculo de cada trecho ao posto mais próximo e
+`GET /contexto/clima`. Ausência de medição é `null`, nunca chuva zero. A
+coleta roda em `python -m app.tarefas`; a cobertura mensal, em
+`python -m app.contexto.clima cobertura --mes AAAA-MM`. Migração `us06_0020`.
+
 ## Painel histórico — US23-T01
 
 [`GET /series`](docs/US23-T01.md) aceita linha, sentido, período e faixa horária
