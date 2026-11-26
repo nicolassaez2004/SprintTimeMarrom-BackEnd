@@ -1378,3 +1378,42 @@ class TrechoEstacaoClima(db.Model):
     calculado_em = db.Column(UTCDateTime, nullable=False, default=agora_utc)
 
     estacao = db.relationship("EstacaoMeteorologica")
+
+
+TIPOS_CONTEXTO = ("CLIMA", "INFRAESTRUTURA", "TRAFEGO")
+
+
+class MedicaoContexto(db.Model):
+    """Medição de contexto associada a trecho e período (diagrama, página 4).
+
+    Hoje só a US08 (tipo TRAFEGO) grava aqui; clima e infraestrutura têm
+    registros próprios (US06/US07). ``dados`` segue o esquema do tipo e
+    ``unidades`` dá a unidade de cada campo numérico. Acréscimo ao diagrama:
+    ``chave``, a identidade determinística do resultado (reprocessar a mesma
+    janela atualiza o mesmo registro, sem duplicar).
+    """
+
+    __tablename__ = "medicoes_contexto"
+    __table_args__ = (
+        UniqueConstraint("chave", name="uq_medicoes_contexto_chave"),
+        CheckConstraint("tipo IN ('CLIMA', 'INFRAESTRUTURA', 'TRAFEGO')",
+                        name="ck_medicoes_contexto_tipo"),
+        CheckConstraint("fim IS NULL OR fim > inicio", name="ck_medicoes_contexto_periodo"),
+        Index("ix_medicoes_contexto_trecho_tipo_inicio", "trecho_id", "tipo", "inicio"),
+        {"mysql_engine": "InnoDB"},
+    )
+
+    id = db.Column(db.String(36), primary_key=True, default=lambda: str(uuid4()))
+    chave = db.Column(db.String(64), nullable=False)
+    tipo = db.Column(db.String(16), nullable=False)
+    trecho_id = db.Column(db.String(36), db.ForeignKey(
+        "trechos.id", name="fk_medicoes_contexto_trecho", ondelete="RESTRICT"), nullable=False)
+    inicio = db.Column(UTCDateTime, nullable=False)
+    fim = db.Column(UTCDateTime, nullable=True)
+    fonte = db.Column(db.String(64), nullable=False)
+    versao_fonte = db.Column(db.String(128), nullable=False)
+    dados = db.Column(db.JSON, nullable=False)
+    unidades = db.Column(db.JSON, nullable=False)
+    coletada_em = db.Column(UTCDateTime, nullable=False, default=agora_utc)
+
+    trecho = db.relationship("Trecho")

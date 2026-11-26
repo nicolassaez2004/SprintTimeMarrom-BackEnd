@@ -79,3 +79,6 @@ class Config:
     VELOCIDADE_LACUNA_MAXIMA_SEG = os.getenv("VELOCIDADE_LACUNA_MAXIMA_SEG") or None
     VELOCIDADE_MINIMA_KMH = os.getenv("VELOCIDADE_MINIMA_KMH") or None
     VELOCIDADE_MAXIMA_KMH = os.getenv("VELOCIDADE_MAXIMA_KMH") or None
+    # US08-T02: média por janela, ARITMETICA ou ESPACIAL (decisão do PO, docs/US08-T02.md).
+    # Vazio = indefinido: a janela grava os dois candidatos e valor NULL.
+    VELOCIDADE_MEDIA_METODO = os.getenv("VELOCIDADE_MEDIA_METODO") or None

@@ -1,4 +1,6 @@
-"""US08-T01: tempo de percurso e velocidade média por trecho (docs/US08-T01.md).
+"""US08: velocidade dos ônibus por trecho (docs/US08-T01.md, docs/US08-T02.md).
+
+US08-T01 — amostras por viagem e trecho.
 
 Cada amostra vem de duas ``PassagemEstimada`` (US15-T01) da mesma viagem, nas
 paradas de origem e destino de um ``Trecho`` (US02-T02B):
@@ -18,15 +20,19 @@ Nada é gravado: brutos, passagens e trechos são apenas lidos.
 import math
 from dataclasses import asdict, dataclass
 from datetime import timedelta
+from hashlib import sha256
 from typing import Optional
 
 from flask import current_app
 
 from app import db
+from app.core.tempo import FUSO
 from app.correspondencia.geografia import PROJECAO
 from app.models import (
-    EstimativaPassagemViagem, ObservacaoTratada, PassagemEstimada, RegistroBrutoGPS, Trecho,
+    EstimativaPassagemViagem, ImportacaoProgramacao, MedicaoContexto, ObservacaoTratada,
+    PartidaProgramada, PassagemEstimada, RegistroBrutoGPS, Trecho, ViagemObservada, agora_utc,
 )
+from app.qualidade.service import JANELA, FalhasColeta
 from app.viagens.passagens import Percurso
 
 METODO = "DIFERENCA_PASSAGENS_MEDIDA_PERCURSO"
@@ -234,3 +240,186 @@ def _instantes_validos(viagem, passagens):
                          RegistroBrutoGPS.horario_gps.between(inicio, fim),
                          ObservacaoTratada.valida.is_(True),
                          ObservacaoTratada.versao_correspondencia == viagem.versao_correspondencia))
+
+
+# --- US08-T02: velocidade média por trecho em janelas de 15 min --------------
+# Regras e decisões pendentes: docs/US08-T02.md.
+
+TIPO_CONTEXTO = "TRAFEGO"
+FONTE_AGREGADO = "VELOCIDADE_OBSERVADA_ONIBUS"
+DESCRICAO_FONTE = ("Velocidade média observada dos ônibus no trecho, a partir das passagens "
+                   "estimadas; não é a velocidade do tráfego geral nem de todos os veículos.")
+VERSAO_AGREGADO = "us08-t02-v1"
+# Convenção já usada na US13/US15-T02: o evento pertence à janela [início, fim) do seu instante.
+ATRIBUICAO = "INSTANTE_ORIGEM"
+# Candidatos; a escolha é do PO (VELOCIDADE_MEDIA_METODO). Sem ela, valor NULL.
+METODOS_MEDIA = {
+    # Média das velocidades das amostras (time-mean speed).
+    "ARITMETICA": lambda a: sum(x.velocidade_kmh for x in a) / len(a),
+    # Distância total ÷ tempo total (space-mean speed; harmônica ponderada pela distância).
+    "ESPACIAL": lambda a: sum(x.distancia_m for x in a) / sum(x.duracao_seg for x in a) * 3.6,
+}
+UNIDADES_AGREGADO = {"velocidade_media_kmh": UNIDADE, "candidatos_kmh": UNIDADE,
+                     "distancia_total_m": "m", "duracao_total_seg": "s"}
+
+
+def metodo_media_configurado():
+    valor = (current_app.config.get("VELOCIDADE_MEDIA_METODO") or "").strip().upper() or None
+    if valor is not None and valor not in METODOS_MEDIA:
+        raise ValueError(f"VELOCIDADE_MEDIA_METODO deve ser um de {sorted(METODOS_MEDIA)}")
+    return valor
+
+
+def janelas_15min(inicio, fim):
+    """Janelas [início, fim) de 15 min alinhadas ao relógio de São Paulo."""
+    for instante in (inicio, fim):
+        if instante.tzinfo is None:
+            raise ValueError("início e fim devem ter fuso")
+        local = instante.astimezone(FUSO)
+        if local.minute % 15 or local.second or local.microsecond:
+            raise ValueError("início e fim devem estar alinhados a 15 min (America/Sao_Paulo)")
+    if fim <= inicio:
+        raise ValueError("fim deve ser posterior ao início")
+    return [(inicio + JANELA * i, inicio + JANELA * (i + 1)) for i in range(int((fim - inicio) // JANELA))]
+
+
+@dataclass(frozen=True)
+class JanelaVelocidade:
+    trecho_id: str
+    inicio: object
+    fim: object
+    velocidade_media_kmh: Optional[float]
+    motivo: Optional[str]
+    dados: dict
+
+
+class AgregadorVelocidade:
+    """Agrupa amostras da US08-T01 por trecho e janela; a média usa só as válidas."""
+
+    def __init__(self, metodo=None, versoes=None):
+        if metodo is not None and metodo not in METODOS_MEDIA:
+            raise ValueError(f"método de média desconhecido: {metodo}")
+        self.metodo, self.versoes = metodo, dict(versoes or {})
+
+    @property
+    def versao(self):
+        return f"{VERSAO_AGREGADO}-media{self.metodo or 'INDEF'}-{ATRIBUICAO}"
+
+    def agregar(self, amostras, inicio, fim, trechos=(), qualidade=lambda inicio, fim: None):
+        """Uma ``JanelaVelocidade`` por (trecho, janela) com amostra, e por janela de
+        cada id em ``trechos`` (sem amostra: NULL, ``sem_amostras``).
+
+        Amostra sem ``instante_origem`` (SEM_DADOS) não pertence a janela alguma.
+        A mesma evidência (trecho, instantes, distância) conta uma vez.
+        """
+        grade = janelas_15min(inicio, fim)
+        grupos = {(t, a): [] for t in trechos for a, _ in grade}
+        vistas = set()
+        for amostra in sorted((a for a in amostras if a.instante_origem is not None),
+                              key=lambda a: (a.instante_origem, a.trecho_id,
+                                             a.viagem_observada_id or "", a.passagem_origem_id or "")):
+            evidencia = (amostra.trecho_id, amostra.instante_origem, amostra.instante_destino,
+                         amostra.distancia_m)
+            if not inicio <= amostra.instante_origem < fim or evidencia in vistas:
+                continue
+            vistas.add(evidencia)
+            janela = grade[int((amostra.instante_origem - inicio) // JANELA)][0]
+            grupos.setdefault((amostra.trecho_id, janela), []).append(amostra)
+        return [self._janela(t, a, a + JANELA, grupos[t, a], qualidade(a, a + JANELA) if grupos[t, a] else None)
+                for t, a in sorted(grupos)]
+
+    def _janela(self, trecho_id, inicio, fim, amostras, falhas_coleta):
+        validas = [a for a in amostras if a.valida]
+        descartadas = [a for a in amostras if not a.valida]
+        motivos = {}
+        for a in descartadas:
+            motivos[a.motivo] = motivos.get(a.motivo, 0) + 1
+        candidatos = {nome: f(validas) for nome, f in sorted(METODOS_MEDIA.items())} if validas else {}
+        if not amostras:
+            motivo = "sem_amostras"
+        elif not validas:
+            pendentes = all(a.situacao == PENDENTE for a in descartadas)
+            motivo = "amostras_pendentes" if pendentes else "sem_amostras_validas"
+        else:
+            motivo = None if self.metodo else "metodo_media_indefinido"
+        valor = candidatos[self.metodo] if motivo is None else None
+        dados = {
+            "indicador": "VELOCIDADE_MEDIA_ONIBUS_TRECHO", "descricao_fonte": DESCRICAO_FONTE,
+            "velocidade_media_kmh": valor, "motivo": motivo, "metodo_media": self.metodo,
+            "candidatos_kmh": candidatos, "atribuicao_janela": ATRIBUICAO,
+            "amostras_validas": len(validas), "amostras_descartadas": len(descartadas),
+            "descartes_por_motivo": dict(sorted(motivos.items())),
+            "viagens_validas": len({a.viagem_observada_id for a in validas}),
+            "distancia_total_m": sum(a.distancia_m for a in validas) if validas else None,
+            "duracao_total_seg": sum(a.duracao_seg for a in validas) if validas else None,
+            # Proporção observada, sem limiar: a cobertura mínima aguarda o PO.
+            "qualidade": {"proporcao_validas": len(validas) / len(amostras) if amostras else None,
+                          "falhas_coleta": falhas_coleta},
+            "versoes": {**self.versoes, "agregado": self.versao,
+                        "calculo_amostras": sorted({a.versao_calculo for a in amostras})},
+            # [viagem, passagem de origem, passagem de destino, situação, motivo]
+            "amostras": [[a.viagem_observada_id, a.passagem_origem_id, a.passagem_destino_id,
+                          a.situacao, a.motivo] for a in amostras],
+        }
+        return JanelaVelocidade(trecho_id, inicio, fim, valor, motivo, dados)
+
+
+def agregar_periodo(*, versao_gtfs_id, linha_codigo, sentido, inicio, fim, versao_estimativa,
+                    versao_reconstrucao, versao_correspondencia, limites=None, metodo=None,
+                    agora=None, gravar=True):
+    """Agrega o período e (``gravar``) persiste em ``MedicaoContexto`` as janelas com amostras.
+
+    Janelas sem amostra são devolvidas (NULL, ``sem_amostras``), mas não gravadas.
+    Reprocessar o mesmo período atualiza os mesmos registros e remove os do mesmo
+    escopo e versão que não se reproduziram. O commit fica com quem chama.
+    """
+    metodo = metodo or metodo_media_configurado()
+    V, Pt, I, M = ViagemObservada, PartidaProgramada, ImportacaoProgramacao, MedicaoContexto
+    viagens = (V.query.join(Pt, Pt.id == V.partida_programada_id).join(I, I.id == Pt.importacao_id)
+               .filter(I.versao_gtfs_id == versao_gtfs_id, I.linha_codigo == linha_codigo,
+                       I.sentido == sentido, V.versao_reconstrucao == versao_reconstrucao,
+                       V.versao_correspondencia == versao_correspondencia, V.saida_observada < fim,
+                       db.or_(V.fim_observado.is_(None), V.fim_observado >= inicio))
+               .order_by(V.saida_observada, V.id).all())
+    trechos = sorted(t.id for t in Trecho.query.filter_by(
+        versao_gtfs_id=versao_gtfs_id, linha_codigo=linha_codigo, sentido=sentido))
+    amostras = [a for v in viagens for a in calcular_viagem(v, versao_estimativa, limites)[0]]
+    falhas = FalhasColeta(agora=agora)
+    cache = {}
+
+    def qualidade(a, b):
+        if a not in cache:
+            cache[a] = falhas.da_janela(a, b, linha=linha_codigo, versao_gtfs_id=versao_gtfs_id)
+        return cache[a]
+
+    versoes = {"gtfs": versao_gtfs_id, "estimativa": versao_estimativa,
+               "reconstrucao": versao_reconstrucao, "correspondencia": versao_correspondencia}
+    agregador = AgregadorVelocidade(metodo, versoes)
+    resultado = agregador.agregar(amostras, inicio, fim, trechos, qualidade)
+    if not gravar:
+        return resultado
+
+    escopo = "|".join([TIPO_CONTEXTO, agregador.versao, *(f"{k}={v}" for k, v in sorted(versoes.items()))])
+    chaves = set()
+    for janela in (j for j in resultado if j.motivo != "sem_amostras"):
+        chave = sha256(f"{escopo}|{janela.trecho_id}|{janela.inicio.isoformat()}".encode()).hexdigest()
+        chaves.add(chave)
+        registro = M.query.filter_by(chave=chave).one_or_none()
+        if registro is not None and registro.dados == janela.dados:
+            continue  # mesmo resultado: nada muda, nem o horário do cálculo
+        if registro is None:
+            registro = M(chave=chave, tipo=TIPO_CONTEXTO, trecho_id=janela.trecho_id)
+            db.session.add(registro)
+        registro.inicio, registro.fim = janela.inicio, janela.fim
+        registro.fonte, registro.versao_fonte = FONTE_AGREGADO, agregador.versao
+        registro.dados, registro.unidades = janela.dados, UNIDADES_AGREGADO
+        registro.coletada_em = agora_utc()
+    if trechos:
+        for registro in M.query.filter(M.tipo == TIPO_CONTEXTO, M.trecho_id.in_(trechos),
+                                       M.versao_fonte == agregador.versao,
+                                       M.inicio >= inicio, M.inicio < fim):
+            mesmo_escopo = {k: registro.dados["versoes"].get(k) for k in versoes} == versoes
+            if mesmo_escopo and registro.chave not in chaves:
+                db.session.delete(registro)
+    db.session.flush()
+    return resultado
