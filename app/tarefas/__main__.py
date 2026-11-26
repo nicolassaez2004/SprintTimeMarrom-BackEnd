@@ -7,6 +7,7 @@ from pathlib import Path
 
 from app import create_app, db
 from app.coleta.bus_collector import LockColetor
+from app.contexto.clima.coleta import coletar_clima
 from app.exportacoes.parquet import publicar_brutos
 from app.indicadores.agenda import atualizar_indicadores
 from app.gtfs.scheduler import (
@@ -19,7 +20,7 @@ from app.models import agora_utc
 def main(argv=None):
     parser = argparse.ArgumentParser(
         description="Verificação diária do GTFS, publicação dos brutos em Parquet e "
-                    "indicadores a cada 15 min com consolidação diária (US23-T03)")
+                    "indicadores a cada 15 min com consolidação diária (US23-T03) e clima por trecho (US06)")
     parser.add_argument("--uma-vez", action="store_true",
                         help="Executa uma verificação agora e encerra, sem agendar o sistema operacional")
     args = parser.parse_args(argv)
@@ -32,7 +33,8 @@ def main(argv=None):
     handler.setFormatter(logging.Formatter("%(message)s"))
     logger = logging.getLogger("app.gtfs.scheduler")
     loggers = [logger, logging.getLogger("app.exportacoes.parquet"),
-               logging.getLogger("app.indicadores.agenda")]
+               logging.getLogger("app.indicadores.agenda"),
+               logging.getLogger("app.contexto.clima.coleta")]
     for registrador in loggers:
         registrador.setLevel(logging.INFO)
         registrador.addHandler(handler)
@@ -50,7 +52,8 @@ def main(argv=None):
                 prevista = min(agora, proxima_verificacao(agora))
                 resultado = verificar_gtfs(prevista)
                 return 0 if resultado["estado"] == "OK" else 1
-            executar_tarefas(manter_ativo=lock.ativo, periodicas=(publicar_brutos, atualizar_indicadores))
+            executar_tarefas(manter_ativo=lock.ativo, periodicas=(publicar_brutos, atualizar_indicadores,
+                                                                          coletar_clima))
             return 1  # O loop contínuo só retorna se perder o lock.
     except KeyboardInterrupt:
         return 0

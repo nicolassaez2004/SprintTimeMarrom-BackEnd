@@ -55,6 +55,17 @@ class Config:
         os.getenv("GPS_COLLECTION_INTERVAL_SECONDS") or "30"
     )
 
+    # US06: clima por trecho. Token do INMET (pedido por e-mail ao INMET) e
+    # acesso ao CGE ficam só no .env; sem eles a coleta registra INDISPONIVEL.
+    INMET_API_URL = os.getenv("INMET_API_URL") or "https://apitempo.inmet.gov.br"
+    INMET_TOKEN = os.getenv("INMET_TOKEN") or None
+    CGE_API_URL = os.getenv("CGE_API_URL") or None
+    # Estações do catálogo INMET consideradas (km do centro de São Paulo).
+    CLIMA_RAIO_CATALOGO_KM = os.getenv("CLIMA_RAIO_CATALOGO_KM") or "60"
+    # Distância máxima trecho → estação para usar a medição (decisão provisória
+    # da US06-T03, pendente do PO). Além dela o vínculo fica FORA_DO_RAIO.
+    CLIMA_RAIO_MAXIMO_M = os.getenv("CLIMA_RAIO_MAXIMO_M") or "25000"
+
     # US15-T01: lacuna máxima (s) entre as duas posições usadas para estimar
     # uma passagem. Padrão adotado em 24/11/2026: 120 s (4 ciclos de 30 s), o
     # valor conferido nos 20 casos da US15-T04 (docs/US15-T01.md).

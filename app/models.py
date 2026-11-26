@@ -1124,3 +1124,163 @@ class DocumentoOficial(db.Model):
     @property
     def catalogado_no_prazo(self):
         return self.tempo_ate_catalogacao <= PRAZO_CATALOGACAO
+
+
+# US06 — Clima por trecho. Detalha a parte CLIMA de `MedicaoContexto` do
+# diagrama (página 4) em propostas novas da US06, sem atribuí-las ao modelo
+# anterior: a estação (onde se mede), a observação (o que foi medido e quando)
+# e o vínculo espacial trecho → estação usada. A medição por trecho e janela é
+# derivada desses registros na consulta (docs/US06.md).
+FONTES_CLIMA = ("INMET", "CGE")
+
+
+class EstacaoMeteorologica(db.Model):
+    """Estação ou posto de uma fonte de clima, com as coordenadas publicadas."""
+
+    __tablename__ = "estacoes_meteorologicas"
+    __table_args__ = (
+        UniqueConstraint("fonte", "codigo", name="uq_estacoes_meteorologicas_fonte_codigo"),
+        CheckConstraint("fonte IN ('INMET', 'CGE')", name="ck_estacoes_meteorologicas_fonte"),
+        CheckConstraint("latitude BETWEEN -90 AND 90", name="ck_estacoes_meteorologicas_latitude"),
+        CheckConstraint("longitude BETWEEN -180 AND 180", name="ck_estacoes_meteorologicas_longitude"),
+        CheckConstraint("intervalo_seg > 0", name="ck_estacoes_meteorologicas_intervalo"),
+    )
+
+    id = db.Column(db.String(36), primary_key=True, default=lambda: str(uuid4()))
+    fonte = db.Column(db.String(16), nullable=False)
+    # Código na fonte (ex.: A701 no INMET).
+    codigo = db.Column(db.String(32), nullable=False)
+    nome = db.Column(db.String(255), nullable=False)
+    # Graus decimais WGS84, como publicados (mesma precisão de `Parada`).
+    latitude = db.Column(db.Numeric(11, 8), nullable=False)
+    longitude = db.Column(db.Numeric(11, 8), nullable=False)
+    altitude_m = db.Column(db.Numeric(8, 2), nullable=True)
+    # Periodicidade nativa da fonte: 3600 s no INMET, 900 s no CGE.
+    intervalo_seg = db.Column(db.Integer, nullable=False)
+    operacao_inicio = db.Column(db.Date, nullable=True)
+    situacao_fonte = db.Column(db.String(32), nullable=True)
+    versao_fonte = db.Column(db.String(64), nullable=False)
+    atualizada_em = db.Column(UTCDateTime, nullable=False, default=agora_utc)
+
+
+class ColetaClima(db.Model):
+    """Cada tentativa de coleta de uma fonte de clima, inclusive indisponível.
+
+    Separada de `ExecucaoColeta`, que mede a cobertura dos ciclos GPS: misturar
+    as duas faria a qualidade da coleta de ônibus contar chamadas de clima.
+    """
+
+    __tablename__ = "coletas_clima"
+    __table_args__ = (
+        CheckConstraint("fonte IN ('INMET', 'CGE')", name="ck_coletas_clima_fonte"),
+        CheckConstraint(
+            "estado IN ('EM_ANDAMENTO', 'OK', 'PARCIAL', 'FALHA', 'INDISPONIVEL')",
+            name="ck_coletas_clima_estado",
+        ),
+        Index("ix_coletas_clima_fonte_iniciada", "fonte", "iniciada_em"),
+    )
+
+    id = db.Column(db.String(36), primary_key=True, default=lambda: str(uuid4()))
+    fonte = db.Column(db.String(16), nullable=False)
+    prevista_em = db.Column(UTCDateTime, nullable=False)
+    iniciada_em = db.Column(UTCDateTime, nullable=False, default=agora_utc)
+    finalizada_em = db.Column(UTCDateTime, nullable=True)
+    estado = db.Column(db.String(16), nullable=False, default="EM_ANDAMENTO")
+    periodo_inicio = db.Column(UTCDateTime, nullable=True)
+    periodo_fim = db.Column(UTCDateTime, nullable=True)
+    recebidas = db.Column(db.Integer, nullable=False, default=0)
+    novas = db.Column(db.Integer, nullable=False, default=0)
+    # Só o tipo do erro ou um motivo curto: URLs da fonte podem conter o token.
+    erro = db.Column(db.String(255), nullable=True)
+
+
+class ObservacaoClima(db.Model):
+    """Uma medição de uma estação num instante, com unidade explícita.
+
+    `instante` é o fim do intervalo de acumulação (UTC). `chuva` é o total
+    acumulado em (instante - intervalo_seg, instante]; `temperatura` é a
+    leitura instantânea em `instante`. NULL = a fonte não informou e nunca
+    significa ausência de chuva; zero só existe quando a fonte publica 0.
+    """
+
+    __tablename__ = "observacoes_clima"
+    __table_args__ = (
+        UniqueConstraint("estacao_id", "instante", name="uq_observacoes_clima_estacao_instante"),
+        CheckConstraint("chuva IS NULL OR chuva >= 0", name="ck_observacoes_clima_chuva"),
+        CheckConstraint("intervalo_seg > 0", name="ck_observacoes_clima_intervalo"),
+        CheckConstraint("unidade_chuva = 'mm'", name="ck_observacoes_clima_unidade_chuva"),
+        CheckConstraint("unidade_temperatura = 'degC'",
+                        name="ck_observacoes_clima_unidade_temperatura"),
+        Index("ix_observacoes_clima_instante", "instante"),
+    )
+
+    id = db.Column(IdGrande, primary_key=True, autoincrement=True)
+    estacao_id = db.Column(
+        db.String(36), db.ForeignKey("estacoes_meteorologicas.id", ondelete="RESTRICT",
+                                     name="fk_observacoes_clima_estacao"),
+        nullable=False,
+    )
+    instante = db.Column(UTCDateTime, nullable=False)
+    intervalo_seg = db.Column(db.Integer, nullable=False)
+    chuva = db.Column(db.Numeric(7, 2), nullable=True)
+    unidade_chuva = db.Column(db.String(8), nullable=False, default="mm")
+    temperatura = db.Column(db.Numeric(5, 2), nullable=True)
+    unidade_temperatura = db.Column(db.String(8), nullable=False, default="degC")
+    fonte = db.Column(db.String(16), nullable=False)
+    versao_fonte = db.Column(db.String(64), nullable=False)
+    coletada_em = db.Column(UTCDateTime, nullable=False, default=agora_utc)
+    coleta_id = db.Column(
+        db.String(36), db.ForeignKey("coletas_clima.id", ondelete="RESTRICT",
+                                     name="fk_observacoes_clima_coleta"),
+        nullable=True,
+    )
+
+    estacao = db.relationship("EstacaoMeteorologica")
+
+
+class TrechoEstacaoClima(db.Model):
+    """Vínculo espacial: a estação de uma fonte usada para um trecho.
+
+    Distância mínima entre o traçado do trecho e a estação, em metros, medida
+    em SIRGAS 2000 / UTM 23S. Sem estação dentro do raio, o vínculo continua
+    registrado com `situacao` de bloqueio, para que nenhum trecho fique sem
+    resposta explícita.
+    """
+
+    __tablename__ = "trechos_estacoes_clima"
+    __table_args__ = (
+        db.ForeignKeyConstraint(
+            ["trecho_id", "versao_gtfs_id", "linha_codigo"],
+            ["trechos.id", "trechos.versao_gtfs_id", "trechos.linha_codigo"],
+            name="fk_trecho_estacao_clima_rede", ondelete="RESTRICT",
+        ),
+        db.ForeignKeyConstraint(
+            ["estacao_id"], ["estacoes_meteorologicas.id"],
+            name="fk_trecho_estacao_clima_estacao", ondelete="RESTRICT",
+        ),
+        CheckConstraint("fonte IN ('INMET', 'CGE')", name="ck_trecho_estacao_clima_fonte"),
+        CheckConstraint(
+            "situacao IN ('ASSOCIADO', 'FORA_DO_RAIO', 'SEM_ESTACAO')",
+            name="ck_trecho_estacao_clima_situacao",
+        ),
+        CheckConstraint(
+            "(situacao = 'SEM_ESTACAO' AND estacao_id IS NULL AND distancia_m IS NULL) OR "
+            "(situacao <> 'SEM_ESTACAO' AND estacao_id IS NOT NULL AND distancia_m >= 0)",
+            name="ck_trecho_estacao_clima_coerencia",
+        ),
+        Index("ix_trecho_estacao_clima_estacao", "estacao_id"),
+    )
+
+    trecho_id = db.Column(db.String(36), primary_key=True)
+    fonte = db.Column(db.String(16), primary_key=True)
+    versao_gtfs_id = db.Column(db.String(36), nullable=False)
+    linha_codigo = db.Column(CodigoGTFS, nullable=False)
+    estacao_id = db.Column(db.String(36), nullable=True)
+    distancia_m = db.Column(Double, nullable=True)
+    raio_maximo_m = db.Column(Double, nullable=False)
+    situacao = db.Column(db.String(16), nullable=False)
+    crs_medicao = db.Column(db.String(16), nullable=False)
+    versao_regra = db.Column(db.String(32), nullable=False)
+    calculado_em = db.Column(UTCDateTime, nullable=False, default=agora_utc)
+
+    estacao = db.relationship("EstacaoMeteorologica")

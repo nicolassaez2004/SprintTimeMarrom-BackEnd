@@ -281,8 +281,9 @@ def test_processo_de_tarefas_registra_a_publicacao(app, monkeypatch, tmp_path):
     monkeypatch.setattr(tarefas, "LockColetor", lambda *a, **k: lock)
     monkeypatch.setattr(tarefas, "executar_tarefas", lambda **kwargs: capturado.update(kwargs))
     tarefas.main([])
+    from app.contexto.clima.coleta import coletar_clima  # US06-T02
     from app.indicadores.agenda import atualizar_indicadores  # US23-T03
-    assert capturado["periodicas"] == (publicar_brutos, atualizar_indicadores)
+    assert capturado["periodicas"] == (publicar_brutos, atualizar_indicadores, coletar_clima)
 
 
 # --- Review: dados gravados com atraso (US29) e data limite --------------------
