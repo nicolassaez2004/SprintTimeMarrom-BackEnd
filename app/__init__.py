@@ -93,6 +93,7 @@ def create_app(config_extra=None):
         return {"status": "ok", "message": "Backend Flask funcionando"}, 200
 
     # Rotas HTTP ficam em app/api/; os serviços, em app/<módulo>/.
+    from app.api.atrasos import atrasos_bp
     from app.api.contexto import contexto_bp
     from app.api.correspondencias import correspondencias_bp
     from app.api.documentos import documentos_bp
@@ -106,7 +107,7 @@ def create_app(config_extra=None):
     from app.api.routes import api_bp
 
     for blueprint in (api_bp, indicadores_bp, infraestrutura_bp, mapas_bp, correspondencias_bp, partidas_bp,
-                      posicoes_bp, qualidade_coleta_bp, documentos_bp, downloads_bp, contexto_bp):
+                      posicoes_bp, qualidade_coleta_bp, documentos_bp, downloads_bp, contexto_bp, atrasos_bp):
         app.register_blueprint(blueprint)
 
     return app

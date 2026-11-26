@@ -73,6 +73,15 @@ class Config:
     # valor conferido nos 20 casos da US15-T04 (docs/US15-T01.md).
     PASSAGEM_LACUNA_MAXIMA_SEG = os.getenv("PASSAGEM_LACUNA_MAXIMA_SEG") or "120"
 
+    # US19-T02: intervalo máximo (s) entre a chegada de uma viagem e a partida
+    # seguinte do mesmo veículo. Pendente do PO (docs/US19-T02.md). Vazio =
+    # indefinido: nenhum par é formado, em vez de um limite inventado.
+    PROPAGACAO_INTERVALO_MAXIMO_SEG = os.getenv("PROPAGACAO_INTERVALO_MAXIMO_SEG") or None
+    # US19-T03: métrica mensal do aumento de atraso por trecho, MEDIA ou MEDIANA.
+    # Pendente do PO (docs/US19-T03.md). Vazio = indefinido: sem agregado e o
+    # ranking responde 409, em vez de escolher uma estatística em silêncio.
+    PROPAGACAO_RANKING_METRICA = os.getenv("PROPAGACAO_RANKING_METRICA") or None
+
     # US08-T01: regras pendentes do PO (docs/US08-T01.md). Vazio = indefinido:
     # a lacuna herda a da estimativa da US15-T01; sem os dois limites de
     # velocidade as amostras ficam PENDENTE, nunca válidas por omissão.
