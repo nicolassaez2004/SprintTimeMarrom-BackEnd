@@ -54,7 +54,7 @@ def main(argv=None):
                 resultado = verificar_gtfs(prevista)
                 return 0 if resultado["estado"] == "OK" else 1
             executar_tarefas(manter_ativo=lock.ativo, periodicas=(
-                publicar_brutos, atualizar_indicadores, atualizar_infraestrutura,coletar_clima
+                publicar_brutos, atualizar_indicadores, atualizar_infraestrutura, coletar_clima
             ))
 
             return 1  # O loop contínuo só retorna se perder o lock.

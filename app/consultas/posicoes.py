@@ -8,7 +8,7 @@ escolha, para um ônibus que trocou de linha não aparecer na linha antiga.
 
 from datetime import timedelta
 
-from sqlalchemy import and_, func, select
+from sqlalchemy import and_, false, func, select
 from sqlalchemy.orm import aliased
 
 from app import db
@@ -88,12 +88,17 @@ def ultimas_posicoes(*, linha=None, linha_gtfs=None, agora=None, ultima_coleta=F
     )
     consulta = db.session.query(R, ObservacaoTratada, Linha)
     if ultima_coleta:
-        ultimo_ciclo_id = _id_ultimo_ciclo_com_posicoes(agora)
+        # Cada bruto aponta ao ciclo que o gravou PRIMEIRO: um ônibus cujo horário
+        # GPS não mudou no último ciclo só tem registro no anterior. Ler apenas o
+        # último ciclo o tiraria do mapa; por isso a leitura cobre os registros
+        # até 60 s antes do último ciclo com posições (faixa no índice coletado_em).
+        referencia = (db.session.query(func.max(R.coletado_em))
+                      .filter(R.execucao_id == _id_ultimo_ciclo_com_posicoes(agora)).scalar())
+        periodo = false() if referencia is None else R.coletado_em.between(
+            max(desde, referencia - timedelta(seconds=LIMITE_RECENTE_SEGUNDOS)), referencia)
         consulta = consulta.select_from(R).filter(
-            R.execucao_id == ultimo_ciclo_id,
             R.veiculo_prefixo.is_not(None), R.latitude.is_not(None),
-            R.longitude.is_not(None), R.horario_gps.is_not(None),
-            R.coletado_em.between(desde, agora),
+            R.longitude.is_not(None), R.horario_gps.is_not(None), periodo,
         )
     else:
         consulta = consulta.select_from(Veiculo).join(R, R.id == ultimo_id)

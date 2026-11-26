@@ -283,7 +283,9 @@ def test_processo_de_tarefas_registra_a_publicacao(app, monkeypatch, tmp_path):
     tarefas.main([])
     from app.contexto.clima.coleta import coletar_clima  # US06-T02
     from app.indicadores.agenda import atualizar_indicadores  # US23-T03
-    assert capturado["periodicas"] == (publicar_brutos, atualizar_indicadores, coletar_clima)
+    from app.contexto.infraestrutura.tarefa import atualizar_infraestrutura  # US07
+    assert capturado["periodicas"] == (publicar_brutos, atualizar_indicadores,
+                                       atualizar_infraestrutura, coletar_clima)
 
 
 # --- Review: dados gravados com atraso (US29) e data limite --------------------

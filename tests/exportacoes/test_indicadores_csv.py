@@ -154,7 +154,9 @@ def test_csv_consolida_dia_confere_com_api_preserva_acentos_e_unidade(cliente):
     assert linhas_csv[1]["valor"] == ""
 
 
-def test_periodo_nao_consolidado_nao_entrega_csv_vazio(cliente):
+def test_periodo_nao_consolidado_nao_entrega_csv_vazio(cliente, monkeypatch):
+    # Relógio controlado: antes das 06:00 de D+1 (o teste não pode depender da data real).
+    monkeypatch.setattr("app.api.downloads.agora_utc", lambda: datetime(2026, 11, 26, 8, tzinfo=UTC))
     resposta = cliente.get("/downloads/indicadores?formato=csv&data=2026-11-25")
     assert resposta.status_code == 404
     assert resposta.mimetype == "application/json"
@@ -164,6 +166,11 @@ def test_periodo_nao_consolidado_nao_entrega_csv_vazio(cliente):
     registro = json.loads(evidencia.read_text(encoding="utf-8"))
     assert resposta.status_code == registro["status_http"]
     assert resposta.get_json() == registro["data"]
+    # Após o prazo, sem arquivo, a resposta muda de motivo (não promete nova data).
+    monkeypatch.setattr("app.api.downloads.agora_utc", lambda: datetime(2026, 11, 26, 10, tzinfo=UTC))
+    atrasado = cliente.get("/downloads/indicadores?formato=csv&data=2026-11-25")
+    assert atrasado.status_code == 404
+    assert atrasado.get_json()["erro"]["codigo"] == "CONSOLIDACAO_NAO_PUBLICADA"
 
 
 def test_dia_consolidado_sem_indicadores_entrega_csv_com_cabecalho(cliente):
