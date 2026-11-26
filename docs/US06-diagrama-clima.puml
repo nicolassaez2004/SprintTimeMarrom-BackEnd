@@ -1,0 +1,84 @@
+@startuml US06-clima
+' Detalhamento da página 4 do Diagrama de Classes (revisão 18/11/2026) para
+' a parte CLIMA de MedicaoContexto. Classes desta página marcadas como
+' «proposta nova US06» NÃO fazem parte do modelo anterior nem das 21 classes
+' da revisão de 18/11: são o detalhamento proposto pela US06-T01.
+title US06 — Clima por trecho (detalhamento de MedicaoContexto: CLIMA)
+
+skinparam class {
+  BackgroundColor<<referencia>> #EEEEEE
+  BackgroundColor<<proposta nova US06>> #FFF2CC
+}
+
+class Trecho <<referencia>> {
+  +id: UUID
+  +geometria: LineString
+}
+
+class MedicaoContexto <<referencia>> {
+  +tipo: CLIMA | INFRAESTRUTURA | TRAFEGO
+  +inicio, fim: DateTime
+  --
+  CLIMA: derivada na consulta
+  (Trecho -> estação -> observação),
+  sem tabela própria
+}
+
+class EstacaoMeteorologica <<proposta nova US06>> {
+  +id: UUID
+  +fonte: INMET | CGE
+  +codigo: String {unique por fonte}
+  +nome: String
+  +latitude, longitude: Decimal
+  +altitudeM: Decimal [0..1]
+  +intervaloSeg: Integer
+  +operacaoInicio: Date [0..1]
+  +versaoFonte: String
+}
+
+class ObservacaoClima <<proposta nova US06>> {
+  +id: Long
+  +instante: DateTime {UTC, fim do acúmulo}
+  +intervaloSeg: Integer
+  +chuva: Decimal [0..1] {mm; null = sem medição}
+  +temperatura: Decimal [0..1] {°C; null = sem medição}
+  +unidadeChuva = "mm"
+  +unidadeTemperatura = "degC"
+  +fonte, versaoFonte: String
+  +coletadaEm: DateTime
+}
+
+class ColetaClima <<proposta nova US06>> {
+  +id: UUID
+  +fonte: INMET | CGE
+  +previstaEm, iniciadaEm: DateTime
+  +finalizadaEm: DateTime [0..1]
+  +estado: EM_ANDAMENTO | OK | PARCIAL | FALHA | INDISPONIVEL
+  +recebidas, novas: Integer
+  +erro: String [0..1]
+}
+
+class TrechoEstacaoClima <<proposta nova US06>> {
+  +fonte: INMET | CGE
+  +distanciaM: Decimal [0..1]
+  +raioMaximoM: Decimal
+  +situacao: ASSOCIADO | FORA_DO_RAIO | SEM_ESTACAO
+  +crsMedicao = "EPSG:31983"
+  +versaoRegra: String
+  +calculadoEm: DateTime
+}
+
+EstacaoMeteorologica "1" -- "0..*" ObservacaoClima : mede
+ColetaClima "0..1" -- "0..*" ObservacaoClima : primeira gravação
+Trecho "1" -- "0..*" TrechoEstacaoClima : vínculo espacial\n(um por fonte)
+TrechoEstacaoClima "0..*" -- "0..1" EstacaoMeteorologica : estação usada
+Trecho "1" -- "0..*" MedicaoContexto : contexto associado
+MedicaoContexto ..> TrechoEstacaoClima : CLIMA usa
+MedicaoContexto ..> ObservacaoClima : CLIMA usa
+
+note bottom of ColetaClima
+  Separada de ExecucaoColeta (ciclos GPS):
+  a qualidade da coleta de ônibus conta
+  ExecucaoColeta sem filtrar por fonte.
+end note
+@enduml
