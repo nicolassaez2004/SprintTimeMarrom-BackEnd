@@ -28,6 +28,10 @@ INTERVALO_FONTE = {"INMET": INTERVALO_INMET_SEG, "CGE": INTERVALO_CGE_SEG}
 META_COBERTURA_PCT = 95.0
 UNIDADES = {"chuva": "mm", "temperatura": "°C"}
 LIMITE_SEM_MEDICAO_LISTADOS = 100
+DENOMINADOR = ("Janelas nativas da fonte (INMET 1 h, CGE 15 min, em UTC) inteiramente dentro do "
+               "período, desde o início de operação da estação. Cada janela conta uma vez, por "
+               "variável; observações repetidas ou fora da grade não somam. Períodos de "
+               "indisponibilidade da fonte não são descontados do denominador.")
 
 
 class VinculoClimaInexistente(LookupError):
@@ -66,6 +70,7 @@ def _cobertura(janelas):
     chuva = sum(1 for j in janelas if j["chuva_mm"] is not None)
     temperatura = sum(1 for j in janelas if j["temperatura_c"] is not None)
     sem_medicao = [j["fim"] for j in janelas if j["motivo"]]
+    sem_observacao = sum(1 for j in janelas if j["chuva_mm"] is None and j["temperatura_c"] is None)
 
     def pct(recebidas):
         return None if esperadas == 0 else round(100 * recebidas / esperadas, 2)
@@ -74,7 +79,9 @@ def _cobertura(janelas):
         "janelas_esperadas": esperadas,
         "chuva_recebidas": chuva, "chuva_pct": pct(chuva),
         "temperatura_recebidas": temperatura, "temperatura_pct": pct(temperatura),
+        # Janelas com alguma variável ausente; `janelas_sem_observacao`: sem nenhuma das duas.
         "janelas_sem_medicao": len(sem_medicao),
+        "janelas_sem_observacao": sem_observacao,
         "meta_pct": META_COBERTURA_PCT,
     }
 
@@ -120,7 +127,7 @@ def consultar_clima_trecho(trecho_id, inicio, fim, fonte="INMET", agora=None):
     else:
         janelas = [{
             "inicio": _iso(f - timedelta(seconds=intervalo)), "fim": _iso(f),
-            "chuva_mm": None, "temperatura_c": None, "motivo": "SEM_ESTACAO",
+            "chuva_mm": None, "temperatura_c": None, "motivo": vinculo.situacao,
         } for f in fins_de_janela(inicio, limite, intervalo)]
     return {
         "trecho": {"id": trecho.id, "versao_gtfs_id": trecho.versao_gtfs_id,
@@ -191,7 +198,13 @@ def cobertura_mensal(ano, mes, fonte="INMET", agora=None):
         ColetaClima.prevista_em < fim_mes).group_by(ColetaClima.estado).all()))
     return {
         "fonte": fonte, "mes": f"{ano:04d}-{mes:02d}", "fuso_do_mes": "America/Sao_Paulo",
-        "meta_pct": META_COBERTURA_PCT, "estacoes": resultado,
+        "meta_pct": META_COBERTURA_PCT, "denominador": DENOMINADOR,
+        "estacoes_consideradas": "usadas por trechos (ASSOCIADO)" if usadas else "todas da fonte (nenhum vínculo)",
+        "limitacoes": [
+            "AMOSTRA: mês em curso ou estação iniciada no meio do mês; não vale como resultado mensal.",
+            "Mede a chegada das observações; não valida a medição contra outra fonte.",
+        ],
+        "estacoes": resultado,
         "coletas_por_estado": dict(sorted(coletas.items())),
         "calculado_em": _iso(agora),
     }
