@@ -43,5 +43,6 @@ def upgrade():
 
 
 def downgrade():
-    op.drop_index("ix_medicoes_contexto_trecho_tipo_inicio", table_name="medicoes_contexto")
+    # No MySQL o índice sustenta a FK de trecho_id (erro 1553 se removido antes);
+    # remover a tabela já remove seus índices.
     op.drop_table("medicoes_contexto")

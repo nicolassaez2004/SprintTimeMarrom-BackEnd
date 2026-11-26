@@ -23,6 +23,20 @@ from app.models import ClassificacaoInfraestrutura, VersaoInfraestrutura
 
 CRS_DESTINO = "EPSG:4326"
 CATEGORIAS = {"CORREDOR", "FAIXA_EXCLUSIVA"}
+# Envelope generoso da Grande São Paulo (lon_min, lat_min, lon_max, lat_max). Não é
+# o limite municipal: só detecta CRS declarado errado ou latitude/longitude trocadas.
+ENVELOPE_SAO_PAULO = (-47.5, -24.5, -45.5, -23.0)
+
+
+def _coordenadas(geom):
+    partes = geom.geoms if hasattr(geom, "geoms") else [geom]
+    return [ponto for parte in partes for ponto in parte.coords]
+
+
+def _dentro_do_envelope(geom):
+    lon_min, lat_min, lon_max, lat_max = ENVELOPE_SAO_PAULO
+    return all(lon_min <= lon <= lon_max and lat_min <= lat <= lat_max
+               for lon, lat, *_ in _coordenadas(geom))
 
 
 def _chave_feicao(geometria, atributos, categoria):
@@ -66,8 +80,16 @@ def comparar_versoes(versao_anterior, versao_nova):
 
 
 def importar_geojson(origem, *, fonte, url_fonte, versao_fonte, crs_origem,
-                     categoria, capturada_em=None, id_field=None):
-    """Persiste um snapshot GeoJSON; repetir o mesmo arquivo/fonte é idempotente."""
+                     categoria, capturada_em=None, id_field=None, filtro=None):
+    """Persiste um snapshot GeoJSON; repetir o mesmo arquivo/fonte/filtro é idempotente.
+
+    ``filtro``: ``{atributo: [valores aceitos]}`` (ex.: só corredores "Em Operação").
+    Feições fora do filtro não viram infraestrutura, mas ficam listadas na versão;
+    o arquivo original não é alterado. Os valores aceitos são decisão do PO.
+    """
+    if filtro is not None and (not isinstance(filtro, dict) or not filtro or not all(
+            isinstance(v, list) and v for v in filtro.values())):
+        raise ValueError("filtro deve ser {atributo: [valores aceitos]}")
     if fonte not in {"GeoSampa", "OpenStreetMap"}:
         raise ValueError("fonte deve ser GeoSampa ou OpenStreetMap")
     if categoria not in CATEGORIAS:
@@ -83,35 +105,68 @@ def importar_geojson(origem, *, fonte, url_fonte, versao_fonte, crs_origem,
     if collection.get("type") != "FeatureCollection" or not collection.get("features"):
         raise ValueError("infraestrutura precisa ser uma FeatureCollection GeoJSON não vazia")
     crs_obj = CRS.from_user_input(crs_origem)
+    crs_arquivo = ((collection.get("crs") or {}).get("properties") or {}).get("name")
+    if crs_arquivo and not crs_obj.equals(CRS.from_user_input(crs_arquivo), ignore_axis_order=True):
+        raise ValueError(f"crs_origem {crs_origem} diverge do CRS declarado no arquivo ({crs_arquivo})")
     transformer = Transformer.from_crs(crs_obj, CRS_DESTINO, always_xy=True)
-    feicoes = []
+    feicoes, vistos, excluidas, por_geometria, duplicadas = [], set(), {}, {}, []
     for i, feature in enumerate(collection["features"]):
-        geom = shape(feature.get("geometry"))
-        if geom.is_empty or not geom.is_valid or geom.geom_type not in {"LineString", "MultiLineString"}:
-            raise ValueError("cada feição deve ter geometria linear válida e não vazia")
-        geom = transform(geom, transformer.transform, interleaved=False)
-        if geom.is_empty or not geom.is_valid:
-            raise ValueError("geometria inválida após conversão para WGS84")
-        props = feature.get("properties") or {}
+        props = (feature or {}).get("properties") or {}
         fid = props.get(id_field, feature.get("id")) if id_field else feature.get("id")
         fid = str(fid if fid is not None else i)
+        if fid in vistos:
+            raise ValueError(f"identificador de feição repetido no snapshot: {fid}")
+        vistos.add(fid)
+        try:
+            geom = shape(feature["geometry"])
+        except (KeyError, TypeError, AttributeError, ValueError, IndexError):
+            raise ValueError(f"feição {fid} sem geometria GeoJSON legível") from None
+        if geom.is_empty or not geom.is_valid or geom.geom_type not in {"LineString", "MultiLineString"}:
+            raise ValueError(f"feição {fid} deve ter geometria linear válida e não vazia")
+        geom = transform(geom, transformer.transform, interleaved=False)
+        if geom.is_empty or not geom.is_valid or geom.length <= 0:
+            raise ValueError(f"feição {fid} inválida ou sem comprimento após conversão para WGS84")
+        if not _dentro_do_envelope(geom):
+            raise ValueError(f"feição {fid} fora da região de São Paulo após conversão: "
+                             "confira crs_origem e a ordem longitude/latitude")
+        fora = [campo for campo, aceitos in (filtro or {}).items() if props.get(campo) not in aceitos]
+        if fora:
+            excluidas[fid] = {campo: props.get(campo) for campo in fora}
+            continue
+        # Mesma geometria com outro identificador: mantida (a classificação une), mas registrada.
+        assinatura = geom.normalize().wkb_hex
+        if assinatura in por_geometria:
+            duplicadas.append([fid, por_geometria[assinatura]])
+        por_geometria.setdefault(assinatura, fid)
         feicoes.append((fid, mapping(geom), props))
-    checksum = hashlib.sha256(conteudo).hexdigest()
-    existente = next((v for v in VersaoInfraestrutura.query.filter_by(
-        fonte=fonte, sha256=checksum).all()
-        if v.metadados.get("categoria") == categoria), None)
+    if not feicoes:
+        raise ValueError("nenhuma feição restou após o filtro")
+    checksum_arquivo = hashlib.sha256(conteudo).hexdigest()
+    # Identidade da importação: o arquivo e, se houver, o filtro aplicado a ele.
+    checksum = checksum_arquivo if filtro is None else hashlib.sha256(
+        (checksum_arquivo + json.dumps(filtro, sort_keys=True, ensure_ascii=False)).encode()).hexdigest()
+    existente = VersaoInfraestrutura.query.filter_by(fonte=fonte, sha256=checksum).one_or_none()
     if existente:
+        if existente.metadados.get("categoria") != categoria:
+            raise ValueError(f"o mesmo arquivo já foi importado como {existente.metadados.get('categoria')}")
         return existente
-    anterior = (VersaoInfraestrutura.query.filter_by(fonte=fonte)
-                .order_by(VersaoInfraestrutura.capturada_em.desc(), VersaoInfraestrutura.id.desc())
-                .first())
+    capturada_em = capturada_em or datetime.now(timezone.utc)
+    # Mudanças só se comparam com a versão anterior da mesma fonte e camada:
+    # corredores e faixas são arquivos distintos.
+    anterior = next((v for v in VersaoInfraestrutura.query.filter(
+        VersaoInfraestrutura.fonte == fonte, VersaoInfraestrutura.capturada_em <= capturada_em,
+    ).order_by(VersaoInfraestrutura.capturada_em.desc(), VersaoInfraestrutura.id.desc())
+        if v.metadados.get("categoria") == categoria), None)
     versao_id = str(uuid5(NAMESPACE_URL, f"infraestrutura:{fonte}:{checksum}"))
     versao = VersaoInfraestrutura(
         id=versao_id, fonte=fonte, url_fonte=url_fonte, versao_fonte=str(versao_fonte),
-        sha256=checksum, crs_origem=crs_obj.to_string(),
-        capturada_em=capturada_em or datetime.now(timezone.utc),
+        sha256=checksum, crs_origem=crs_obj.to_string(), capturada_em=capturada_em,
         metadados={"crs_armazenado": CRS_DESTINO, "categoria": categoria,
-                   "feicoes": len(feicoes), "sha256_arquivo": checksum,
+                   "feicoes": len(feicoes), "sha256_arquivo": checksum_arquivo,
+                   # Para reproduzir: arquivo original (imutável), identificador e filtro.
+                   "arquivo_origem": None if isinstance(origem, dict) else Path(origem).name,
+                   "id_field": id_field, "filtro": filtro, "excluidas_por_filtro": excluidas,
+                   "geometrias_duplicadas": duplicadas,
                    "regra_divergencia": "GeoSampa é referência de categoria; OSM complementa e conflitos ficam separados."},
     )
     db.session.add(versao)

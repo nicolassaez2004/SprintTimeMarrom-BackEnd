@@ -2,8 +2,34 @@
 from datetime import timezone
 
 from app import db
+from app.contexto.infraestrutura.associacao import classificar_rede_vigente
 from app.contexto.infraestrutura.importacao import importar_geojson
+from app.core.tempo import FUSO
 from app.models import AtualizacaoMensalInfraestrutura
+
+
+def _mes(agora):
+    """Mês civil de São Paulo (fuso operacional do projeto), não o de UTC."""
+    if agora.tzinfo is None:
+        raise ValueError("a agenda mensal precisa de instante com fuso")
+    return agora.astimezone(FUSO).strftime("%Y-%m")
+
+
+def registrar_classificacao_vigente(agora):
+    """Depois da atualização OK do mês, classifica a rede GTFS vigente uma vez por
+    (rede, conjunto de snapshots) e anota o resumo no recibo mensal."""
+    recibo = db.session.get(AtualizacaoMensalInfraestrutura, _mes(agora))
+    if recibo is None or recibo.estado != "OK":
+        return None
+    anteriores = recibo.resultado.get("classificacoes", [])
+    feitos = [(c.get("versao_gtfs_id"), c.get("versao_conjunto")) for c in anteriores]
+    resumo = classificar_rede_vigente(agora, feitos)
+    if resumo is None or "versao_conjunto" not in resumo:
+        return resumo  # já feito, ou motivo (sem rede/snapshots): tenta de novo depois
+    recibo = db.session.get(AtualizacaoMensalInfraestrutura, recibo.mes)
+    recibo.resultado = {**recibo.resultado, "classificacoes": [*anteriores, resumo]}
+    db.session.commit()
+    return resumo
 
 
 def atualizar_mensal(agora, carregar_bases):
@@ -13,10 +39,8 @@ def atualizar_mensal(agora, carregar_bases):
     ``importar_geojson``; fica injetável para testes e para trocar a captura
     HTTP sem acoplar persistência ao fornecedor.
     """
-    if agora.tzinfo is None:
-        raise ValueError("a agenda mensal precisa de instante com fuso")
+    mes = _mes(agora)
     agora = agora.astimezone(timezone.utc)
-    mes = agora.strftime("%Y-%m")
     recibo = db.session.get(AtualizacaoMensalInfraestrutura, mes)
     if recibo and recibo.estado == "OK":
         return recibo.resultado

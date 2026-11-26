@@ -1,10 +1,11 @@
 """Entrada da atualização mensal usada pelo processo ``app.tarefas``."""
+from datetime import datetime
 import json
 from pathlib import Path
 
 from flask import current_app
 
-from app.contexto.infraestrutura.agenda import atualizar_mensal
+from app.contexto.infraestrutura.agenda import atualizar_mensal, registrar_classificacao_vigente
 
 
 def atualizar_infraestrutura(agora):
@@ -28,7 +29,13 @@ def atualizar_infraestrutura(agora):
             entrada = dict(base)
             entrada["origem"] = (caminho.parent / entrada["arquivo"]).resolve()
             del entrada["arquivo"]
+            # Data/hora real da captura do arquivo (ISO 8601 com fuso), se registrada.
+            if isinstance(entrada.get("capturada_em"), str):
+                entrada["capturada_em"] = datetime.fromisoformat(entrada["capturada_em"])
+                if entrada["capturada_em"].tzinfo is None:
+                    raise ValueError("capturada_em do manifesto precisa de fuso")
             saida.append(entrada)
         return saida
 
-    return atualizar_mensal(agora, carregar)
+    resultado = atualizar_mensal(agora, carregar)
+    return {**resultado, "classificacao": registrar_classificacao_vigente(agora)}

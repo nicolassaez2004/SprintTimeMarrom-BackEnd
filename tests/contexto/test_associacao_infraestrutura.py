@@ -64,7 +64,13 @@ def test_classifica_misto_parcial_e_sem_cobertura_sem_inferir_via_comum(tmp_path
         assert set(misto.categorias_confirmadas) == {"CORREDOR", "FAIXA_EXCLUSIVA"}
         assert math.isclose(misto.fracao_corredor, 0.5, abs_tol=0.03)
         assert math.isclose(misto.fracao_faixa, 0.5, abs_tol=0.03)
-        assert all(item["fonte"] == "GeoSampa" for item in misto.feicoes_associadas)
+        aplicadas = [i for i in misto.feicoes_associadas if i["uso"] == "APLICADA"]
+        assert aplicadas and all(item["fonte"] == "GeoSampa" for item in aplicadas)
+        # A OSM diverge (faixa onde a GeoSampa tem corredor): superada, mas registrada.
+        conflito, = [i for i in misto.feicoes_associadas if i["uso"] == "SUPERADA_POR_GEOSAMPA"]
+        assert conflito["identificador_fonte"] == "way-conflict"
+        assert conflito["comprimento_divergente_m"] > 400 > conflito["comprimento_concordante_m"]
+        assert resumo["percentual_classificado"] == round(100 / 3, 2)
         sem = AssociacaoInfraestruturaTrecho.query.filter_by(trecho_id="trecho-sem-cobertura").one()
         assert sem.classificacao == "SEM_COBERTURA"
         assert sem.regra["via_comum_confirmada"] is False
