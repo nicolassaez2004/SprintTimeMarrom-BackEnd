@@ -72,3 +72,10 @@ class Config:
     # uma passagem. Padrão adotado em 24/11/2026: 120 s (4 ciclos de 30 s), o
     # valor conferido nos 20 casos da US15-T04 (docs/US15-T01.md).
     PASSAGEM_LACUNA_MAXIMA_SEG = os.getenv("PASSAGEM_LACUNA_MAXIMA_SEG") or "120"
+
+    # US08-T01: regras pendentes do PO (docs/US08-T01.md). Vazio = indefinido:
+    # a lacuna herda a da estimativa da US15-T01; sem os dois limites de
+    # velocidade as amostras ficam PENDENTE, nunca válidas por omissão.
+    VELOCIDADE_LACUNA_MAXIMA_SEG = os.getenv("VELOCIDADE_LACUNA_MAXIMA_SEG") or None
+    VELOCIDADE_MINIMA_KMH = os.getenv("VELOCIDADE_MINIMA_KMH") or None
+    VELOCIDADE_MAXIMA_KMH = os.getenv("VELOCIDADE_MAXIMA_KMH") or None
