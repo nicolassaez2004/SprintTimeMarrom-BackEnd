@@ -233,7 +233,7 @@ def test_cge_sem_acesso_registra_indisponivel_sem_bloquear_inmet(app, monkeypatc
 
     from app.contexto.clima import coleta as modulo
     monkeypatch.setattr(modulo, "cliente_inmet", lambda: ClienteFalso({"A701": AMOSTRA_INMET}))
-    monkeypatch.setattr(modulo, "sincronizar_estacoes_inmet", lambda **_: 0)
+    monkeypatch.setattr(modulo, "sincronizar_estacoes_inmet", lambda **_: (0, False))
     db.session.query(ColetaClima).delete()
     db.session.commit()
     coletar_clima(agora)
@@ -377,3 +377,128 @@ def test_rota_contexto_clima(app):
                      "trecho_id=trecho-1&inicio=2026-11-24T10:00:00Z&fim=2026-11-24T11:00:00Z&x=1",
                      "trecho_id=trecho-1&inicio=2026-11-24T10:00:00Z&fim=2026-11-24T11:00:00Z&fonte=OUTRA"):
         assert cliente.get("/contexto/clima?" + consulta).status_code == 400, consulta
+
+
+# ----------------------------------------------------- revisão US06 (26/11/2026)
+
+def test_sentinela_e_valores_impossiveis_viram_nulo_e_nao_derrubam_a_coleta(app):
+    estacao = _estacao("A701", X0, Y0)
+    resposta = [
+        {**AMOSTRA_INMET[0], "CHUVA": "-9999", "TEM_INS": "-9999"},
+        {**AMOSTRA_INMET[1], "CHUVA": "-0.2", "TEM_INS": "71.0"},   # chuva negativa violaria o CHECK
+    ]
+    convertidas = converter_observacoes_inmet(resposta, "A701")
+    assert [(o.chuva_mm, o.temperatura_c, o.descartados) for o in convertidas] == [
+        (None, None, ("chuva", "temperatura")), (None, None, ("chuva", "temperatura"))]
+    agora = datetime(2026, 11, 24, 15, 5, tzinfo=UTC)
+    coleta = coletar_inmet(agora, cliente=ClienteFalso({"A701": resposta}), agora=agora)
+    assert coleta.estado == "OK" and coleta.novas == 2
+    assert {(o.chuva, o.temperatura) for o in ObservacaoClima.query.filter_by(estacao_id=estacao.id)} == {(None, None)}
+
+
+def test_catalogo_ignora_coordenadas_fora_de_wgs84_ou_zeradas():
+    base = {"DC_NOME": "X", "SG_ESTADO": "SP"}
+    estacoes = converter_estacoes_inmet([
+        {**base, "CD_ESTACAO": "A1", "VL_LATITUDE": "-123.5", "VL_LONGITUDE": "-46.6"},
+        {**base, "CD_ESTACAO": "A2", "VL_LATITUDE": "0", "VL_LONGITUDE": "0"},
+        {**base, "CD_ESTACAO": "A701", "VL_LATITUDE": "-23.49", "VL_LONGITUDE": "-46.62"},
+    ])
+    assert [e.codigo for e in estacoes] == ["A701"]
+
+
+def test_erro_inesperado_encerra_a_tentativa_como_falha(app, monkeypatch):
+    _estacao("A701", X0, Y0)
+    from app.contexto.clima import coleta as modulo
+
+    def quebra(*_):
+        raise RuntimeError("banco caiu")
+
+    monkeypatch.setattr(modulo, "_gravar_observacao", quebra)
+    agora = datetime(2026, 11, 24, 15, 5, tzinfo=UTC)
+    with pytest.raises(RuntimeError):
+        coletar_inmet(agora, cliente=ClienteFalso({"A701": AMOSTRA_INMET}), agora=agora)
+    tentativa = ColetaClima.query.one()
+    assert tentativa.estado == "FALHA" and "RuntimeError" in tentativa.erro
+    assert tentativa.finalizada_em is not None
+
+
+def test_trecho_sem_geometria_suficiente_tem_impedimento_explicito(app):
+    _rede([((X0, Y0), (X0 + 500, Y0)), ((X0, Y0), (X0 + 900, Y0)), ((X0, Y0), (X0 + 700, Y0))])
+    ponto = _graus(X0, Y0)
+    db.session.get(Trecho, "trecho-2").geometria = [ponto, ponto]            # um único ponto repetido
+    db.session.get(Trecho, "trecho-3").geometria = [[0.0, 0.0], ponto]       # coordenada nula
+    db.session.commit()
+    _estacao("A701", X0, Y0 + 200)
+    resultado = associar_trechos_a_estacoes("gtfs-us06")
+    assert (resultado.associados, resultado.geometria_invalida, resultado.identificados_pct) == (1, 2, 100.0)
+    invalido = db.session.get(TrechoEstacaoClima, ("trecho-2", "INMET"))
+    assert (invalido.situacao, invalido.estacao_id, invalido.distancia_m) == ("GEOMETRIA_INVALIDA", None, None)
+    corpo = consultar_clima_trecho("trecho-2", datetime(2026, 11, 24, 10, tzinfo=UTC),
+                                   datetime(2026, 11, 24, 11, tzinfo=UTC), agora=datetime(2026, 11, 25, tzinfo=UTC))
+    assert corpo["janelas"][0]["motivo"] == "GEOMETRIA_INVALIDA" and corpo["janelas"][0]["chuva_mm"] is None
+
+
+def test_distancias_conferidas_por_geodesica_independente(app):
+    """Amostra manual: distância UTM 23S x distância geodésica (elipsoide WGS84) ao segmento."""
+    from pyproj import Geod
+    _rede([((X0, Y0), (X0 + 500, Y0)), ((X0 + 3000, Y0 + 4000), (X0 + 3000, Y0 + 9000))])
+    estacao = _estacao("A701", X0 + 250, Y0 + 1200)
+    associar_trechos_a_estacoes("gtfs-us06")
+    geod = Geod(ellps="WGS84")
+    lon_e, lat_e = float(estacao.longitude), float(estacao.latitude)
+    for trecho_id in ("trecho-1", "trecho-2"):
+        trecho = db.session.get(Trecho, trecho_id)
+        (lon1, lat1), (lon2, lat2) = trecho.geometria
+        amostras = [(lon1 + (lon2 - lon1) * k / 2000, lat1 + (lat2 - lat1) * k / 2000) for k in range(2001)]
+        geodesica = min(geod.inv(lon_e, lat_e, lon, lat)[2] for lon, lat in amostras)
+        calculada = db.session.get(TrechoEstacaoClima, (trecho_id, "INMET")).distancia_m
+        assert calculada == pytest.approx(geodesica, rel=0.002), trecho_id   # escala UTM < 0,2%
+
+
+def test_mudanca_no_catalogo_recalcula_o_vinculo(app, monkeypatch):
+    _rede([((X0, Y0), (X0 + 500, Y0))])
+    _estacao("A771", X0, Y0 + 5000)
+    associar_trechos_a_estacoes("gtfs-us06")
+    assert TrechoEstacaoClima.query.one().estacao.codigo == "A771"
+    lon, lat = _graus(X0 + 250, Y0 + 100)
+
+    class Catalogo:
+        def listar_estacoes_automaticas(self):
+            return converter_estacoes_inmet([
+                {"CD_ESTACAO": "A771", "VL_LATITUDE": str(EstacaoMeteorologica.query.one().latitude),
+                 "VL_LONGITUDE": str(EstacaoMeteorologica.query.one().longitude)},
+                {"CD_ESTACAO": "A701", "VL_LATITUDE": f"{lat:.8f}", "VL_LONGITUDE": f"{lon:.8f}"}])
+
+    from app.contexto.clima import coleta as modulo
+    monkeypatch.setattr(modulo, "cliente_inmet", lambda: Catalogo())
+    monkeypatch.setattr(modulo, "coletar_inmet", lambda *a, **k: None)
+    monkeypatch.setattr(modulo, "coletar_cge", lambda *a, **k: None)
+    agora = datetime(2026, 11, 24, 15, 5, tzinfo=UTC)
+    EstacaoMeteorologica.query.update({"atualizada_em": agora - timedelta(days=2)})
+    db.session.commit()
+    coletar_clima(agora)
+    vinculo = TrechoEstacaoClima.query.one()
+    assert vinculo.estacao.codigo == "A701" and vinculo.distancia_m == pytest.approx(100, abs=1)
+    # Catálogo sem mudança não recalcula: calculado_em continua o mesmo.
+    antes = vinculo.calculado_em
+    EstacaoMeteorologica.query.update({"atualizada_em": agora - timedelta(days=2)})
+    db.session.commit()
+    coletar_clima(agora + timedelta(hours=1))
+    assert TrechoEstacaoClima.query.one().calculado_em == antes
+
+
+def test_cobertura_nao_conta_repeticao_nem_instante_fora_da_grade(app):
+    _rede([((X0, Y0), (X0 + 500, Y0))])
+    estacao = _estacao("A701", X0, Y0 + 200)
+    associar_trechos_a_estacoes("gtfs-us06")
+    _obs(estacao, 11, Decimal("0"), Decimal("20"))
+    db.session.add(ObservacaoClima(estacao_id=estacao.id, instante=datetime(2026, 11, 24, 11, 30, tzinfo=UTC),
+                                   intervalo_seg=3600, chuva=Decimal("1"), temperatura=Decimal("20"),
+                                   fonte="INMET", versao_fonte="t"))
+    db.session.commit()
+    corpo = consultar_clima_trecho("trecho-1", datetime(2026, 11, 24, 10, tzinfo=UTC),
+                                   datetime(2026, 11, 24, 12, tzinfo=UTC), agora=datetime(2026, 11, 25, tzinfo=UTC))
+    c = corpo["cobertura"]
+    assert (c["janelas_esperadas"], c["chuva_recebidas"], c["janelas_sem_observacao"]) == (2, 1, 1)
+    mensal = cobertura_mensal(2026, 11, agora=datetime(2026, 11, 25, tzinfo=UTC))
+    assert "não são descontados" in mensal["denominador"] and mensal["limitacoes"]

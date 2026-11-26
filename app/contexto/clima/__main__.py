@@ -15,7 +15,9 @@ import sys
 
 from app import create_app
 from app.contexto.clima.associacao import associar_trechos_a_estacoes
-from app.contexto.clima.coleta import coletar_cge, coletar_inmet, sincronizar_estacoes_inmet
+from app.contexto.clima.coleta import (
+    coletar_cge, coletar_inmet, reassociar_versoes, sincronizar_estacoes_inmet,
+)
 from app.consultas.clima import cobertura_mensal
 from app.integrations.clima import FonteClimaIndisponivel
 
@@ -47,7 +49,9 @@ def main(argv=None):
     with app.app_context():
         try:
             if args.comando == "estacoes":
-                saida = {"estacoes_gravadas": sincronizar_estacoes_inmet()}
+                gravadas, alterou = sincronizar_estacoes_inmet()
+                saida = {"estacoes_gravadas": gravadas, "catalogo_alterado": alterou,
+                         "versoes_reassociadas": reassociar_versoes("INMET") if alterou else []}
             elif args.comando == "coletar":
                 coleta = (coletar_inmet if args.fonte == "INMET" else coletar_cge)()
                 saida = {"fonte": coleta.fonte, "estado": coleta.estado, "recebidas": coleta.recebidas,

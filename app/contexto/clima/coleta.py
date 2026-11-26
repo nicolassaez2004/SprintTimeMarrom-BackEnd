@@ -10,6 +10,7 @@ periódica `coletar_clima(agora)`; nunca dentro de uma requisição HTTP.
   registrada como INDISPONIVEL e o INMET segue sem bloqueio.
 - Repetição: (estação, instante) é único. Uma observação já gravada só é
   alterada para preencher um valor que antes veio nulo.
+- Catálogo alterado (estação nova ou com coordenadas diferentes): os vínculos trecho → estação já calculados são recalculados.
 """
 
 import json
@@ -25,7 +26,7 @@ from app.integrations.clima import (
     INTERVALO_INMET_SEG, VERSAO_FONTE_INMET, VERSAO_FONTE_INMET_ESTACOES,
     CGEClient, FonteClimaIndisponivel, INMETClient,
 )
-from app.models import ColetaClima, EstacaoMeteorologica, ObservacaoClima, agora_utc
+from app.models import ColetaClima, EstacaoMeteorologica, ObservacaoClima, TrechoEstacaoClima, agora_utc
 
 logger = logging.getLogger(__name__)
 
@@ -60,17 +61,23 @@ def cliente_cge():
 
 
 def sincronizar_estacoes_inmet(cliente=None, agora=None, raio_km=None):
-    """Grava ou atualiza as estações automáticas do INMET num raio de São Paulo."""
+    """Grava ou atualiza as estações automáticas do INMET num raio de São Paulo.
+
+    Devolve (gravadas, alterou): `alterou` indica estação nova ou com
+    coordenadas diferentes, o que exige recalcular o vínculo dos trechos.
+    """
     cliente = cliente or cliente_inmet()
     agora = agora or agora_utc()
     raio_km = raio_km if raio_km is not None else float(current_app.config["CLIMA_RAIO_CATALOGO_KM"])
     existentes = {e.codigo: e for e in EstacaoMeteorologica.query.filter_by(fonte="INMET")}
-    gravadas = 0
+    antes = {c: (e.latitude, e.longitude) for c, e in existentes.items()}
+    gravadas, alterou = 0, False
     for estacao in cliente.listar_estacoes_automaticas():
         if _distancia_km(float(estacao.latitude), float(estacao.longitude), *CENTRO_SP) > raio_km:
             continue
         registro = existentes.get(estacao.codigo) or EstacaoMeteorologica(
             fonte="INMET", codigo=estacao.codigo)
+        alterou = alterou or antes.get(estacao.codigo) != (estacao.latitude, estacao.longitude)
         registro.nome = estacao.nome
         registro.latitude, registro.longitude = estacao.latitude, estacao.longitude
         registro.altitude_m = estacao.altitude_m
@@ -82,8 +89,19 @@ def sincronizar_estacoes_inmet(cliente=None, agora=None, raio_km=None):
         db.session.add(registro)
         gravadas += 1
     db.session.commit()
-    _registrar("clima_estacoes_inmet", estacoes=gravadas)
-    return gravadas
+    _registrar("clima_estacoes_inmet", estacoes=gravadas, alterou=alterou)
+    return gravadas, alterou
+
+
+def reassociar_versoes(fonte, agora=None):
+    """Recalcula o vínculo das versões GTFS que já têm vínculo para a fonte."""
+    from app.contexto.clima.associacao import associar_trechos_a_estacoes
+    versoes = [v for (v,) in db.session.query(TrechoEstacaoClima.versao_gtfs_id)
+               .filter_by(fonte=fonte).distinct()]
+    for versao in sorted(versoes):
+        resultado = associar_trechos_a_estacoes(versao, fonte=fonte, agora=agora)
+        _registrar("clima_vinculo_recalculado", **resultado.como_dict())
+    return versoes
 
 
 def _gravar_observacao(estacao, obs, coleta, agora):
@@ -117,21 +135,31 @@ def coletar_inmet(prevista_em=None, *, cliente=None, agora=None):
 
     estacoes = EstacaoMeteorologica.query.filter_by(fonte="INMET").order_by(
         EstacaoMeteorologica.codigo).all()
-    falhas, motivo = 0, None
-    for estacao in estacoes:
-        try:
-            observacoes = cliente.observacoes_horarias(
-                estacao.codigo, inicio_periodo.date(), agora.date())
-        except FonteClimaIndisponivel as erro:
-            falhas, motivo = falhas + 1, str(erro)[:255]
-            continue
-        for obs in observacoes:
-            # A fonte pode listar horas futuras do dia; só o que já ocorreu.
-            if obs.instante > agora or obs.instante <= inicio_periodo:
+    falhas, motivo, descartados = 0, None, 0
+    try:
+        for estacao in estacoes:
+            try:
+                observacoes = cliente.observacoes_horarias(
+                    estacao.codigo, inicio_periodo.date(), agora.date())
+            except FonteClimaIndisponivel as erro:
+                falhas, motivo = falhas + 1, str(erro)[:255]
                 continue
-            coleta.recebidas += 1
-            coleta.novas += int(_gravar_observacao(estacao, obs, coleta, agora))
+            for obs in observacoes:
+                # A fonte pode listar horas futuras do dia; só o que já ocorreu.
+                if obs.instante > agora or obs.instante <= inicio_periodo:
+                    continue
+                coleta.recebidas += 1
+                descartados += len(obs.descartados)
+                coleta.novas += int(_gravar_observacao(estacao, obs, coleta, agora))
+            db.session.commit()
+    except Exception as erro:
+        # Erro inesperado (ex.: banco): a tentativa termina como FALHA, não fica
+        # EM_ANDAMENTO. O já gravado permanece; a releitura de 48 h completa o resto.
+        db.session.rollback()
+        coleta.estado, coleta.erro = "FALHA", f"erro inesperado ({type(erro).__name__})"
+        coleta.finalizada_em = agora_utc()
         db.session.commit()
+        raise
 
     if not estacoes:
         coleta.estado, coleta.erro = "FALHA", "nenhuma estação INMET cadastrada"
@@ -144,8 +172,8 @@ def coletar_inmet(prevista_em=None, *, cliente=None, agora=None):
         coleta.estado = "OK"
     coleta.finalizada_em = agora_utc()
     db.session.commit()
-    _registrar("clima_coleta", fonte="INMET", estado=coleta.estado,
-               recebidas=coleta.recebidas, novas=coleta.novas, erro=coleta.erro)
+    _registrar("clima_coleta", fonte="INMET", estado=coleta.estado, recebidas=coleta.recebidas,
+               novas=coleta.novas, valores_invalidos_descartados=descartados, erro=coleta.erro)
     return coleta
 
 
@@ -193,10 +221,15 @@ def coletar_clima(agora):
                       .filter_by(fonte="INMET").scalar())
         if atualizado is None or atualizado <= agora - INTERVALO_CATALOGO:
             try:
-                sincronizar_estacoes_inmet(agora=agora)
+                _, alterou = sincronizar_estacoes_inmet(agora=agora)
+                if alterou:
+                    reassociar_versoes("INMET", agora=agora)
             except FonteClimaIndisponivel as erro:
                 db.session.rollback()
                 _registrar("clima_estacoes_inmet_falha", logging.ERROR, erro=str(erro)[:255])
+            except Exception as erro:  # Falha do vínculo não impede a coleta.
+                db.session.rollback()
+                _registrar("clima_vinculo_falha", logging.ERROR, tipo_erro=type(erro).__name__)
         try:
             coletar_inmet(prevista, agora=agora)
         except Exception as erro:  # Nem o INMET impede a tentativa do CGE.

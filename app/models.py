@@ -1260,15 +1260,18 @@ class TrechoEstacaoClima(db.Model):
         ),
         CheckConstraint("fonte IN ('INMET', 'CGE')", name="ck_trecho_estacao_clima_fonte"),
         CheckConstraint(
-            "situacao IN ('ASSOCIADO', 'FORA_DO_RAIO', 'SEM_ESTACAO')",
+            "situacao IN ('ASSOCIADO', 'FORA_DO_RAIO', 'SEM_ESTACAO', 'GEOMETRIA_INVALIDA')",
             name="ck_trecho_estacao_clima_situacao",
         ),
+        # Sem estação ou sem traçado válido não há distância; com estação, sempre há.
         CheckConstraint(
-            "(situacao = 'SEM_ESTACAO' AND estacao_id IS NULL AND distancia_m IS NULL) OR "
-            "(situacao <> 'SEM_ESTACAO' AND estacao_id IS NOT NULL AND distancia_m >= 0)",
+            "(situacao IN ('SEM_ESTACAO', 'GEOMETRIA_INVALIDA') AND estacao_id IS NULL "
+            "AND distancia_m IS NULL) OR "
+            "(situacao IN ('ASSOCIADO', 'FORA_DO_RAIO') AND estacao_id IS NOT NULL AND distancia_m >= 0)",
             name="ck_trecho_estacao_clima_coerencia",
         ),
         Index("ix_trecho_estacao_clima_estacao", "estacao_id"),
+        Index("ix_trecho_estacao_clima_fonte_versao", "fonte", "versao_gtfs_id"),
     )
 
     trecho_id = db.Column(db.String(36), primary_key=True)
@@ -1278,7 +1281,7 @@ class TrechoEstacaoClima(db.Model):
     estacao_id = db.Column(db.String(36), nullable=True)
     distancia_m = db.Column(Double, nullable=True)
     raio_maximo_m = db.Column(Double, nullable=False)
-    situacao = db.Column(db.String(16), nullable=False)
+    situacao = db.Column(db.String(24), nullable=False)
     crs_medicao = db.Column(db.String(16), nullable=False)
     versao_regra = db.Column(db.String(32), nullable=False)
     calculado_em = db.Column(UTCDateTime, nullable=False, default=agora_utc)

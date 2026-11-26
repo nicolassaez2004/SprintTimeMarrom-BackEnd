@@ -6,7 +6,10 @@ gravam no banco (diagrama de componentes: "Clientes das fontes").
 INMET (API apitempo): os horários `DT_MEDICAO` + `HR_MEDICAO` (HHMM) estão em
 UTC, como informa o INMET. `CHUVA` é a precipitação acumulada na hora que
 termina em `HR_MEDICAO`, em mm; `TEM_INS` é a temperatura instantânea, em °C.
-Os valores chegam como texto e ausência chega como `null`.
+Os valores chegam como texto e ausência chega como `null`. O sentinela -9999
+(usado nos arquivos históricos do INMET) e valores fisicamente impossíveis
+(chuva negativa, temperatura fora de -90..60 °C) viram NULL e ficam listados
+em `descartados`: medição inválida nunca é gravada como valor válido.
 """
 
 from dataclasses import dataclass
@@ -20,6 +23,8 @@ INTERVALO_INMET_SEG = 3600
 INTERVALO_CGE_SEG = 900
 VERSAO_FONTE_INMET = "inmet-apitempo-horaria"
 VERSAO_FONTE_INMET_ESTACOES = "inmet-apitempo-estacoes-T"
+SENTINELA_AUSENTE = Decimal(-9999)
+LIMITES = {"chuva": (Decimal(0), Decimal("99999.99")), "temperatura": (Decimal(-90), Decimal(60))}
 
 
 class FonteClimaIndisponivel(RuntimeError):
@@ -47,6 +52,8 @@ class ObservacaoFonte:
     instante: datetime
     chuva_mm: Decimal | None
     temperatura_c: Decimal | None
+    # Variáveis publicadas com valor inválido (sentinela ou fora do limite físico) e gravadas NULL.
+    descartados: tuple = ()
 
 
 def _decimal(valor):
@@ -62,6 +69,18 @@ def _decimal(valor):
         raise FonteClimaIndisponivel("valor numérico inválido na resposta do INMET") from erro
     if not numero.is_finite():
         raise FonteClimaIndisponivel("valor numérico inválido na resposta do INMET")
+    return numero
+
+
+def _medida(valor, variavel, descartados):
+    """Decimal válido da variável ou None; inválido entra em `descartados`."""
+    numero = _decimal(valor)
+    if numero is None:
+        return None
+    minimo, maximo = LIMITES[variavel]
+    if numero <= SENTINELA_AUSENTE or not minimo <= numero <= maximo:
+        descartados.append(variavel)
+        return None
     return numero
 
 
@@ -93,8 +112,9 @@ def converter_estacoes_inmet(corpo):
         if not isinstance(item, dict) or not item.get("CD_ESTACAO"):
             continue
         latitude, longitude = _decimal(item.get("VL_LATITUDE")), _decimal(item.get("VL_LONGITUDE"))
-        if latitude is None or longitude is None:
-            continue  # Sem coordenadas não há como associar a trechos.
+        if (latitude is None or longitude is None or not -90 <= latitude <= 90
+                or not -180 <= longitude <= 180 or (latitude == 0 and longitude == 0)):
+            continue  # Sem coordenadas válidas não há como associar a trechos.
         estacoes.append(EstacaoFonte(
             codigo=str(item["CD_ESTACAO"]).strip(),
             nome=str(item.get("DC_NOME") or item["CD_ESTACAO"]).strip(),
@@ -117,11 +137,13 @@ def converter_observacoes_inmet(corpo, codigo_esperado):
         codigo = str(item.get("CD_ESTACAO") or codigo_esperado).strip()
         if codigo != codigo_esperado:
             raise FonteClimaIndisponivel("o INMET respondeu com outra estação")
+        descartados = []
         observacoes.append(ObservacaoFonte(
             codigo_estacao=codigo,
             instante=instante_inmet(item.get("DT_MEDICAO"), item.get("HR_MEDICAO")),
-            chuva_mm=_decimal(item.get("CHUVA")),
-            temperatura_c=_decimal(item.get("TEM_INS")),
+            chuva_mm=_medida(item.get("CHUVA"), "chuva", descartados),
+            temperatura_c=_medida(item.get("TEM_INS"), "temperatura", descartados),
+            descartados=tuple(descartados),
         ))
     return observacoes
 
