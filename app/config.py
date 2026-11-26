@@ -45,6 +45,8 @@ class Config:
     )
     GTFS_STORAGE_DIR = os.getenv("GTFS_STORAGE_DIR") or None
     GTFS_TASK_LOG_FILE = os.getenv("GTFS_TASK_LOG_FILE") or None
+    # Manifesto para snapshots GeoJSON mensais; consulte data/infraestrutura/README.md.
+    INFRAESTRUTURA_SNAPSHOT_MANIFEST = os.getenv("INFRAESTRUTURA_SNAPSHOT_MANIFEST") or None
     PROGRAMACAO_STORAGE_DIR = os.getenv("PROGRAMACAO_STORAGE_DIR") or None
     DOCUMENTOS_STORAGE_DIR = os.getenv("DOCUMENTOS_STORAGE_DIR") or None
     EXPORTACOES_DIR = os.getenv("EXPORTACOES_DIR") or None
