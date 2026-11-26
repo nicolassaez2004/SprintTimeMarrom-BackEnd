@@ -272,3 +272,11 @@ def test_integra_com_passagens_gravadas_pela_us15_t01(cenario):
         (0, 30, 30), (30, 60, 30), (60, 90, 30)]
     assert all(t.passagem_origem_id and t.passagem_destino_id for t in r.trechos)
     assert [(o.bruto.horario_gps, o.bruto.latitude, o.bruto.longitude) for o in obs] == brutos_antes
+
+
+def test_motivo_separado_por_ponta_do_trecho(cenario):
+    # C sem passagem e D sem horário previsto: cada ponta guarda o seu motivo.
+    previstos = {k: v for k, v in PREVISTOS.items() if k != "D"}
+    t = por_trecho(calcular(cenario, {"A": 0, "B": 60, "D": 90}, previstos=previstos))[("C", "D")]
+    assert (t.motivo_origem, t.motivo_destino, t.motivo) == (
+        "passagem_ausente", "horario_previsto_ausente", "passagem_ausente")

@@ -260,16 +260,8 @@ def calcular_indicador_pontualidade(
     )
     por_id = {p.id: p for p in programadas}
     observadas = viagens_observadas(programadas, versao_reconstrucao, versao_correspondencia)
-    itens = []
-    for viagem in sorted(observadas, key=lambda v: (por_id[v.partida_programada_id].saida_prevista, v.id)):
-        ref = _referencia(por_id[viagem.partida_programada_id])
-        saida = _utc(viagem.saida_observada, "saida_observada")
-        if ref.tipo_oferta == "FREQUENCIA":
-            itens.append(DiferencaSaida(viagem.id, ref.data_operacao, "FREQUENCIA",
-                                        "OFERTA_POR_FREQUENCIA", saida, ref))
-        else:
-            itens.append(DiferencaSaida(viagem.id, ref.data_operacao, "CALCULADA", "FIXA_PAREADA",
-                                        saida, ref, (saida - ref.saida_prevista).total_seconds()))
+    itens = [diferenca_saida(viagem, por_id[viagem.partida_programada_id]) for viagem in
+             sorted(observadas, key=lambda v: (por_id[v.partida_programada_id].saida_prevista, v.id))]
     fixas = sum(p.tipo_oferta == "FIXA" for p in programadas)
     frequencia = len(programadas) - fixas
     extra = {
@@ -296,6 +288,20 @@ def calcular_indicador_pontualidade(
         versoes_programacao=versoes_programacao,
         qualidade_extra=extra,
     )
+
+
+def diferenca_saida(viagem, partida: PartidaProgramada) -> DiferencaSaida:
+    """Saída confirmada de uma ``ViagemObservada`` − ``saida_prevista`` da sua partida.
+
+    Também usada pela US19-T02 como atraso de partida. Frequência não recebe valor.
+    """
+    ref = _referencia(partida)
+    saida = _utc(viagem.saida_observada, "saida_observada")
+    if ref.tipo_oferta == "FREQUENCIA":
+        return DiferencaSaida(viagem.id, ref.data_operacao, "FREQUENCIA",
+                              "OFERTA_POR_FREQUENCIA", saida, ref)
+    return DiferencaSaida(viagem.id, ref.data_operacao, "CALCULADA", "FIXA_PAREADA",
+                          saida, ref, (saida - ref.saida_prevista).total_seconds())
 
 
 def _utc(instante: datetime, campo: str) -> datetime:
