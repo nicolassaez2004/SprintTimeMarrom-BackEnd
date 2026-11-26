@@ -178,10 +178,11 @@ def test_review_um_registro_por_veiculo_mesmo_com_empate_no_ciclo(app):
     assert veiculos["11001"]["linha"]["codigo_olho_vivo"] == "200"  # maior id
     assert veiculos["11002"]["recente"] is False and veiculos["11002"]["idade_segundos"] == 4000
 
-def test_mapa_le_apenas_ultimo_ciclo_que_gravou_posicoes(client):
+def test_mapa_le_ultimo_ciclo_com_posicoes_e_os_60s_anteriores(client):
     agora_real = datetime.now(timezone.utc)
     ajuste = AGORA.timestamp() - agora_real.timestamp()
-    anterior = bruto("11001", "100", ajuste + 90)
+    bruto("44004", "400", ajuste + 125)  # mais de 60 s antes do último ciclo: fora
+    anterior = bruto("11001", "100", ajuste + 90)  # GPS inalterado depois: só neste ciclo
     ultimo = bruto("22002", "200", ajuste + 60)
     bruto("33003", "300", ajuste + 30)  # ciclo repetido, sem novos registros.
     for registro in (anterior, ultimo):
@@ -196,9 +197,12 @@ def test_mapa_le_apenas_ultimo_ciclo_que_gravou_posicoes(client):
     resposta = client.get("/posicoes/atuais?modo=ultima_coleta")
     assert resposta.status_code == 200
     veiculos = por_prefixo(resposta.get_json())
-    assert set(veiculos) == {"22002"}
+    # O ônibus deduplicado no último ciclo continua no mapa, marcado como antigo.
+    assert set(veiculos) == {"11001", "22002"}
+    assert veiculos["11001"]["recente"] is False
     assert veiculos["22002"]["linha"]["codigo_olho_vivo"] == "210"
     assert client.get("/posicoes/atuais?modo=ultima_coleta&linha=200").get_json()["total"] == 0
+    assert client.get("/posicoes/atuais?modo=ultima_coleta&linha=100").get_json()["total"] == 1
     assert client.get("/posicoes/atuais?modo=desconhecido").status_code == 400
 
 

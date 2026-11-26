@@ -103,3 +103,18 @@ def test_lacuna_aberta_do_dia_corrente_termina_no_instante_observado(application
     assert lacuna["estado"] == "ABERTA" and lacuna["fim"] is None
     assert not lacuna["continua_no_dia_seguinte"]
     assert dia["janelas"][-1]["situacao"] == "PENDENTE"
+
+
+@pytest.mark.parametrize("falhas, denominador, incompleto, situacao", [
+    (2001, 20001, True, "INCOMPLETA"),   # 10,0045% exibido como 10,00%: ainda acima de 10%
+    (2000, 20000, False, "COM_FALHAS"),  # exatamente 10%: sem aviso
+    (0, 30, False, "COMPLETA"),
+])
+def test_limite_de_10_porcento_usa_comparacao_exata(falhas, denominador, incompleto, situacao):
+    from app.qualidade.service import _CONTADORES, _resumir
+
+    contagens = dict.fromkeys(_CONTADORES, 0)
+    contagens.update(ciclos_esperados=denominador, ciclos_registrados=denominador,
+                     ciclos_com_dados=denominador - falhas)
+    resumo = _resumir(contagens)
+    assert resumo["incompleto"] is incompleto and resumo["situacao"] == situacao

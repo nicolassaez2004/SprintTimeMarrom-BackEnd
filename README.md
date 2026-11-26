@@ -57,13 +57,28 @@ Com o ambiente e o `.env` configurados, abra `app.py` no VS Code e clique em
 **Executar Arquivo Python**. A API e a coleta de ônibus começam juntas usando
 o MySQL definido no `.env`. Depois, execute `servidor.py` no frontend.
 O mapa consulta o último ciclo com posições gravadas por meio de
-`GET /posicoes/atuais?modo=ultima_coleta`.
+`GET /posicoes/atuais?modo=ultima_coleta`. Como cada bruto pertence ao ciclo que
+o gravou primeiro, o modo lê também os 60 s anteriores a esse ciclo: ônibus com
+GPS inalterado continuam no mapa, marcados como `recente: false` se passarem de 60 s.
 
 Execução separada do coletor: [docs/COLETOR.md](docs/COLETOR.md). Migrações
 pendentes na Aiven: [docs/AIVEN-MIGRACOES-MVP.md](docs/AIVEN-MIGRACOES-MVP.md).
 
 O servidor inicia em `http://127.0.0.1:5000`. Verifique com `GET /health`, que
 responde `{"status": "ok"}`. O Flask não cria `/docs` automaticamente.
+
+## Demonstração e validação (Sprints 1 e 2)
+
+Banco SQLite descartável com dados **sintéticos** que passam pelo pipeline real
+(passagens → agenda de 15 min → consolidação → CSV/Parquet), sem Aiven nem SPTrans:
+
+```bash
+python -m scripts.demo_sprints_1_2 --pasta /tmp/demo-marrom          # prepara (pasta vazia)
+python -m scripts.demo_sprints_1_2 --pasta /tmp/demo-marrom --servir # API em :5000
+```
+
+Roteiro de conferência, resultados esperados e parecer por história:
+[docs/reviews/sprints-1-2.md](docs/reviews/sprints-1-2.md).
 
 ## Configuração
 
@@ -135,6 +150,8 @@ O esquema é versionado com Flask-Migrate (Alembic), em `migrations/versions/`:
   sem repetir DDLs.
 - `us29_0012`: lacunas, notificações internas, posse exclusiva e medição de
   confirmação da coleta ([US29](docs/US29.md)).
+- `merge_0023`: une as linhas US06 (clima) e US07 (infraestrutura), que partiam
+  de `us15_0019`; sem DDL. Sem ela, `db upgrade` para com "Multiple head revisions".
 
 A importação/consulta de partidas é explícita: `python -m app.programacao --help`.
 Consulte [US04-T01](docs/US04-T01.md) para fontes, normalização, testes e o
@@ -423,7 +440,11 @@ python -m pytest -v
 ```
 
 Os testes usam SQLite em memória e não precisam de MySQL nem de `.env`. Nenhum
-teste automatizado chama a SPTrans de verdade.
+teste automatizado chama a SPTrans de verdade. Como `app/config.py` carrega o
+`.env`, rode com `DATABASE_URL=sqlite:// SPTRANS_TOKEN= python -m pytest` quando o
+`.env` apontar para a Aiven (variáveis já definidas não são sobrescritas).
+Os testes MySQL opt-in (`US12_MYSQL_TEST_URL_*`, `US29_MYSQL_TEST_URL`,
+`US32_MYSQL_ADMIN_URL`) aceitam somente bases locais descartáveis.
 
 ## Resultado real da US03 — 19/11/2026
 

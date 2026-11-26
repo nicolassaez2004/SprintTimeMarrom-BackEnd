@@ -76,16 +76,20 @@ def _percentual(c):
 def _resumir(c, situacao=None):
     """Completa os contadores com percentual, marca de incompleto e situação."""
     pct = _percentual(c)
+    falhas, denominador = _falhas(c)
+    # Mesma regra exata da US26 (classificar_falhas): o arredondamento do
+    # percentual exibido (10,004% → 10,00%) não pode esconder o aviso.
+    acima = denominador > 0 and falhas * 100 > LIMITE_INCOMPLETO_PCT * denominador
     if situacao is None:
         if c["ciclos_com_dados"] == 0:
             situacao = "SEM_DADOS"
-        elif pct > LIMITE_INCOMPLETO_PCT:
+        elif acima:
             situacao = "INCOMPLETA"
         else:
-            situacao = "COMPLETA" if pct == 0 else "COM_FALHAS"
+            situacao = "COMPLETA" if falhas == 0 else "COM_FALHAS"
     return {**c, "situacao": situacao,
             "percentual_falhas": float(pct) if pct is not None else None,
-            "incompleto": None if pct is None else pct > LIMITE_INCOMPLETO_PCT}
+            "incompleto": None if pct is None else acima}
 
 
 def _contar(ciclos, inicio, fim, monitoramento, agora, intervalo):
