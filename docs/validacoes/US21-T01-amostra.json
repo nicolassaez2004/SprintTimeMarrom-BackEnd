@@ -12889,7 +12889,29 @@
       "infra": 5,
       "snapshots": 1
     },
-    "multiplicacao_de_observacoes": 0
+    "multiplicacao_de_observacoes": 0,
+    "periodo_disponivel": {
+      "dias_do_mes": 30,
+      "desempenho_passagens_origem": {
+        "primeiro": "2026-11-24T12:02:00+00:00",
+        "ultimo": "2026-11-24T12:42:00+00:00",
+        "dias_com_dados": 1,
+        "inferior_ao_mes": true
+      },
+      "clima": {
+        "primeiro": "2026-11-01T04:00:00+00:00",
+        "ultimo": "2026-12-01T02:00:00+00:00",
+        "dias_com_dados": 30,
+        "inferior_ao_mes": false
+      },
+      "trafego": {
+        "primeiro": "2026-11-01T03:00:00+00:00",
+        "ultimo": "2026-11-01T03:15:00+00:00",
+        "dias_com_dados": 1,
+        "inferior_ao_mes": true
+      },
+      "inferior_ao_mes": true
+    }
   },
   "limitacoes": [
     "Tráfego é proxy calculado dos mesmos ônibus: associação mecânica com desempenho é possível.",
@@ -12897,9 +12919,10 @@
     "Denominador de tráfego é grade civil de 15 min do mês, não quantidade de janelas com operação esperada.",
     "Vínculo climático atual não tem histórico; snapshot registra estação/regra/coordenadas usados nesta extração.",
     "Trechos diferentes podem compartilhar estação, veículo e via; número de linhas não é amostra independente.",
-    "Não identifica trechos equivalentes entre versões GTFS; não autoriza inferência ou conclusão causal."
+    "Não identifica trechos equivalentes entre versões GTFS; não autoriza inferência ou conclusão causal.",
+    "periodo_disponivel conta dias civis com algum dado; menos dias que o mês indica base de período inferior a um mês."
   ],
   "apto_para_inferencia": false,
-  "hash_base": "7f0929980ab065314e70d62211858b0860c25505720cf5f8001857e3f3ad73e7",
+  "hash_base": "39e278e03be7a00fa74fb7e9913af80bad609a8fded9002b4c410003bd7bb21a",
   "origem": "SINTETICA_CONTROLADA"
 }

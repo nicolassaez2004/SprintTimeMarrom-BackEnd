@@ -1,14 +1,23 @@
 {
   "data": "2026-11-27",
   "origem": "SINTETICA_CONTROLADA",
-  "python": "3.13.9",
+  "python": "3.14.10",
   "banco": "SQLite em memória, chaves estrangeiras ativas",
   "sha256_caderno_utf8_lf": "3cadba48119c0d640b54f5f1b7bf9728c155b813aba889ccb27a0013d7ffc106",
   "resultados": [
     {
       "id": "C01",
       "descricao": "Aumento de atraso, sem confundir com tempo de percurso",
+      "tipo_dado": "SINTETICO_CONTROLADO",
       "referencia_manual": "(09:09-09:04)-(09:02-09:00) = 300-120 = 180 s; percurso observado 420 s",
+      "origem_referencia": "valor literal do caderno, calculado à mão; não é saída da função testada",
+      "metodo": "atraso = passagem estimada - previsto GTFS; variação = atraso destino - atraso origem",
+      "versoes": {
+        "calculo": "propagacao-atraso-1.0",
+        "reconstrucao": "recon-controle",
+        "correspondencia": "match-controle",
+        "estimativa": "estimativa-controle"
+      },
       "resultado": "CONFERE_NO_ENSAIO",
       "esperado": {
         "origem": 120,
@@ -26,7 +35,16 @@
     {
       "id": "C02",
       "descricao": "Recuperação de atraso tem sinal negativo",
+      "tipo_dado": "SINTETICO_CONTROLADO",
       "referencia_manual": "120-300 = -180 s",
+      "origem_referencia": "valor literal do caderno, calculado à mão; não é saída da função testada",
+      "metodo": "atraso = passagem estimada - previsto GTFS; variação = atraso destino - atraso origem",
+      "versoes": {
+        "calculo": "propagacao-atraso-1.0",
+        "reconstrucao": "recon-controle",
+        "correspondencia": "match-controle",
+        "estimativa": "estimativa-controle"
+      },
       "resultado": "CONFERE_NO_ENSAIO",
       "esperado": {
         "origem": 300,
@@ -44,7 +62,16 @@
     {
       "id": "C03",
       "descricao": "Atraso constante é zero calculado",
+      "tipo_dado": "SINTETICO_CONTROLADO",
       "referencia_manual": "120-120 = 0 s",
+      "origem_referencia": "valor literal do caderno, calculado à mão; não é saída da função testada",
+      "metodo": "atraso = passagem estimada - previsto GTFS; variação = atraso destino - atraso origem",
+      "versoes": {
+        "calculo": "propagacao-atraso-1.0",
+        "reconstrucao": "recon-controle",
+        "correspondencia": "match-controle",
+        "estimativa": "estimativa-controle"
+      },
       "resultado": "CONFERE_NO_ENSAIO",
       "esperado": {
         "origem": 120,
@@ -62,7 +89,16 @@
     {
       "id": "C04",
       "descricao": "Redução do adiantamento aumenta a variação",
+      "tipo_dado": "SINTETICO_CONTROLADO",
       "referencia_manual": "-60-(-120) = 60 s",
+      "origem_referencia": "valor literal do caderno, calculado à mão; não é saída da função testada",
+      "metodo": "atraso = passagem estimada - previsto GTFS; variação = atraso destino - atraso origem",
+      "versoes": {
+        "calculo": "propagacao-atraso-1.0",
+        "reconstrucao": "recon-controle",
+        "correspondencia": "match-controle",
+        "estimativa": "estimativa-controle"
+      },
       "resultado": "CONFERE_NO_ENSAIO",
       "esperado": {
         "origem": -120,
@@ -80,7 +116,16 @@
     {
       "id": "C05",
       "descricao": "Aumento do adiantamento diminui a variação",
+      "tipo_dado": "SINTETICO_CONTROLADO",
       "referencia_manual": "-120-(-60) = -60 s",
+      "origem_referencia": "valor literal do caderno, calculado à mão; não é saída da função testada",
+      "metodo": "atraso = passagem estimada - previsto GTFS; variação = atraso destino - atraso origem",
+      "versoes": {
+        "calculo": "propagacao-atraso-1.0",
+        "reconstrucao": "recon-controle",
+        "correspondencia": "match-controle",
+        "estimativa": "estimativa-controle"
+      },
       "resultado": "CONFERE_NO_ENSAIO",
       "esperado": {
         "origem": -60,
@@ -98,7 +143,16 @@
     {
       "id": "C06",
       "descricao": "Passagem de destino ausente não vira zero",
+      "tipo_dado": "SINTETICO_CONTROLADO",
       "referencia_manual": "Sem passagem em B, diferença indefinida",
+      "origem_referencia": "valor literal do caderno, calculado à mão; não é saída da função testada",
+      "metodo": "atraso = passagem estimada - previsto GTFS; variação = atraso destino - atraso origem",
+      "versoes": {
+        "calculo": "propagacao-atraso-1.0",
+        "reconstrucao": "recon-controle",
+        "correspondencia": "match-controle",
+        "estimativa": "estimativa-controle"
+      },
       "resultado": "CONFERE_NO_ENSAIO",
       "esperado": {
         "origem": 120,
@@ -116,7 +170,16 @@
     {
       "id": "C07",
       "descricao": "Horário previsto intermediário ausente",
+      "tipo_dado": "SINTETICO_CONTROLADO",
       "referencia_manual": "Sem referência prevista em B, não atribuir atraso",
+      "origem_referencia": "valor literal do caderno, calculado à mão; não é saída da função testada",
+      "metodo": "atraso = passagem estimada - previsto GTFS; variação = atraso destino - atraso origem",
+      "versoes": {
+        "calculo": "propagacao-atraso-1.0",
+        "reconstrucao": "recon-controle",
+        "correspondencia": "match-controle",
+        "estimativa": "estimativa-controle"
+      },
       "resultado": "CONFERE_NO_ENSAIO",
       "esperado": {
         "origem": 120,
@@ -134,7 +197,16 @@
     {
       "id": "C08",
       "descricao": "Oferta por frequência não recebe atraso fixo",
+      "tipo_dado": "SINTETICO_CONTROLADO",
       "referencia_manual": "Não há horário fixo para comparar",
+      "origem_referencia": "valor literal do caderno, calculado à mão; não é saída da função testada",
+      "metodo": "atraso = passagem estimada - previsto GTFS; variação = atraso destino - atraso origem",
+      "versoes": {
+        "calculo": "propagacao-atraso-1.0",
+        "reconstrucao": "recon-controle",
+        "correspondencia": "match-controle",
+        "estimativa": "estimativa-controle"
+      },
       "resultado": "CONFERE_NO_ENSAIO",
       "esperado": {
         "origem": null,
@@ -152,7 +224,16 @@
     {
       "id": "C09",
       "descricao": "Rastreabilidade incompleta da passagem",
+      "tipo_dado": "SINTETICO_CONTROLADO",
       "referencia_manual": "Sem posição GPS posterior, descartar B",
+      "origem_referencia": "valor literal do caderno, calculado à mão; não é saída da função testada",
+      "metodo": "atraso = passagem estimada - previsto GTFS; variação = atraso destino - atraso origem",
+      "versoes": {
+        "calculo": "propagacao-atraso-1.0",
+        "reconstrucao": "recon-controle",
+        "correspondencia": "match-controle",
+        "estimativa": "estimativa-controle"
+      },
       "resultado": "CONFERE_NO_ENSAIO",
       "esperado": {
         "origem": 120,
@@ -170,7 +251,16 @@
     {
       "id": "C10",
       "descricao": "GTFS acima de 24 h pertence ao dia operacional anterior",
+      "tipo_dado": "SINTETICO_CONTROLADO",
       "referencia_manual": "00:04/00:11 de 01/12, data operacional 30/11: 300-120=180 s em novembro",
+      "origem_referencia": "valor literal do caderno, calculado à mão; não é saída da função testada",
+      "metodo": "atraso = passagem estimada - previsto GTFS; variação = atraso destino - atraso origem",
+      "versoes": {
+        "calculo": "propagacao-atraso-1.0",
+        "reconstrucao": "recon-controle",
+        "correspondencia": "match-controle",
+        "estimativa": "estimativa-controle"
+      },
       "resultado": "CONFERE_NO_ENSAIO",
       "esperado": {
         "origem": 120,
@@ -190,7 +280,17 @@
     {
       "id": "C11",
       "descricao": "Mesmo veículo identificado pelas posições GPS persistidas",
+      "tipo_dado": "SINTETICO_CONTROLADO",
       "referencia_manual": "Chegada 09:40 (prevista 09:38); próxima saída 09:55 (prevista 09:52); intervalo 15 min",
+      "origem_referencia": "valor literal do caderno, calculado à mão; não é saída da função testada",
+      "metodo": "vizinho imediato do mesmo prefixo; intervalo máximo 1800 s (parâmetro do ensaio)",
+      "versoes": {
+        "atraso_chegada": "propagacao-atraso-1.0",
+        "atraso_partida": "pontualidade-1.0",
+        "reconstrucao": "recon-controle",
+        "correspondencia": "match-controle",
+        "estimativa": "estimativa-controle"
+      },
       "resultado": "CONFERE_NO_ENSAIO",
       "esperado": {
         "pares": [
@@ -218,7 +318,17 @@
     {
       "id": "C12",
       "descricao": "Prefixos distintos não são pareados",
+      "tipo_dado": "SINTETICO_CONTROLADO",
       "referencia_manual": "Um veículo por viagem, sem vizinho no mesmo prefixo",
+      "origem_referencia": "valor literal do caderno, calculado à mão; não é saída da função testada",
+      "metodo": "vizinho imediato do mesmo prefixo; intervalo máximo 1800 s (parâmetro do ensaio)",
+      "versoes": {
+        "atraso_chegada": "propagacao-atraso-1.0",
+        "atraso_partida": "pontualidade-1.0",
+        "reconstrucao": "recon-controle",
+        "correspondencia": "match-controle",
+        "estimativa": "estimativa-controle"
+      },
       "resultado": "CONFERE_NO_ENSAIO",
       "esperado": {
         "pares": [],
@@ -232,7 +342,17 @@
     {
       "id": "C13",
       "descricao": "Troca de veículo não pode ser pulada",
+      "tipo_dado": "SINTETICO_CONTROLADO",
       "referencia_manual": "b tem prefixos 5810 e 7777; não formar a-c",
+      "origem_referencia": "valor literal do caderno, calculado à mão; não é saída da função testada",
+      "metodo": "vizinho imediato do mesmo prefixo; intervalo máximo 1800 s (parâmetro do ensaio)",
+      "versoes": {
+        "atraso_chegada": "propagacao-atraso-1.0",
+        "atraso_partida": "pontualidade-1.0",
+        "reconstrucao": "recon-controle",
+        "correspondencia": "match-controle",
+        "estimativa": "estimativa-controle"
+      },
       "resultado": "CONFERE_NO_ENSAIO",
       "esperado": {
         "pares": [],
@@ -268,7 +388,17 @@
     {
       "id": "C14",
       "descricao": "Viagens sobrepostas são descartadas",
+      "tipo_dado": "SINTETICO_CONTROLADO",
       "referencia_manual": "b sai 09:30 antes da chegada de a às 09:40",
+      "origem_referencia": "valor literal do caderno, calculado à mão; não é saída da função testada",
+      "metodo": "vizinho imediato do mesmo prefixo; intervalo máximo 1800 s (parâmetro do ensaio)",
+      "versoes": {
+        "atraso_chegada": "propagacao-atraso-1.0",
+        "atraso_partida": "pontualidade-1.0",
+        "reconstrucao": "recon-controle",
+        "correspondencia": "match-controle",
+        "estimativa": "estimativa-controle"
+      },
       "resultado": "CONFERE_NO_ENSAIO",
       "esperado": {
         "pares": [],
@@ -294,7 +424,17 @@
     {
       "id": "C15",
       "descricao": "Só o vizinho imediato pode ser relacionado",
+      "tipo_dado": "SINTETICO_CONTROLADO",
       "referencia_manual": "Sem atraso da partida b, a-b é descartado; não substituir por a-c",
+      "origem_referencia": "valor literal do caderno, calculado à mão; não é saída da função testada",
+      "metodo": "vizinho imediato do mesmo prefixo; intervalo máximo 1800 s (parâmetro do ensaio)",
+      "versoes": {
+        "atraso_chegada": "propagacao-atraso-1.0",
+        "atraso_partida": "pontualidade-1.0",
+        "reconstrucao": "recon-controle",
+        "correspondencia": "match-controle",
+        "estimativa": "estimativa-controle"
+      },
       "resultado": "CONFERE_NO_ENSAIO",
       "esperado": {
         "pares": [
@@ -330,7 +470,15 @@
     {
       "id": "C16",
       "descricao": "Correlação mensal, associação sem interpretação causal",
+      "tipo_dado": "SINTETICO_CONTROLADO",
       "referencia_manual": "x=[60,120,180,240]; y=[120,60,240,180]; soma(dx*dy)=10800, soma(dx²)=soma(dy²)=18000; r=0.6",
+      "origem_referencia": "valor literal do caderno, calculado à mão; não é saída da função testada",
+      "metodo": "pearson, amostra mínima 3; recorte pela chegada em [início, fim) (recortar_correlacao)",
+      "versoes": {
+        "correlacao": "correlacao-chegada-partida-1.0",
+        "atraso_chegada": "propagacao-atraso-1.0",
+        "atraso_partida": "pontualidade-1.0"
+      },
       "resultado": "CONFERE_NO_ENSAIO",
       "esperado": {
         "pares": [
@@ -385,7 +533,15 @@
     {
       "id": "C17",
       "descricao": "Janela 09:00–09:15 com fim exclusivo",
+      "tipo_dado": "SINTETICO_CONTROLADO",
       "referencia_manual": "Chegadas 09:00 e 09:14:59 incluídas; 09:15 excluída; dois pares não bastam para a regra atual",
+      "origem_referencia": "valor literal do caderno, calculado à mão; não é saída da função testada",
+      "metodo": "pearson, amostra mínima 3; recorte pela chegada em [início, fim) (recortar_correlacao)",
+      "versoes": {
+        "correlacao": "correlacao-chegada-partida-1.0",
+        "atraso_chegada": "propagacao-atraso-1.0",
+        "atraso_partida": "pontualidade-1.0"
+      },
       "resultado": "CONFERE_NO_ENSAIO",
       "esperado": {
         "pares": [
@@ -424,7 +580,15 @@
     {
       "id": "C18",
       "descricao": "Faixa 09:00–10:00 com fim exclusivo",
+      "tipo_dado": "SINTETICO_CONTROLADO",
       "referencia_manual": "x=[60,120,180]; y=[120,60,240]; 7200/sqrt(7200*16800) = 0.6546536707079771; chegada 10:00 excluída",
+      "origem_referencia": "valor literal do caderno, calculado à mão; não é saída da função testada",
+      "metodo": "pearson, amostra mínima 3; recorte pela chegada em [início, fim) (recortar_correlacao)",
+      "versoes": {
+        "correlacao": "correlacao-chegada-partida-1.0",
+        "atraso_chegada": "propagacao-atraso-1.0",
+        "atraso_partida": "pontualidade-1.0"
+      },
       "resultado": "CONFERE_NO_ENSAIO",
       "esperado": {
         "pares": [
@@ -471,7 +635,15 @@
     {
       "id": "C19",
       "descricao": "Dia inteiro inclui os quatro pares",
+      "tipo_dado": "SINTETICO_CONTROLADO",
       "referencia_manual": "Os quatro pares de 24/11 entram, inclusive o das 10:00; r=10800/18000",
+      "origem_referencia": "valor literal do caderno, calculado à mão; não é saída da função testada",
+      "metodo": "pearson, amostra mínima 3; recorte pela chegada em [início, fim) (recortar_correlacao)",
+      "versoes": {
+        "correlacao": "correlacao-chegada-partida-1.0",
+        "atraso_chegada": "propagacao-atraso-1.0",
+        "atraso_partida": "pontualidade-1.0"
+      },
       "resultado": "CONFERE_NO_ENSAIO",
       "esperado": {
         "pares": [
@@ -526,7 +698,17 @@
     {
       "id": "C20",
       "descricao": "Passagens → diferenças → publicação → média/mediana → ranking mensal",
+      "tipo_dado": "SINTETICO_CONTROLADO",
       "referencia_manual": "AB=[180,0,60] média 80 mediana 60; BC=[0,600,120] média 240 mediana 120; CD=[-60,0,null] -30, 2/3; DE=[0,0,null] zero; EF=[null,null,null] fora do ranking",
+      "origem_referencia": "valor literal do caderno, calculado à mão; não é saída da função testada",
+      "metodo": "MEDIA e MEDIANA das variações do trecho no mês operacional; ordem valor desc, trecho_id asc; até 20",
+      "versoes": {
+        "agregado": "aumento-atraso-mensal-1.0",
+        "variacao": "propagacao-atraso-1.0",
+        "reconstrucao": "recon-controle",
+        "correspondencia": "match-controle",
+        "estimativa": "estimativa-controle"
+      },
       "resultado": "CONFERE_NO_ENSAIO",
       "esperado": {
         "media": [
@@ -585,12 +767,12 @@
                 "falhas_coleta": {
                   "ciclos_com_dados": 3,
                   "ciclos_em_andamento": 0,
-                  "ciclos_esperados": 8841,
+                  "ciclos_esperados": 9320,
                   "ciclos_falha": 0,
                   "ciclos_registrados": 3,
-                  "denominador": 8841,
+                  "denominador": 9320,
                   "escopo": "COLETA_GLOBAL",
-                  "falhas": 8838,
+                  "falhas": 9317,
                   "falhas_da_fonte": 0,
                   "fim": "2026-12-01T03:00:00+00:00",
                   "fonte": "OLHO_VIVO",
@@ -598,7 +780,7 @@
                   "inicio": "2026-11-01T03:00:00+00:00",
                   "intervalo_coleta_segundos": 30,
                   "janelas_15min": 2880,
-                  "janelas_sem_expectativa": 2585,
+                  "janelas_sem_expectativa": 2569,
                   "lacunas": [
                     {
                       "causa": "SEM_CICLO_REGISTRADO",
@@ -630,7 +812,7 @@
                   "motivo": "FALHAS_ACIMA_DO_LIMITE",
                   "operacao_linha": "CORRESPONDENCIA_PENDENTE",
                   "percentual_falhas": 99.97,
-                  "sem_registro": 8838,
+                  "sem_registro": 9317,
                   "situacao": "INCOMPLETA",
                   "versao_regra": "us26-falhas-coleta-1.0"
                 },
@@ -681,12 +863,12 @@
                 "falhas_coleta": {
                   "ciclos_com_dados": 3,
                   "ciclos_em_andamento": 0,
-                  "ciclos_esperados": 8841,
+                  "ciclos_esperados": 9320,
                   "ciclos_falha": 0,
                   "ciclos_registrados": 3,
-                  "denominador": 8841,
+                  "denominador": 9320,
                   "escopo": "COLETA_GLOBAL",
-                  "falhas": 8838,
+                  "falhas": 9317,
                   "falhas_da_fonte": 0,
                   "fim": "2026-12-01T03:00:00+00:00",
                   "fonte": "OLHO_VIVO",
@@ -694,7 +876,7 @@
                   "inicio": "2026-11-01T03:00:00+00:00",
                   "intervalo_coleta_segundos": 30,
                   "janelas_15min": 2880,
-                  "janelas_sem_expectativa": 2585,
+                  "janelas_sem_expectativa": 2569,
                   "lacunas": [
                     {
                       "causa": "SEM_CICLO_REGISTRADO",
@@ -726,7 +908,7 @@
                   "motivo": "FALHAS_ACIMA_DO_LIMITE",
                   "operacao_linha": "CORRESPONDENCIA_PENDENTE",
                   "percentual_falhas": 99.97,
-                  "sem_registro": 8838,
+                  "sem_registro": 9317,
                   "situacao": "INCOMPLETA",
                   "versao_regra": "us26-falhas-coleta-1.0"
                 },
@@ -777,12 +959,12 @@
                 "falhas_coleta": {
                   "ciclos_com_dados": 3,
                   "ciclos_em_andamento": 0,
-                  "ciclos_esperados": 8841,
+                  "ciclos_esperados": 9320,
                   "ciclos_falha": 0,
                   "ciclos_registrados": 3,
-                  "denominador": 8841,
+                  "denominador": 9320,
                   "escopo": "COLETA_GLOBAL",
-                  "falhas": 8838,
+                  "falhas": 9317,
                   "falhas_da_fonte": 0,
                   "fim": "2026-12-01T03:00:00+00:00",
                   "fonte": "OLHO_VIVO",
@@ -790,7 +972,7 @@
                   "inicio": "2026-11-01T03:00:00+00:00",
                   "intervalo_coleta_segundos": 30,
                   "janelas_15min": 2880,
-                  "janelas_sem_expectativa": 2585,
+                  "janelas_sem_expectativa": 2569,
                   "lacunas": [
                     {
                       "causa": "SEM_CICLO_REGISTRADO",
@@ -822,7 +1004,7 @@
                   "motivo": "FALHAS_ACIMA_DO_LIMITE",
                   "operacao_linha": "CORRESPONDENCIA_PENDENTE",
                   "percentual_falhas": 99.97,
-                  "sem_registro": 8838,
+                  "sem_registro": 9317,
                   "situacao": "INCOMPLETA",
                   "versao_regra": "us26-falhas-coleta-1.0"
                 },
@@ -875,12 +1057,12 @@
                 "falhas_coleta": {
                   "ciclos_com_dados": 3,
                   "ciclos_em_andamento": 0,
-                  "ciclos_esperados": 8841,
+                  "ciclos_esperados": 9320,
                   "ciclos_falha": 0,
                   "ciclos_registrados": 3,
-                  "denominador": 8841,
+                  "denominador": 9320,
                   "escopo": "COLETA_GLOBAL",
-                  "falhas": 8838,
+                  "falhas": 9317,
                   "falhas_da_fonte": 0,
                   "fim": "2026-12-01T03:00:00+00:00",
                   "fonte": "OLHO_VIVO",
@@ -888,7 +1070,7 @@
                   "inicio": "2026-11-01T03:00:00+00:00",
                   "intervalo_coleta_segundos": 30,
                   "janelas_15min": 2880,
-                  "janelas_sem_expectativa": 2585,
+                  "janelas_sem_expectativa": 2569,
                   "lacunas": [
                     {
                       "causa": "SEM_CICLO_REGISTRADO",
@@ -920,7 +1102,7 @@
                   "motivo": "FALHAS_ACIMA_DO_LIMITE",
                   "operacao_linha": "CORRESPONDENCIA_PENDENTE",
                   "percentual_falhas": 99.97,
-                  "sem_registro": 8838,
+                  "sem_registro": 9317,
                   "situacao": "INCOMPLETA",
                   "versao_regra": "us26-falhas-coleta-1.0"
                 },
@@ -989,12 +1171,12 @@
                 "falhas_coleta": {
                   "ciclos_com_dados": 3,
                   "ciclos_em_andamento": 0,
-                  "ciclos_esperados": 8841,
+                  "ciclos_esperados": 9320,
                   "ciclos_falha": 0,
                   "ciclos_registrados": 3,
-                  "denominador": 8841,
+                  "denominador": 9320,
                   "escopo": "COLETA_GLOBAL",
-                  "falhas": 8838,
+                  "falhas": 9317,
                   "falhas_da_fonte": 0,
                   "fim": "2026-12-01T03:00:00+00:00",
                   "fonte": "OLHO_VIVO",
@@ -1002,7 +1184,7 @@
                   "inicio": "2026-11-01T03:00:00+00:00",
                   "intervalo_coleta_segundos": 30,
                   "janelas_15min": 2880,
-                  "janelas_sem_expectativa": 2585,
+                  "janelas_sem_expectativa": 2569,
                   "lacunas": [
                     {
                       "causa": "SEM_CICLO_REGISTRADO",
@@ -1034,7 +1216,7 @@
                   "motivo": "FALHAS_ACIMA_DO_LIMITE",
                   "operacao_linha": "CORRESPONDENCIA_PENDENTE",
                   "percentual_falhas": 99.97,
-                  "sem_registro": 8838,
+                  "sem_registro": 9317,
                   "situacao": "INCOMPLETA",
                   "versao_regra": "us26-falhas-coleta-1.0"
                 },
@@ -1085,12 +1267,12 @@
                 "falhas_coleta": {
                   "ciclos_com_dados": 3,
                   "ciclos_em_andamento": 0,
-                  "ciclos_esperados": 8841,
+                  "ciclos_esperados": 9320,
                   "ciclos_falha": 0,
                   "ciclos_registrados": 3,
-                  "denominador": 8841,
+                  "denominador": 9320,
                   "escopo": "COLETA_GLOBAL",
-                  "falhas": 8838,
+                  "falhas": 9317,
                   "falhas_da_fonte": 0,
                   "fim": "2026-12-01T03:00:00+00:00",
                   "fonte": "OLHO_VIVO",
@@ -1098,7 +1280,7 @@
                   "inicio": "2026-11-01T03:00:00+00:00",
                   "intervalo_coleta_segundos": 30,
                   "janelas_15min": 2880,
-                  "janelas_sem_expectativa": 2585,
+                  "janelas_sem_expectativa": 2569,
                   "lacunas": [
                     {
                       "causa": "SEM_CICLO_REGISTRADO",
@@ -1130,7 +1312,7 @@
                   "motivo": "FALHAS_ACIMA_DO_LIMITE",
                   "operacao_linha": "CORRESPONDENCIA_PENDENTE",
                   "percentual_falhas": 99.97,
-                  "sem_registro": 8838,
+                  "sem_registro": 9317,
                   "situacao": "INCOMPLETA",
                   "versao_regra": "us26-falhas-coleta-1.0"
                 },
@@ -1181,12 +1363,12 @@
                 "falhas_coleta": {
                   "ciclos_com_dados": 3,
                   "ciclos_em_andamento": 0,
-                  "ciclos_esperados": 8841,
+                  "ciclos_esperados": 9320,
                   "ciclos_falha": 0,
                   "ciclos_registrados": 3,
-                  "denominador": 8841,
+                  "denominador": 9320,
                   "escopo": "COLETA_GLOBAL",
-                  "falhas": 8838,
+                  "falhas": 9317,
                   "falhas_da_fonte": 0,
                   "fim": "2026-12-01T03:00:00+00:00",
                   "fonte": "OLHO_VIVO",
@@ -1194,7 +1376,7 @@
                   "inicio": "2026-11-01T03:00:00+00:00",
                   "intervalo_coleta_segundos": 30,
                   "janelas_15min": 2880,
-                  "janelas_sem_expectativa": 2585,
+                  "janelas_sem_expectativa": 2569,
                   "lacunas": [
                     {
                       "causa": "SEM_CICLO_REGISTRADO",
@@ -1226,7 +1408,7 @@
                   "motivo": "FALHAS_ACIMA_DO_LIMITE",
                   "operacao_linha": "CORRESPONDENCIA_PENDENTE",
                   "percentual_falhas": 99.97,
-                  "sem_registro": 8838,
+                  "sem_registro": 9317,
                   "situacao": "INCOMPLETA",
                   "versao_regra": "us26-falhas-coleta-1.0"
                 },
@@ -1279,12 +1461,12 @@
                 "falhas_coleta": {
                   "ciclos_com_dados": 3,
                   "ciclos_em_andamento": 0,
-                  "ciclos_esperados": 8841,
+                  "ciclos_esperados": 9320,
                   "ciclos_falha": 0,
                   "ciclos_registrados": 3,
-                  "denominador": 8841,
+                  "denominador": 9320,
                   "escopo": "COLETA_GLOBAL",
-                  "falhas": 8838,
+                  "falhas": 9317,
                   "falhas_da_fonte": 0,
                   "fim": "2026-12-01T03:00:00+00:00",
                   "fonte": "OLHO_VIVO",
@@ -1292,7 +1474,7 @@
                   "inicio": "2026-11-01T03:00:00+00:00",
                   "intervalo_coleta_segundos": 30,
                   "janelas_15min": 2880,
-                  "janelas_sem_expectativa": 2585,
+                  "janelas_sem_expectativa": 2569,
                   "lacunas": [
                     {
                       "causa": "SEM_CICLO_REGISTRADO",
@@ -1324,7 +1506,7 @@
                   "motivo": "FALHAS_ACIMA_DO_LIMITE",
                   "operacao_linha": "CORRESPONDENCIA_PENDENTE",
                   "percentual_falhas": 99.97,
-                  "sem_registro": 8838,
+                  "sem_registro": 9317,
                   "situacao": "INCOMPLETA",
                   "versao_regra": "us26-falhas-coleta-1.0"
                 },

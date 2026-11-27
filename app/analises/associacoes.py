@@ -13,6 +13,7 @@ import json
 import math
 
 from app import db
+from app.core.tempo import FUSO
 from app.indicadores.propagacao import INDICADOR_MENSAL, INDICADOR_VARIACAO, limites_mes, versao_mensal
 from app.models import (AssociacaoInfraestruturaTrecho, EstacaoMeteorologica, IndicadorOperacional,
                         MedicaoContexto, ObservacaoClima, PassagemEstimada, Trecho, TrechoEstacaoClima, VersaoInfraestrutura)
@@ -162,8 +163,12 @@ def _clima(estacao, observacoes, inicio, fim, selecao):
         and r['unidade_chuva'] == 'mm' and numero(r['chuva']) and r['chuva'] >= 0
         and inicio < datetime.fromisoformat(r['instante']) <= fim
         and datetime.fromisoformat(r['instante']).timestamp() % passo == 0]
-    instantes = [r['instante'] for r in validas]
-    if len(set(instantes)) != len(instantes): raise ValueError('Observação climática duplicada.')
+    instantes = Counter(r['instante'] for r in validas)
+    repetidos = sum(1 for n in instantes.values() if n > 1)
+    if repetidos:  # sem regra para escolher entre medições do mesmo instante: estação ambígua
+        return {'chuva_mm_observada':None,'recebidas':len(validas),'esperadas':esperado,'cobertura':None,
+            'ambigua':True,'instantes_repetidos':repetidos,
+            'descartadas_ou_nulas':len(observacoes)-len(validas),'referencias':[]}
     return {'chuva_mm_observada':sum(r['chuva'] for r in validas) if validas else None,
         'recebidas':len(validas),'esperadas':esperado,'cobertura':len(validas)/esperado,
         'descartadas_ou_nulas':len(observacoes)-len(validas),'referencias':[r['id'] for r in validas]}
@@ -192,6 +197,22 @@ def _trafego(registros, inicio, fim, selecao):
         'duracao_s':duracao if validas else None,'velocidade_kmh_espacial_candidata':3.6*distancia/duracao if validas else None,
         'janelas_ambiguas':duplicadas,'registros_selecionados':len(escolhidos),
         'registros_fora_da_selecao':len(registros)-len(escolhidos), 'referencias':[r['id'] for r in validas]}
+
+
+def _periodo_disponivel(fontes, inicio, fim):
+    """Dias civis (São Paulo) com algum dado de cada fonte dentro do mês."""
+    dias_mes = (fim.astimezone(FUSO).date() - inicio.astimezone(FUSO).date()).days
+    def resumo(instantes):
+        dentro = sorted(t for t in map(datetime.fromisoformat, instantes) if inicio <= t < fim)
+        dias = {t.astimezone(FUSO).date() for t in dentro}
+        return {'primeiro':dentro[0].isoformat() if dentro else None,
+                'ultimo':dentro[-1].isoformat() if dentro else None,'dias_com_dados':len(dias),
+                'inferior_ao_mes':len(dias) < dias_mes}
+    por_fonte = {'desempenho_passagens_origem':resumo(r['instante'] for r in fontes['passagens']),
+                 'clima':resumo(r['instante'] for r in fontes['clima'] if r['instante'] != fim.isoformat()),
+                 'trafego':resumo(r['inicio'] for r in fontes['trafego'])}
+    return {'dias_do_mes':dias_mes, **por_fonte,
+            'inferior_ao_mes':any(v['inferior_ao_mes'] for v in por_fonte.values())}
 
 
 def construir_base(mes, selecao, politica, fontes, *, agora):
@@ -257,7 +278,8 @@ def construir_base(mes, selecao, politica, fontes, *, agora):
         e=est.get(v['estacao_id']) if v else None
         clima=climas.get(v['estacao_id']) if v else None
         if not v or v['situacao']!='ASSOCIADO' or v['versao_regra']!=selecao.clima_regra_vinculo or not e or e['fonte']!=selecao.fonte_clima: motivos.append('CLIMA_VINCULO_INDISPONIVEL')
-        if not clima or clima['chuva_mm_observada'] is None or clima['cobertura']<politica.cobertura_chuva_min: motivos.append('CLIMA_COBERTURA')
+        if clima and clima.get('ambigua'): motivos.append('CLIMA_AMBIGUO')
+        elif not clima or clima['chuva_mm_observada'] is None or clima['cobertura']<politica.cobertura_chuva_min: motivos.append('CLIMA_COBERTURA')
         tr=_trafego(traf[t['id']],inicio,fim,selecao)
         if tr['janelas_ambiguas']: motivos.append('TRAFEGO_AMBIGUO')
         if not tr['janelas_validas'] or tr['cobertura_temporal']<politica.cobertura_temporal_trafego_min: motivos.append('TRAFEGO_COBERTURA')
@@ -279,6 +301,7 @@ def construir_base(mes, selecao, politica, fontes, *, agora):
                 'infra':[r['id'] for r in ir],'vinculo_clima':v,'trafego_entrada':[r['id'] for r in traf[t['id']]]}})
     assert len({r['id_observacao'] for r in linhas})==len(linhas)==len(perf), 'Cardinalidade inesperada na base mensal.'
     incluidas=[r for r in linhas if r['incluida']]
+    periodo=_periodo_disponivel(fontes,inicio,fim)
     payload={'versao_base':VERSAO_BASE,'mes':mes,'fuso':'America/Sao_Paulo','grao':'trecho + versao_gtfs + mes',
         'selecao':asdict(selecao),'politica':asdict(politica),'situacao_politica':'PROPOSTA_PENDENTE_APROVACAO',
         'fontes':fontes,'clima_por_estacao':climas,'linhas':linhas,
@@ -295,13 +318,15 @@ def construir_base(mes, selecao, politica, fontes, *, agora):
             'exclusoes_por_motivo':dict(sorted(Counter(m for r in linhas for m in r['exclusoes']).items())),
             'estacoes_distintas_incluidas':len({r['estacao_id'] for r in incluidas}),
             'linhas_distintas_incluidas':len({r['linha'] for r in incluidas}),
-            'registros_entrada':{k:len(v) for k,v in fontes.items()},'multiplicacao_de_observacoes':0},
+            'registros_entrada':{k:len(v) for k,v in fontes.items()},'multiplicacao_de_observacoes':0,
+            'periodo_disponivel':periodo},
         'limitacoes':['Tráfego é proxy calculado dos mesmos ônibus: associação mecânica com desempenho é possível.',
             'Soma de chuva cobre somente horas recebidas; não é total mensal completo se houver lacunas.',
             'Denominador de tráfego é grade civil de 15 min do mês, não quantidade de janelas com operação esperada.',
             'Vínculo climático atual não tem histórico; snapshot registra estação/regra/coordenadas usados nesta extração.',
             'Trechos diferentes podem compartilhar estação, veículo e via; número de linhas não é amostra independente.',
-            'Não identifica trechos equivalentes entre versões GTFS; não autoriza inferência ou conclusão causal.'],
+            'Não identifica trechos equivalentes entre versões GTFS; não autoriza inferência ou conclusão causal.',
+            'periodo_disponivel conta dias civis com algum dado; menos dias que o mês indica base de período inferior a um mês.'],
         'apto_para_inferencia':False}
     payload['hash_base']=digest(payload)
     return payload

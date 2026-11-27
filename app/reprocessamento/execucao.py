@@ -9,9 +9,16 @@ Não altera brutos nem o pedido (chave, versões, escopo e parâmetros).
 
 US20-T02C: ``calcular_pedido`` (só leituras) e ``publicar_pedido`` (upsert pela
 ``chave_resultado``) são as duas fases do worker, que valida a posse entre elas.
+
+Revisão US20: a publicação não sobrescreve um registro publicado depois de esta
+tentativa começar a ler os dados, nem um gravado por geração mais nova do mesmo
+pedido; cada registro gravado guarda ``qualidade.recalculo`` (pedido, chave,
+snapshot e versões); e registros do mesmo escopo, janela e regra que o novo
+conjunto não reproduz são removidos na mesma transação (como ``agenda._substituir``).
 """
 from datetime import datetime, timedelta, timezone
 
+from app import db
 from app.core.tempo import FUSO
 from app.indicadores.agenda import PUBLICADOS, _contextos
 from app.indicadores.cumprimento import calcular_indicador_cumprimento, gravar_indicador
@@ -19,6 +26,7 @@ from app.indicadores.espera import ESPERA, EXCESSO, CalculoEspera
 from app.indicadores.frequencia import OBSERVADA, PROGRAMADA, CalculoFrequencia
 from app.indicadores.pontualidade import calcular_indicador_pontualidade
 from app.indicadores.regularidade import REGULARIDADE, CalculoRegularidade
+from app.models import IndicadorOperacional
 from app.qualidade.service import FalhasColeta
 
 REGRA_VIGENTE = dict(PUBLICADOS)  # indicador -> versão da regra implementada no código
@@ -66,13 +74,67 @@ def calcular_pedido(pedido, agora=None):
     return [campos for campos in resultados if _no_escopo(campos, pedido)]
 
 
+def _rastro(pedido):
+    origem = (pedido.parametros or {}).get("origem") or {}
+    return {"pedido_id": pedido.id, "chave_logica": pedido.chave_logica,
+            "snapshot_bruto_id_maximo": pedido.bruto_id_maximo, "versao_base": pedido.versao_base,
+            "versao_regra": pedido.versao_regra, "versao_codigo": pedido.versao_codigo,
+            "plano_id": origem.get("plano_id"), "origem": origem.get("tipo")}
+
+
+def _mais_recente(existente, pedido):
+    """O registro atual veio de publicação posterior ao início desta leitura?"""
+    if existente is None:
+        return False
+    anterior = (existente.qualidade or {}).get("recalculo") or {}
+    if (anterior.get("snapshot_bruto_id_maximo") or -1) > pedido.bruto_id_maximo:
+        return True
+    return pedido.iniciada_em is not None and existente.publicado_em > pedido.iniciada_em
+
+
+def _substituir_no_escopo(pedido, gravados, escritas):
+    """Remove registros do mesmo indicador, regra, escopo e janela não reproduzidos."""
+    if not gravados:
+        return 0
+    I, escopo = IndicadorOperacional, pedido.parametros["escopo"]
+    removidos = 0
+    for gtfs, linha, sentido, correspondencia in sorted(
+            {(c["versao_gtfs_id"], c["linha_codigo"], c["sentido"], c["versao_correspondencia"])
+             for c in gravados}, key=str):
+        for registro in I.query.filter(
+                I.indicador == pedido.parametros["indicador"], I.versao_calculo == pedido.versao_regra,
+                I.versao_gtfs_id == gtfs, I.linha_codigo == linha, I.sentido == sentido,
+                I.versao_correspondencia == correspondencia,
+                I.parada_codigo == escopo.get("parada") if escopo.get("parada") else I.parada_codigo.is_(None),
+                I.trecho_id == escopo.get("trecho") if escopo.get("trecho") else I.trecho_id.is_(None),
+                I.periodo_inicio >= pedido.periodo_inicio, I.periodo_fim <= pedido.periodo_fim):
+            if registro.chave_resultado not in escritas and not _mais_recente(registro, pedido):
+                db.session.delete(registro)
+                removidos += 1
+    db.session.flush()
+    return removidos
+
+
 def publicar_pedido(pedido, resultados, agora=None):
-    """Grava (sem commit) os resultados; repetir não duplica (upsert por ``chave_resultado``)."""
+    """Grava (sem commit) os resultados; repetir não duplica (upsert por ``chave_resultado``).
+
+    Retorna quantos registros foram gravados (os preservados por serem mais
+    recentes não contam).
+    """
     agora = agora or datetime.now(timezone.utc)
-    falhas = FalhasColeta(agora=agora)
+    falhas, rastro = FalhasColeta(agora=agora), _rastro(pedido)
+    gravados, escritas = [], set()
     for campos in resultados:
+        escritas.add(campos["chave_resultado"])
+        existente = (IndicadorOperacional.query.filter_by(chave_resultado=campos["chave_resultado"])
+                     .with_for_update().one_or_none())
+        if _mais_recente(existente, pedido):
+            continue  # uma publicação posterior já refletiu dados mais novos
+        campos = {**campos, "qualidade": {**(campos.get("qualidade") or {}), "recalculo": rastro}}
         gravar_indicador(campos, commit=False, falhas=falhas).publicado_em = agora
-    return len(resultados)
+        gravados.append(campos)
+    _substituir_no_escopo(pedido, gravados, escritas)
+    return len(gravados)
 
 
 def recalcular_pedido(pedido, agora=None):

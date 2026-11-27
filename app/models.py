@@ -1420,3 +1420,37 @@ class MedicaoContexto(db.Model):
     coletada_em = db.Column(UTCDateTime, nullable=False, default=agora_utc)
 
     trecho = db.relationship("Trecho")
+
+
+class VerificacaoSaude(db.Model):
+    """US30: uma sondagem externa de um componente (diagrama de classes, p. 4/5).
+
+    Gravada pelo monitor (``scripts/sondagem.py``), processo separado do Flask.
+    Independente da coleta: a taxa de sucesso dos ciclos vem de ``ExecucaoColeta``.
+    ``estado`` usa o vocabulário do diagrama; ``DEGRADADO`` está reservado até o
+    PO definir um limiar de latência (resposta lenta dentro do timeout é ``OK``
+    com ``latencia_ms`` registrada; acima do timeout é ``INDISPONIVEL``).
+    """
+
+    __tablename__ = "verificacoes_saude"
+    __table_args__ = (
+        CheckConstraint("componente IN ('API', 'PAINEL')", name="ck_verificacao_saude_componente"),
+        CheckConstraint("estado IN ('OK', 'DEGRADADO', 'INDISPONIVEL')",
+                        name="ck_verificacao_saude_estado"),
+        CheckConstraint("latencia_ms >= 0", name="ck_verificacao_saude_latencia"),
+        CheckConstraint("status_http IS NULL OR (status_http >= 100 AND status_http <= 599)",
+                        name="ck_verificacao_saude_http"),
+        Index("ix_verificacao_saude_componente_instante", "componente", "verificada_em"),
+        {"mysql_engine": "InnoDB"},
+    )
+
+    id = db.Column(db.String(36), primary_key=True, default=lambda: str(uuid4()))
+    componente = db.Column(db.String(16), nullable=False)
+    verificada_em = db.Column(UTCDateTime, nullable=False)
+    estado = db.Column(db.String(16), nullable=False)
+    latencia_ms = db.Column(db.Integer, nullable=False)
+    status_http = db.Column(db.Integer, nullable=True)
+    # OK | HTTP_ERRO | TIMEOUT | ERRO_CONEXAO | CONTEUDO_INESPERADO (sem URL nem mensagem bruta).
+    detalhe = db.Column(db.String(32), nullable=False)
+    # Rótulo do que a sonda comprova (ex.: "GET /saude"), sem host, credencial ou query.
+    alvo = db.Column(db.String(64), nullable=False)

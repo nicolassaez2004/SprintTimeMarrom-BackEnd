@@ -90,3 +90,12 @@ def test_vazio_fica_sem_dados_e_nao_recebe_coeficiente_zero(entrada):
     p,_=entrada; r=verificar_prontidao(p,[])
     assert 'SEM_BASES' in r['motivos'] and 'SEM_OBSERVACOES_ELEGIVEIS' in r['motivos']
     assert not any(k in r for k in ('coeficiente','p_valor','ic'))
+
+
+def test_base_com_periodo_inferior_ao_mes_ou_sem_essa_informacao_e_bloqueada(entrada):
+    """Revisão US21: a amostra cobre um dia de desempenho; base antiga sem o campo não é verificável."""
+    plano,base=entrada
+    assert base['resumo']['periodo_disponivel']['inferior_ao_mes'] is True
+    assert 'BASE_COM_PERIODO_INFERIOR_AO_MES' in verificar_prontidao(plano,[base])['motivos']
+    antiga=deepcopy(base); del antiga['resumo']['periodo_disponivel']
+    assert 'BASE_COM_PERIODO_INFERIOR_AO_MES' in verificar_prontidao(plano,[antiga])['motivos']

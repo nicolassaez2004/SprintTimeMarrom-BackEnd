@@ -183,15 +183,16 @@ def test_compativel_com_plano_de_regra_da_us20_t01b(programacao):
     from app.reprocessamento.planos import planejar_regra
     versao, linha, _, _ = programacao
     for chave, tipo, regra in [("espera", "ESPERA_ESTIMADA", "antiga"),
-                               ("excesso", "EXCESSO_ESPERA", "outra")]:
+                               ("excesso", "EXCESSO_ESPERA", "espera-1.0")]:
         db.session.add(IndicadorOperacional(chave_resultado=chave, versao_gtfs_id=versao.id,
             linha_codigo=linha.codigo, sentido="0", indicador=tipo, unidade="min",
             periodo_inicio=AGORA, periodo_fim=AGORA + JANELA, versao_conjunto="v1",
             versao_calculo=regra))
     db.session.commit()
     plano = planejar_regra(regra_anterior="antiga", inicio=AGORA, fim=AGORA + JANELA,
-                           versao_base="base1", versao_regra="nova", versao_codigo="git1")
+                           versao_base="base1", versao_regra="espera-1.0", versao_codigo="git1")
     pedidos = registrar_pedidos_do_plano(plano)
+    assert {p.versao_regra for p in pedidos} == {"espera-1.0"}
     assert sorted(p.parametros["indicador"] for p in pedidos) == ["ESPERA_ESTIMADA", "EXCESSO_ESPERA"]
     assert all(p.parametros["origem"]["plano_id"] == plano.id for p in pedidos)
     assert all(p.parametros["origem"]["tipo"] == "REGRA" for p in pedidos)
@@ -203,31 +204,36 @@ def test_compativel_com_plano_de_regra_da_us20_t01b(programacao):
     assert _contar() == 2 and IndicadorOperacional.query.count() == 2
 
 
-def test_compativel_com_dado_tardio_da_us20_t01b(programacao):
-    from app.models import ExecucaoColeta, ObservacaoTratada, RegistroBrutoGPS
-    from app.reprocessamento.tardios import planejar_dado_tardio
-    versao, linha, _, _ = programacao
-    bruto = RegistroBrutoGPS(execucao=ExecucaoColeta(estado="OK"), horario_gps=AGORA,
-                             coletado_em=AGORA + timedelta(hours=1), payload={"p": 1})
-    db.session.add(bruto)
-    db.session.flush()
-    db.session.add(ObservacaoTratada(bruto_id=bruto.id, valida=True, versao_correspondencia="m1",
-        versao_gtfs_id=versao.id, linha_codigo=linha.codigo, sentido_gtfs="0"))
-    for n in range(3):
-        db.session.add(IndicadorOperacional(chave_resultado=f"t{n}", versao_gtfs_id=versao.id,
-            linha_codigo=linha.codigo, sentido="0", indicador="REGULARIDADE_INTERVALOS",
-            unidade="CV", periodo_inicio=AGORA + n * JANELA, periodo_fim=AGORA + (n + 1) * JANELA,
-            versao_conjunto="v1", versao_calculo="v1"))
+def test_pedido_concluido_nao_engole_dados_novos(programacao):
+    """Dados novos depois de o pedido ter lido os anteriores abrem nova geração."""
+    pronto = _registrar([_janela()], bruto_id_maximo=10)[0]
+    assert _registrar([_janela()], bruto_id_maximo=10)[0].id == pronto.id  # repetição
+    pronto.estado = "PRONTO"
     db.session.commit()
-    payload = dict(bruto.payload)
-    plano = planejar_dado_tardio(bruto, inicio_impacto=AGORA, fim_impacto=AGORA + 2 * JANELA,
-        fechamento_em=AGORA + JANELA, **V)
-    pedidos = registrar_pedidos(plano["resultados"], origem={"tipo": "GPS_TARDIO",
-        "bruto_id": plano["bruto_id"]}, versao_base=plano["versao_base"],
-        versao_regra=plano["versao_regra"], versao_codigo=plano["versao_codigo"])
-    assert [(p.periodo_inicio, p.parametros["origem"]["bruto_id"]) for p in pedidos] == [
-        (AGORA, bruto.id), (AGORA + JANELA, bruto.id)]
-    assert db.session.get(RegistroBrutoGPS, bruto.id).payload == payload  # bruto intocado
+    assert _registrar([_janela()], bruto_id_maximo=5)[0].id == pronto.id  # estado já lido
+    novo = _registrar([_janela()], bruto_id_maximo=11)[0]
+    assert novo.id != pronto.id and novo.chave_logica == f"{pronto.chave_logica}:11"
+    assert novo.parametros["chave_base"] == pronto.chave_logica
+    # Enquanto a nova geração aguarda, mais dados não criam outra: ela ainda vai ler.
+    assert _registrar([_janela()], bruto_id_maximo=12)[0].id == novo.id
+    assert db.session.get(ExecucaoProcessamento, pronto.id).estado == "PRONTO"
+    assert _contar() == 2
+
+
+def test_pedido_em_processamento_tambem_abre_geracao(programacao):
+    em_curso = _registrar([_janela()], bruto_id_maximo=3)[0]
+    em_curso.estado, em_curso.tentativas = "PROCESSANDO", 1
+    em_curso.reserva_token, em_curso.reserva_ate = "t", AGORA + JANELA
+    db.session.commit()
+    assert _registrar([_janela()], bruto_id_maximo=4)[0].id != em_curso.id
+    assert _contar() == 2
+
+
+def test_itens_com_regras_diferentes_viram_pedidos_com_a_regra_de_cada_um(programacao):
+    itens = [dict(_janela(), regra="pontualidade-1.0"),
+             dict(_janela(indicador="EXCESSO_ESPERA"), regra="espera-1.0")]
+    pedidos = _registrar(itens)
+    assert [p.versao_regra for p in pedidos] == ["pontualidade-1.0", "espera-1.0"]
 
 
 def test_restricoes_de_integridade_da_tabela(programacao):
