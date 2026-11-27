@@ -1,0 +1,82 @@
+{
+  "id": "US21-PLANO-1",
+  "versao": "1.0-proposta",
+  "situacao": "PROPOSTA_PENDENTE_INSTITUICAO",
+  "data_preparacao": "2026-11-27",
+  "objetivo": "Descrever associações condicionais entre desempenho mensal e contexto, sem identificação causal.",
+  "grao": "trecho + versao_gtfs + mes",
+  "base_requerida": "us21-base-mensal-1.0",
+  "variavel_alvo": {
+    "campo": "desempenho_s",
+    "indicador": "AUMENTO_ATRASO_TRECHO_MENSAL",
+    "metrica_proposta": "MEDIA",
+    "unidade": "s",
+    "interpretacao": "Média das diferenças de atraso destino menos origem das viagens válidas do trecho no mês. Não é atraso absoluto, pontualidade ou efeito causal."
+  },
+  "modelos_propostos": {
+    "principal": "desempenho_s ~ chuva_mm_observada/10 + C(linha_sentido) + C(infra_classificacao) + C(mes_calendario)",
+    "secundario": "principal + trafego.velocidade_kmh_espacial_candidata",
+    "estimador": "OLS_ASSOCIACIONAL",
+    "pesos": "IGUAIS_POR_TRECHO_MES",
+    "controles": ["linha e sentido combinados", "classe de infraestrutura", "mês calendário"],
+    "nao_incluir_simultaneamente": ["frações de infraestrutura e todas as classes indicadoras redundantes", "efeito fixo por trecho e covariáveis invariantes nesse trecho"],
+    "trafego": "Proxy dos mesmos ônibus; modelo secundário separado, com risco de associação mecânica e endogeneidade. Não representa controle exógeno do tráfego geral."
+  },
+  "qualidade": {
+    "hash_politica_base_aprovada": null,
+    "hashes_bases_aprovadas": [],
+    "cobertura_chuva_primaria": 1.0,
+    "missing": "Casos completos por modelo, sem imputação zero. Publicar contagens e perfil das exclusões. Soma parcial de chuva não é total mensal.",
+    "infraestrutura": "Somente snapshot anterior ao mês e sem mudança intramensal; SEM_COBERTURA não é via comum.",
+    "versoes": "Uma rede GTFS por painel, sem unir IDs de redes distintas. Mesmas cadeias de reconstrução/estimativa/correspondência e regras selecionadas; revisar quebra de versão antes de combinar meses."
+  },
+  "agrupamentos": {
+    "espacial": "Blocos fixados antes do ajuste; reconhecer estações compartilhadas e trechos vizinhos/mesma via. Repetições temporais de um trecho ficam no mesmo bloco.",
+    "mapa_espacial": {},
+    "referencia_mapa_espacial": null,
+    "temporal": "Blocos não sobrepostos de meses consecutivos; efeito mês captura choques médios, cluster temporal captura dependência residual compartilhada.",
+    "bloco_temporal_meses": null,
+    "min_observacoes": null,
+    "min_grupos_espaciais": null,
+    "min_grupos_temporais": null,
+    "pendencia": "Analista deve fixar mapa, duração dos blocos e suficiência de amostra. Não existe mínimo universal adotado automaticamente."
+  },
+  "incerteza": {
+    "metodo_proposto": "COVARIANCIA_CLUSTER_DUAS_VIAS",
+    "dimensoes": ["bloco espacial", "bloco temporal"],
+    "nivel": 0.95,
+    "correcao_amostra_pequena": true,
+    "referencia_critica_proposta": "t com min(G_espacial,G_temporal)-1 graus de liberdade; confirmar com analista",
+    "poucos_grupos": "Não publicar IC ou p-valor com a aproximação assintótica quando os critérios aprovados não forem atendidos. Sem fallback para observações independentes.",
+    "sensibilidade": "Rever blocos mais amplos e estimativas por subperíodo; qualquer método alternativo exige revisão versionada do plano antes de estimar."
+  },
+  "diagnosticos_antes_de_publicar": [
+    "Cardinalidade, hash, versões, política e bases iguais ao registro aprovado",
+    "Variação das exposições e matriz de desenho de posto completo; sem descartar controles silenciosamente",
+    "Número e desequilíbrio dos grupos nas duas dimensões e tamanhos por grupo",
+    "Dependência residual temporal/espacial além dos blocos; ampliar ou suspender se a hipótese de independência entre blocos falhar",
+    "Covariância válida, variâncias não negativas e estabilidade; sem corrigir autovalores silenciosamente",
+    "Influência de grupos/trechos e meses extremos; sensibilidade registrada, sem selecionar só resultados favoráveis",
+    "Contagem por modelo, amplitude dos intervalos e limitações; p-valor não é critério isolado"
+  ],
+  "dados_insuficientes": "Relatar motivo e contagens; não apresentar coeficiente, IC ou p-valor como zero. Um mês ou uma estação compartilhada não sustentam a proposta de inferência em duas dimensões.",
+  "limitacoes": [
+    "Estudo observacional e ecológico: associação não identifica causa, nem efeito da implantação de corredor.",
+    "Mês agregado perde relações de horário, ordem intramensal e possíveis defasagens; não distribuir médias mensais em 15 minutos.",
+    "Amostra restrita aos trechos com resultado publicado e contexto elegível; falhas podem ser informativas.",
+    "Clima é medido numa estação próxima e compartilhado entre trechos; erro de medição e poucos grupos efetivos.",
+    "Captura da infraestrutura não comprova data da intervenção; vínculo climático não tem histórico de alterações.",
+    "Chuva afeta padrões de viagem e frequência; demanda, eventos, vias e outras variáveis não observadas podem confundir associações.",
+    "Proxy de tráfego e desempenho compartilham passagens de origem; controlar o proxy pode mudar a interpretação.",
+    "Sem ligação de trechos equivalentes entre versões GTFS; resultados de redes distintas ficam separados."
+  ],
+  "aprovacoes": {
+    "analista_instituicao": {"nome": null, "instituicao": null, "data": null, "referencia": null, "hash_conteudo_plano": null},
+    "po": {"nome": null, "data": null, "referencia": null, "hash_conteudo_plano": null}
+  },
+  "referencias": [
+    {"titulo":"Cameron e Miller (2015), A Practitioner's Guide to Cluster-Robust Inference","url":"https://cameron.econ.ucdavis.edu/research/Cameron_Miller_JHR_2015.pdf"},
+    {"titulo":"statsmodels, cov_cluster_2groups — documentação oficial consultada em 27/11/2026","url":"https://www.statsmodels.org/stable/generated/statsmodels.stats.sandwich_covariance.cov_cluster_2groups.html"},
+    {"titulo":"American Statistical Association (2016), declaração sobre p-valores","url":"https://www.amstat.org/asa/files/pdfs/p-valuestatement.pdf"}
+  ]
+}
