@@ -81,6 +81,7 @@ def create_app(config_extra=None):
             r"/mapas/indicadores": {"origins": origens_frontend},
             r"/contexto/clima": {"origins": origens_frontend},
             r"/relatorios/associacoes": {"origins": origens_frontend},
+            r"/extracoes(/.*)?": {"origins": origens_frontend},
         }
     )
 
@@ -100,6 +101,7 @@ def create_app(config_extra=None):
     from app.api.correspondencias import correspondencias_bp
     from app.api.documentos import documentos_bp
     from app.api.downloads import downloads_bp
+    from app.api.extracoes import extracoes_bp
     from app.api.indicadores import indicadores_bp
     from app.api.infraestrutura import infraestrutura_bp
     from app.api.mapas import mapas_bp
@@ -112,7 +114,7 @@ def create_app(config_extra=None):
 
     for blueprint in (api_bp, indicadores_bp, infraestrutura_bp, mapas_bp, correspondencias_bp, partidas_bp,
                       posicoes_bp, qualidade_coleta_bp, documentos_bp, downloads_bp, contexto_bp, atrasos_bp,
-                      saude_bp, relatorios_bp):
+                      saude_bp, relatorios_bp, extracoes_bp):
         app.register_blueprint(blueprint)
 
     return app
