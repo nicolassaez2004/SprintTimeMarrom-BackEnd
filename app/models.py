@@ -939,6 +939,62 @@ class ExecucaoProcessamento(db.Model):
     )
 
 
+class PedidoExtracao(db.Model):
+    """US28: pedido público de extração de brutos (diagrama de classes, p. 3/5).
+
+    Um pedido tem exatamente um job (``ExecucaoProcessamento``), criado na mesma
+    transação; o estado público deriva dele (``estado_publico``), sem coluna de
+    estado própria. ``linha_codigo`` é o código Olho Vivo (``cl``), o mesmo de
+    ``RegistroBrutoGPS.linha_origem``. ``arquivo`` é o resultado final, gravado
+    pelo ExportService junto com o PRONTO do job.
+    """
+
+    __tablename__ = "pedidos_extracao"
+    __table_args__ = (
+        CheckConstraint("formato IN ('CSV', 'PARQUET')", name="ck_pedidos_extracao_formato"),
+        CheckConstraint("fim_periodo > inicio_periodo", name="ck_pedidos_extracao_periodo"),
+        UniqueConstraint("execucao_processamento_id", name="uq_pedidos_extracao_execucao"),
+        {"mysql_engine": "InnoDB"},
+    )
+
+    id = db.Column(db.String(36), primary_key=True, default=lambda: str(uuid4()))
+    linha_codigo = db.Column(db.String(16), nullable=False)
+    inicio_periodo = db.Column(UTCDateTime, nullable=False)
+    fim_periodo = db.Column(UTCDateTime, nullable=False)
+    formato = db.Column(db.String(8), nullable=False)
+    criado_em = db.Column(UTCDateTime, nullable=False, default=agora_utc)
+    versao_base = db.Column(db.String(128), nullable=False)
+    execucao_processamento_id = db.Column(
+        db.String(36),
+        db.ForeignKey("execucoes_processamento.id", name="fk_pedidos_extracao_execucao",
+                      ondelete="RESTRICT"),
+        nullable=False,
+    )
+    arquivo_id = db.Column(
+        db.String(36),
+        db.ForeignKey("arquivos_armazenados.id", name="fk_pedidos_extracao_arquivo",
+                      ondelete="RESTRICT"),
+        nullable=True,
+    )
+
+    execucao = db.relationship("ExecucaoProcessamento")
+    arquivo = db.relationship("ArquivoArmazenado")
+
+    def estado_publico(self, limite_tentativas):
+        """AGUARDANDO | PROCESSANDO | PRONTO | ERRO, derivado só do job.
+
+        ERRO com tentativas restantes volta a ser reservado pelo worker, então
+        publicamente ainda aguarda. PRONTO exige o arquivo publicado: um job
+        PRONTO sem arquivo é inconsistência e não é anunciado como pronto.
+        """
+        job = self.execucao
+        if job.estado == "ERRO":
+            return "AGUARDANDO" if job.tentativas < limite_tentativas else "ERRO"
+        if job.estado == "PRONTO" and self.arquivo_id is None:
+            return "ERRO"
+        return job.estado
+
+
 class ResultadoReprocessamento(db.Model):
     """Snapshot versionado de um resultado produzido por uma execução."""
 

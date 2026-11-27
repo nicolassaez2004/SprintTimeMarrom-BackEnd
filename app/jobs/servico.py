@@ -43,12 +43,16 @@ class JobService:
         self.limite = self.LIMITE_TENTATIVAS if limite is None else limite
         self.espera = self.ESPERA_RETOMADA if espera is None else espera
 
-    def solicitar(self, pedidos):
+    def solicitar(self, pedidos, vincular=None):
         """Cria ou reutiliza um job por ``chave_logica``, todos numa transação.
 
         ``pedidos`` são dicts com os campos de ``ExecucaoProcessamento``. Novos
         jobs nascem ``AGUARDANDO`` com 0 tentativas; existentes, em qualquer
         estado, são devolvidos sem alteração.
+
+        ``vincular(jobs)`` (US28) grava registros dependentes dos jobs na mesma
+        transação, antes do commit: falhou, nada fica; é repetido junto com o
+        lote em conflito, então deve reutilizar o que já existir.
 
         A consulta prévia só evita INSERTs inúteis. Quem decide é o ``UNIQUE``:
         se um concorrente confirmar a mesma chave antes do nosso INSERT, ou se
@@ -65,8 +69,12 @@ class JobService:
                 jobs = {chave: repositorio.obter_por_chave(chave) or repositorio.adicionar(
                             ExecucaoProcessamento(estado="AGUARDANDO", tentativas=0, **campos))
                         for chave, campos in sorted(por_chave.items())}
+                ordenados = [jobs[p["chave_logica"]] for p in pedidos]
+                if vincular:
+                    db.session.flush()
+                    vincular(ordenados)
                 db.session.commit()
-                return [jobs[p["chave_logica"]] for p in pedidos]
+                return ordenados
             except Exception as erro:
                 db.session.rollback()
                 if tentativa == self.TENTATIVAS or not _conflito(erro):
