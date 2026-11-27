@@ -1417,3 +1417,25 @@ class MedicaoContexto(db.Model):
     coletada_em = db.Column(UTCDateTime, nullable=False, default=agora_utc)
 
     trecho = db.relationship("Trecho")
+
+
+class VerificacaoDisponibilidade(db.Model):
+    """Medição externa, individual por alvo, sem depender do servidor web."""
+
+    __tablename__ = "verificacoes_disponibilidade"
+    __table_args__ = (
+        CheckConstraint("alvo IN ('API', 'PAINEL')", name="ck_verificacao_disponibilidade_alvo"),
+        CheckConstraint("duracao_ms >= 0", name="ck_verificacao_disponibilidade_duracao"),
+        CheckConstraint("status_http IS NULL OR (status_http >= 100 AND status_http <= 599)",
+                        name="ck_verificacao_disponibilidade_http"),
+        Index("ix_verificacao_disponibilidade_alvo_instante", "alvo", "instante"),
+        {"mysql_engine": "InnoDB"},
+    )
+
+    id = db.Column(db.String(36), primary_key=True, default=lambda: str(uuid4()))
+    alvo = db.Column(db.String(16), nullable=False)
+    instante = db.Column(UTCDateTime, nullable=False)
+    duracao_ms = db.Column(db.Integer, nullable=False)
+    sucesso = db.Column(db.Boolean, nullable=False)
+    status_http = db.Column(db.Integer, nullable=True)
+    resultado = db.Column(db.String(32), nullable=False)

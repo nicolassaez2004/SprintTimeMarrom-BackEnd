@@ -73,6 +73,7 @@ def create_app(config_extra=None):
             # Flask-Cors 6 compara padrões sem metacaracteres literalmente;
             # o sufixo regex cobre as sub-rotas públicas desses recursos.
             r"/qualidade(/.*)?": {"origins": origens_frontend},
+            r"/saude": {"origins": origens_frontend},
             r"/documentos(/.*)?": {"origins": origens_frontend},
             r"/downloads/.*": {"origins": origens_frontend},
             r"/indicadores": {"origins": origens_frontend},
@@ -105,9 +106,10 @@ def create_app(config_extra=None):
     from app.api.posicoes import posicoes_bp
     from app.api.qualidade import qualidade_coleta_bp
     from app.api.routes import api_bp
+    from app.api.saude import saude_bp
 
     for blueprint in (api_bp, indicadores_bp, infraestrutura_bp, mapas_bp, correspondencias_bp, partidas_bp,
-                      posicoes_bp, qualidade_coleta_bp, documentos_bp, downloads_bp, contexto_bp, atrasos_bp):
+                      posicoes_bp, qualidade_coleta_bp, documentos_bp, downloads_bp, contexto_bp, atrasos_bp, saude_bp):
         app.register_blueprint(blueprint)
 
     return app
