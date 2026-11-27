@@ -48,7 +48,7 @@ def test_pedidos_extracao_no_mysql():
             assert len({i for _, i in respostas}) == 1
             assert (PedidoExtracao.query.count(), ExecucaoProcessamento.query.count()) == (1, 1)
             pedido_id = respostas[0][1]
-            assert app.test_client().get(f"/api/extracoes/{pedido_id}").get_json()["estado"] == "AGUARDANDO"
+            assert app.test_client().get(f"/api/extracoes/{pedido_id}").get_json()["estado"] == "aguardando"
 
             with db.engine.connect() as conexao:
                 assert conexao.execute(text(
@@ -129,7 +129,7 @@ def test_geracao_de_extracao_no_mysql(tmp_path):
             db.session.remove()
             for pedido_id in ids:
                 corpo = cliente.get(f"/api/extracoes/{pedido_id}").get_json()
-                assert corpo["estado"] == "PRONTO" and corpo["progresso"]["registros"] == 9
+                assert corpo["estado"] == "pronto" and corpo["progresso"]["registros"] == 9
             arquivo = ArquivoArmazenado.query.filter_by(mime_type="application/vnd.apache.parquet").one()
             caminho = armazenamento().caminho_extracao(arquivo.chave, arquivo.sha256)
             assert set(pq.read_table(caminho).column("linha_origem").to_pylist()) == {"33887"}

@@ -52,6 +52,13 @@ MARGEM_FECHAMENTO = timedelta(minutes=10)
 _CAMPOS = {"linha", "inicio", "fim", "formato"}
 _LINHA = re.compile(r"[0-9]{1,16}")  # código Olho Vivo (cl) = RegistroBrutoGPS.linha_origem
 ARQUIVO = {"PARQUET": ("parquet", MIME_PARQUET), "CSV": ("csv", "text/csv")}
+# Contrato público (Fluxo 3): os mesmos quatro estados do job, em minúsculas.
+ESTADO_PUBLICO = {"AGUARDANDO": "aguardando", "PROCESSANDO": "processando",
+                  "PRONTO": "pronto", "ERRO": "erro"}
+_MENSAGENS = {
+    "ARQUIVO_INDISPONIVEL": "O arquivo final não está disponível no armazenamento. Contate a equipe técnica.",
+    None: "A geração do arquivo falhou após esgotar as tentativas. Envie um novo pedido para tentar novamente.",
+}
 _TEMPORARIO = re.compile(r"\.extracao-([0-9a-f-]{36})-([0-9a-f-]{36})\.tmp")
 
 
@@ -169,9 +176,29 @@ class ExportService:
     def obter(pedido_id):
         return db.session.get(PedidoExtracao, pedido_id)
 
+    def estado(self, pedido):
+        """(estado público, código do erro), derivados do job persistido.
+
+        ``PedidoExtracao.estado_publico`` resolve o job (ERRO com tentativas
+        restantes ainda aguarda; PRONTO sem arquivo é erro). Aqui só se soma a
+        garantia do FileStore: PRONTO cujo objeto final não está publicado não é
+        anunciado como pronto.
+        """
+        estado = pedido.estado_publico(self.jobs.limite)
+        arquivo = pedido.arquivo
+        if estado == "PRONTO" and not self._loja().extracao_publicada(
+                arquivo.chave, arquivo.sha256, arquivo.tamanho_bytes):
+            return ESTADO_PUBLICO["ERRO"], "ARQUIVO_INDISPONIVEL"
+        erro = (pedido.execucao.erro or "ARQUIVO_INDISPONIVEL") if estado == "ERRO" else None
+        return ESTADO_PUBLICO[estado], erro
+
+    def caminho_publicado(self, pedido):
+        """Caminho do arquivo final, conferido pelo hash (``FileNotFoundError`` se não)."""
+        return self._loja().caminho_extracao(pedido.arquivo.chave, pedido.arquivo.sha256)
+
     def descrever(self, pedido):
         """Representação pública: sem chave lógica, token, caminho ou id interno do job."""
-        estado = pedido.estado_publico(self.jobs.limite)
+        estado, erro = self.estado(pedido)
         job, arquivo = pedido.execucao, pedido.arquivo
         ultima = (job.historico or [{}])[-1]
         return {
@@ -182,13 +209,16 @@ class ExportService:
             "formato": pedido.formato,
             "solicitado_em": _iso(pedido.criado_em),
             "versao_base": pedido.versao_base,
-            "erro": (job.erro or "ARQUIVO_INDISPONIVEL") if estado == "ERRO" else None,
+            "erro": erro,
+            "mensagem": _MENSAGENS.get(erro, _MENSAGENS[None]) if erro else None,
             "tentativas": job.tentativas,
+            # Só o que o worker já registrou; sem percentual (total não é conhecido antes).
             "progresso": {"registros": ultima.get("registros", 0),
                           "atualizado_em": ultima.get("progresso_em") or ultima.get("fim")},
-            # Só com o arquivo completo publicado; o download fica para a T03.
-            "arquivo": {"formato": pedido.formato, "tamanho_bytes": arquivo.tamanho_bytes,
-                        "sha256": arquivo.sha256} if estado == "PRONTO" else None,
+            # Só com o arquivo final publicado e conferido no FileStore.
+            "arquivo": {"formato": pedido.formato, "nome": arquivo.nome_original,
+                        "tamanho_bytes": arquivo.tamanho_bytes, "sha256": arquivo.sha256,
+                        "download": f"/api/extracoes/{pedido.id}/arquivo"} if estado == "pronto" else None,
             "consulta": f"/api/extracoes/{pedido.id}",
         }
 
