@@ -1454,3 +1454,17 @@ class VerificacaoSaude(db.Model):
     detalhe = db.Column(db.String(32), nullable=False)
     # Rótulo do que a sonda comprova (ex.: "GET /saude"), sem host, credencial ou query.
     alvo = db.Column(db.String(64), nullable=False)
+
+
+class RelatorioAssociacaoMensal(db.Model):
+    """Snapshot mensal revisado ou estado de análise inválida (US21)."""
+    __tablename__ = 'relatorios_associacao_mensal'
+    __table_args__ = (
+        CheckConstraint("situacao IN ('PUBLICADO', 'INVALIDO')", name='ck_relatorio_associacao_situacao'),
+        {'mysql_engine': 'InnoDB'},
+    )
+    mes = db.Column(db.String(7), primary_key=True)
+    situacao = db.Column(db.String(16), nullable=False)
+    dados = db.Column(db.JSON, nullable=False)
+    hash_dados = db.Column(db.String(64), nullable=False)
+    registrado_em = db.Column(UTCDateTime, nullable=False, default=agora_utc)
