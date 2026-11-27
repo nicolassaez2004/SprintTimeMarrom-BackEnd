@@ -23,6 +23,7 @@ from decimal import Decimal
 import pytest
 
 from app import create_app, db
+from app.exportacoes.csv import linhas_da_versao, preservar_conjunto
 from app.exportacoes.parquet import periodo_utc
 from app.indicadores.agenda import consolidar_dia, versao_vigente
 from app.indicadores.cumprimento import VERSAO_ALGORITMO
@@ -204,14 +205,24 @@ def test_falha_antes_de_publicar_nao_expoe_parcial_e_a_retentativa_converge(app,
 def regra_antiga(app):
     """Conjunto publicado pela regra antiga: ela aceitava a viagem de 12:15 (cobertura 0,5)."""
     _semear(tardia=True, cobertura_tardia=0.5)
-    consolidar_dia(DIA, CONSOLIDADO_EM)
+    publicacao = consolidar_dia(DIA, CONSOLIDADO_EM)
     for registro in IndicadorOperacional.query.filter_by(indicador="CUMPRIMENTO_VIAGENS"):
         registro.versao_calculo = REGRA_ANTIGA
         registro.chave_resultado = f"{registro.chave_resultado}:{REGRA_ANTIGA}"
         if registro.periodo_inicio == T0 + M(15):
             registro.valor, registro.contagem_numerador = 100.0, 1  # regra antiga contava a viagem
+    preservar_conjunto(publicacao)  # o arquivo da versão publicada reflete a regra antiga
     db.session.commit()
-    return {"estado": _estado(), "brutos": _brutos()}
+    return {"estado": _estado(), "brutos": _brutos(), "versao": publicacao.id}
+
+
+def _cumprimento_da_versao(versao_id):
+    """(valor, regra) de CUMPRIMENTO_VIAGENS 12:15–12:30 exportado na versão (US25)."""
+    filtros = {"linha": "3762-10", "sentido": None, "tipo": None, "parada": None, "trecho": None,
+               "versao_gtfs_id": None, "inicio": T0 + M(15), "fim": T0 + M(30)}
+    _, linhas = linhas_da_versao(versao_id, filtros)
+    [linha] = [r for r in linhas if r["tipo"] == "CUMPRIMENTO_VIAGENS"]
+    return float(linha["valor"]), linha["versao_calculo"]
 
 
 def test_regra_nova_chega_ao_resultado_manual_sem_misturar_regras(app, regra_antiga, referencia):
@@ -228,3 +239,9 @@ def test_regra_nova_chega_ao_resultado_manual_sem_misturar_regras(app, regra_ant
     assert _estado() == referencia(tardia=True, cobertura_tardia=0.5)
     assert not [k for k in _estado() if k[4] == REGRA_ANTIGA]  # o painel não mostra as duas regras
     assert _brutos() == regra_antiga["brutos"]
+    # A versão publicada pela regra antiga continua exportável, sem ser alterada;
+    # a versão vigente passa a ser um pedido do recálculo, com a regra nova.
+    assert _cumprimento_da_versao(regra_antiga["versao"]) == (100.0, REGRA_ANTIGA)
+    vigente = versao_vigente()["id"]
+    assert vigente in {p.id for p in pedidos} and vigente != regra_antiga["versao"]
+    assert _cumprimento_da_versao(vigente) == (0.0, VERSAO_ALGORITMO)
