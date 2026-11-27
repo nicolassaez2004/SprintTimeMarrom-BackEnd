@@ -140,3 +140,17 @@ def test_migracao_cria_tabela_no_sqlite():
         inspetor = inspect(conexao)
         assert 'relatorios_associacao_mensal' in inspetor.get_table_names()
         assert {c['name'] for c in inspetor.get_columns('relatorios_associacao_mensal')} == {'mes', 'situacao', 'dados', 'hash_dados', 'registrado_em'}
+
+
+def test_falha_da_consulta_responde_503_sem_resultado(client, monkeypatch):
+    from sqlalchemy.exc import OperationalError
+
+    def indisponivel(mes):
+        raise OperationalError('SELECT', {}, Exception('conexão perdida'))
+
+    monkeypatch.setattr('app.api.relatorios.consultar', indisponivel)
+    resposta = client.get('/relatorios/associacoes?mes=2025-01')
+    corpo = resposta.get_json()
+    assert resposta.status_code == 503
+    assert corpo['erro']['codigo'] == 'CONSULTA_INDISPONIVEL'
+    assert 'resultado' not in corpo and 'situacao' not in corpo

@@ -159,3 +159,52 @@ def test_intervalo_nao_finito_e_rejeitado(monkeypatch):
     resultado = _ajustar(linhas, agrup, True)
     assert resultado['motivo'] == 'INTERVALO_INVALIDO'
     assert 'coeficientes' not in resultado
+
+
+def test_controles_categoricos_e_ausentes_contra_referencia_independente():
+    """Linha/sentido, infraestrutura e mês calendário com dois níveis cada, mais linhas
+    com chuva ausente e desempenho não finito. Referência: dummies montadas à mão
+    (nível de referência = menor valor ordenado) e mínimos quadrados do NumPy."""
+    rng = np.random.default_rng(7)
+    linhas = []
+    for ano in range(2018, 2026):
+        mes = f'{ano}-{"01" if ano % 2 else "07"}'
+        for trecho in range(20):
+            linhas.append({'id_observacao': f'{ano}-{trecho:02}', 'mes': mes, 'trecho_id': str(trecho),
+                           'versao_gtfs_id': 'rede', 'incluida': True,
+                           'linha': 'L1' if trecho < 10 else 'L2', 'sentido': str(trecho % 2),
+                           'infra_classificacao': 'CORREDOR' if trecho % 3 == 0 else 'VIA',
+                           'chuva_mm_observada': float(rng.uniform(0, 100))})
+    linhas[0]['chuva_mm_observada'] = None
+    linhas[1]['chuva_mm_observada'] = float('nan')
+    validas = linhas[2:]
+
+    def dummies(r):
+        return [float(r['mes'][5:7] == '07'), float(r['infra_classificacao'] == 'VIA'),
+                float((r['linha'], r['sentido']) == ('L1', '1')), float((r['linha'], r['sentido']) == ('L2', '0')),
+                float((r['linha'], r['sentido']) == ('L2', '1'))]
+    x = np.array([[1., r['chuva_mm_observada']/10, *dummies(r)] for r in validas])
+    ruido = rng.normal(size=len(validas)) + np.array([int(r['trecho_id']) % 4 for r in validas])
+    ruido -= x @ np.linalg.lstsq(x, ruido, rcond=None)[0]
+    verdade = np.array([10, 3, -4, 6, 1, -2, 5])
+    for r, valor in zip(validas, x @ verdade + ruido):
+        r['desempenho_s'] = float(valor)
+    linhas[0]['desempenho_s'], linhas[1]['desempenho_s'] = 50.0, 50.0
+    agrup = {'mapa_espacial': {f'rede|{i}': str(i) for i in range(20)}, 'bloco_temporal_meses': 12,
+             'min_observacoes': 30, 'min_grupos_espaciais': 5, 'min_grupos_temporais': 5}
+
+    resultado = _ajustar(linhas, agrup, False)
+    assert resultado['situacao'] == 'CALCULADO', resultado
+    assert (resultado['observacoes'], resultado['excluidas_por_dados_ausentes']) == (158, 2)
+    assert resultado['categorias_referencia'] == {
+        'linha_sentido': ('L1', '0'), 'infra_classificacao': 'CORREDOR', 'mes_calendario': '01'}
+    beta = np.linalg.lstsq(x, np.array([r['desempenho_s'] for r in validas]), rcond=None)[0]
+    nomes = ['intercepto', 'chuva_10mm', 'mes_calendario=07', 'infra_classificacao=VIA',
+             "linha_sentido=('L1', '1')", "linha_sentido=('L2', '0')", "linha_sentido=('L2', '1')"]
+    obtidos = resultado['coeficientes']
+    assert sorted(obtidos) == sorted(nomes)
+    for nome, referencia, conhecido in zip(nomes, beta, verdade):
+        assert obtidos[nome]['coeficiente'] == pytest.approx(referencia, abs=1e-9)
+        assert obtidos[nome]['coeficiente'] == pytest.approx(conhecido, abs=1e-9)
+        inferior, superior = obtidos[nome]['ic95']
+        assert inferior < conhecido < superior
