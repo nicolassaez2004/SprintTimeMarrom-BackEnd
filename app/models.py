@@ -929,6 +929,9 @@ class ExecucaoProcessamento(db.Model):
     reserva_token = db.Column(db.String(36), nullable=True)
     reserva_ate = db.Column(UTCDateTime, nullable=True)
     erro = db.Column(db.String(128), nullable=True)
+    # US20-T02C: uma entrada por tentativa {tentativa, inicio, fim, estado, erro};
+    # ``erro`` acima guarda só a última, o histórico preserva todas para auditoria.
+    historico = db.Column(db.JSON, nullable=True)
 
     versao_gtfs = db.relationship("VersaoGTFS")
     resultados_reprocessamento = db.relationship(

@@ -75,8 +75,9 @@ def test_reserva_simultanea_somente_um_assume(mysql_app):
         def reservar(_):
             with app.app_context():
                 try:
+                    # Sem rollback: um rollback devolveria a conexão ao pool antes da
+                    # barreira, e outra thread poderia reutilizá-la (falso "6 == 8").
                     conexao = db.session.execute(text("SELECT CONNECTION_ID()")).scalar_one()
-                    db.session.rollback()
                     barreira.wait()
                     job = JobService().reservar(TIPO)
                     return conexao, job.id if job else None

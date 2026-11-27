@@ -137,19 +137,20 @@ def test_regra_nao_implementada_vira_erro_sem_publicar(app, viagens):
     assert IndicadorOperacional.query.count() == 0
 
 
-@pytest.mark.parametrize("estado,reserva", [
-    ("PRONTO", None), ("ERRO", None), ("PROCESSANDO", timedelta(minutes=10))])
-def test_pedido_indisponivel_nao_e_executado(app, programacao, estado, reserva):
+@pytest.mark.parametrize("estado,tentativas,reserva", [
+    ("PRONTO", 1, None), ("ERRO", JobService.LIMITE_TENTATIVAS, None),  # ERRO esgotado (T02C)
+    ("PROCESSANDO", 1, timedelta(minutes=10))])
+def test_pedido_indisponivel_nao_e_executado(app, programacao, estado, tentativas, reserva):
     job_id = _pedir()
     job = _job(job_id)
-    job.estado, job.tentativas = estado, 1
+    job.estado, job.tentativas = estado, tentativas
     if reserva:
         job.reserva_token, job.reserva_ate = "outro", AGORA + reserva
     db.session.commit()
     chamadas = []
     executor = Executor(app, TIPO, _registrar_tarefa(chamadas), relogio=lambda: AGORA)
     assert executor.executar_um() is None and chamadas == []
-    assert (_job(job_id).estado, _job(job_id).tentativas) == (estado, 1)
+    assert (_job(job_id).estado, _job(job_id).tentativas) == (estado, tentativas)
 
 
 def test_posse_perdida_descarta_resultados(app, viagens):

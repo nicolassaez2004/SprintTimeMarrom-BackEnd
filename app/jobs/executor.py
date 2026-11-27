@@ -5,11 +5,18 @@ próprio; como o Flask-SQLAlchemy escopa ``db.session`` pelo contexto, cada
 execução tem sua sessão, que é removida (rollback + close) ao final.
 
 Fluxo de uma execução:
-1. ``JobService.reservar`` — transação curta, confirmada antes do cálculo.
-2. ``tarefa(job)`` — cálculo pesado; grava na sessão **sem commit**.
-3. ``JobService.concluir`` + commit — resultados e PRONTO juntos, só se o
-   ``reserva_token`` ainda for deste executor; senão tudo é desfeito.
-4. Em falha: rollback e ``JobService.falhar`` (ERRO com o tipo do erro).
+1. ``JobService.reservar`` — transação curta, confirmada antes do cálculo
+   (registra antes as execuções interrompidas por reserva vencida).
+2. ``tarefa(job)`` — cálculo pesado, só leituras; retorna os resultados.
+   Com ``publicar`` (US20-T02C), a transação de leitura é encerrada aqui.
+3. ``JobService.assumir_publicacao`` — ``SELECT … FOR UPDATE`` exigindo o
+   ``reserva_token``; sem posse, nada é gravado (``PossePerdida``).
+4. ``publicar(job, resultados)`` + ``JobService.concluir`` + commit —
+   resultados e PRONTO juntos numa transação curta.
+5. Em falha: rollback e ``JobService.falhar`` (ERRO com o tipo do erro).
+
+Sem ``publicar`` (contrato da T02B), ``tarefa`` grava na sessão sem commit e
+só ``concluir`` valida a posse, ainda na mesma transação dos resultados.
 """
 from datetime import datetime, timezone
 import logging
@@ -26,14 +33,16 @@ class PossePerdida(RuntimeError):
 
 
 class Executor:
-    def __init__(self, app, tipo, tarefa, *, duracao_reserva=None, relogio=None):
-        self.app, self.tipo, self.tarefa = app, tipo, tarefa
+    def __init__(self, app, tipo, tarefa, publicar=None, *, duracao_reserva=None, relogio=None,
+                 servico=None):
+        self.app, self.tipo, self.tarefa, self.publicar = app, tipo, tarefa, publicar
         self.duracao = duracao_reserva
         self.relogio = relogio or (lambda: datetime.now(timezone.utc))
+        self.servico = servico or JobService()
 
     def executar_um(self):
         """Reserva e executa um job. Retorna ``(id, estado)`` ou ``None`` se não há job livre."""
-        servico = JobService()
+        servico = self.servico
         with self.app.app_context():
             try:
                 job = servico.reservar(self.tipo, self.relogio(), self.duracao)
@@ -41,7 +50,13 @@ class Executor:
                     return None
                 job_id, token = job.id, job.reserva_token
                 try:
-                    self.tarefa(job)
+                    resultados = self.tarefa(job)
+                    if self.publicar:
+                        db.session.rollback()  # fecha a leitura; nada foi gravado
+                        job = servico.assumir_publicacao(job_id, token)
+                        if job is None:
+                            raise PossePerdida(job_id)
+                        self.publicar(job, resultados)
                     if not servico.concluir(job_id, token, self.relogio()):
                         raise PossePerdida(job_id)
                     db.session.commit()
