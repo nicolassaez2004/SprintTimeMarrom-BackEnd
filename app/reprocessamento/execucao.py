@@ -15,18 +15,25 @@ tentativa começar a ler os dados, nem um gravado por geração mais nova do mes
 pedido; cada registro gravado guarda ``qualidade.recalculo`` (pedido, chave,
 snapshot e versões); e registros do mesmo escopo, janela e regra que o novo
 conjunto não reproduz são removidos na mesma transação (como ``agenda._substituir``).
+
+US20-T03: o recálculo é uma publicação versionada. ``preservar_publicacao`` guarda o
+conjunto do período (US25) antes do commit que grava resultados e PRONTO juntos; só
+então ``versao_vigente`` passa a apontar o pedido. Leitores veem o conjunto antigo
+ou o novo, nunca um parcial; em falha, o rollback mantém o antigo. Depois do commit,
+``invalidar_caches`` regera o CSV diário consolidado dos dias alterados.
+``executor_recalculo`` monta o worker com essas etapas.
 """
 from datetime import datetime, timedelta, timezone
 
 from app import db
 from app.core.tempo import FUSO
-from app.indicadores.agenda import PUBLICADOS, _contextos
+from app.indicadores.agenda import CONSOLIDACAO, PUBLICADOS, RECALCULO, _contextos
 from app.indicadores.cumprimento import calcular_indicador_cumprimento, gravar_indicador
 from app.indicadores.espera import ESPERA, EXCESSO, CalculoEspera
 from app.indicadores.frequencia import OBSERVADA, PROGRAMADA, CalculoFrequencia
 from app.indicadores.pontualidade import calcular_indicador_pontualidade
 from app.indicadores.regularidade import REGULARIDADE, CalculoRegularidade
-from app.models import IndicadorOperacional
+from app.models import ExecucaoProcessamento, IndicadorOperacional
 from app.qualidade.service import FalhasColeta
 
 REGRA_VIGENTE = dict(PUBLICADOS)  # indicador -> versão da regra implementada no código
@@ -93,7 +100,8 @@ def _mais_recente(existente, pedido):
 
 
 def _substituir_no_escopo(pedido, gravados, escritas):
-    """Remove registros do mesmo indicador, regra, escopo e janela não reproduzidos."""
+    """Remove registros do mesmo indicador, regra, escopo e janela não reproduzidos,
+    e os registros que o pedido recalcula (``resultados_ids``)."""
     if not gravados:
         return 0
     I, escopo = IndicadorOperacional, pedido.parametros["escopo"]
@@ -111,6 +119,15 @@ def _substituir_no_escopo(pedido, gravados, escritas):
             if registro.chave_resultado not in escritas and not _mais_recente(registro, pedido):
                 db.session.delete(registro)
                 removidos += 1
+    # US20-T04: os registros que motivaram o pedido (``resultados_ids``) também são
+    # substituídos. Numa mudança de regra eles têm outra ``versao_calculo`` (e outra
+    # chave); sem isso o painel mostraria a regra antiga ao lado da nova. A versão
+    # anterior continua preservada no arquivo da sua publicação (US25).
+    ids = (pedido.parametros or {}).get("resultados_ids") or []
+    for registro in I.query.filter(I.id.in_(ids)).all() if ids else ():
+        if registro.chave_resultado not in escritas and not _mais_recente(registro, pedido):
+            db.session.delete(registro)
+            removidos += 1
     db.session.flush()
     return removidos
 
@@ -140,3 +157,46 @@ def publicar_pedido(pedido, resultados, agora=None):
 def recalcular_pedido(pedido, agora=None):
     """Calcula e grava (sem commit) numa só fase; retorna quantos registros."""
     return publicar_pedido(pedido, calcular_pedido(pedido, agora), agora)
+
+
+def preservar_publicacao(pedido_id):
+    """US20-T03: chamado pelo executor depois de ``concluir`` e ANTES do commit."""
+    from app.exportacoes.csv import preservar_conjunto
+
+    preservar_conjunto(db.session.get(ExecucaoProcessamento, pedido_id, populate_existing=True))
+
+
+def dias_afetados(pedido):
+    """Dias de São Paulo tocados por ``[periodo_inicio, periodo_fim)``."""
+    dia = pedido.periodo_inicio.astimezone(FUSO).date()
+    ultimo = (pedido.periodo_fim - timedelta(microseconds=1)).astimezone(FUSO).date()
+    dias = []
+    while dia <= ultimo:
+        dias.append(dia)
+        dia += timedelta(days=1)
+    return dias
+
+
+def invalidar_caches(pedido_id, agora=None):
+    """US20-T03, depois do commit: regera o CSV diário já consolidado de cada dia
+    alterado (o antigo deixa de ser servido assim que o recálculo é confirmado).
+    Dias ainda não consolidados não têm arquivo; a consolidação usará os dados novos."""
+    from app.exportacoes.csv import publicar_csv_indicadores
+
+    pedido = db.session.get(ExecucaoProcessamento, pedido_id, populate_existing=True)
+    agora = max(agora or datetime.now(timezone.utc), pedido.finalizada_em)
+    regerados = []
+    for dia in dias_afetados(pedido):
+        chave = f"US23-T03:{CONSOLIDACAO}:{dia.isoformat()}"
+        if ExecucaoProcessamento.query.filter_by(chave_logica=chave, estado="PRONTO").first():
+            publicar_csv_indicadores(dia, agora)
+            regerados.append(dia)
+    return regerados
+
+
+def executor_recalculo(app, **opcoes):
+    """Worker de ``RECALCULO_INDICADOR`` com cálculo, publicação, versão e caches."""
+    from app.jobs.executor import Executor
+
+    return Executor(app, RECALCULO, calcular_pedido, publicar_pedido,
+                    preservar=preservar_publicacao, apos_confirmar=invalidar_caches, **opcoes)

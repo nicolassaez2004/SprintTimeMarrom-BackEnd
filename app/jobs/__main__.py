@@ -8,11 +8,11 @@ import signal
 from threading import Event
 
 from app import create_app
-from app.jobs.executor import Executor
-from app.reprocessamento.execucao import calcular_pedido, publicar_pedido
+from app.reprocessamento.execucao import executor_recalculo
 from app.reprocessamento.pedidos import TIPO as RECALCULO
 
-TAREFAS = {RECALCULO: (calcular_pedido, publicar_pedido)}  # (cálculo, publicação)
+# tipo -> fábrica do executor (US20-T03: cálculo, publicação, versão e caches)
+TAREFAS = {RECALCULO: executor_recalculo}
 
 
 def main(argv=None):
@@ -27,8 +27,7 @@ def main(argv=None):
     parar = Event()
     for sinal in (signal.SIGINT, signal.SIGTERM):
         signal.signal(sinal, lambda *_: parar.set())
-    feitos = Executor(create_app(), args.tipo, *TAREFAS[args.tipo]).executar(
-        parar, args.intervalo, uma_vez=args.uma_vez)
+    feitos = TAREFAS[args.tipo](create_app()).executar(parar, args.intervalo, uma_vez=args.uma_vez)
     logging.getLogger(__name__).info('{"evento":"worker_fim","jobs":%d,"erros":%d}',
                                      len(feitos), sum(e == "ERRO" for _, e in feitos))
     return 0

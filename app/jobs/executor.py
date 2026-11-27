@@ -17,6 +17,11 @@ Fluxo de uma execução:
 
 Sem ``publicar`` (contrato da T02B), ``tarefa`` grava na sessão sem commit e
 só ``concluir`` valida a posse, ainda na mesma transação dos resultados.
+
+US20-T03: ``preservar(job_id)`` roda depois de ``concluir`` e antes do commit
+(o PRONTO e ``finalizada_em`` já estão na transação); falhar nele desfaz tudo.
+``apos_confirmar(job_id)`` roda depois do commit (invalidação de caches); sua
+falha é registrada e não desfaz a publicação já confirmada.
 """
 import logging
 from datetime import datetime, timezone
@@ -33,9 +38,10 @@ class PossePerdida(RuntimeError):
 
 
 class Executor:
-    def __init__(self, app, tipo, tarefa, publicar=None, *, duracao_reserva=None, relogio=None,
-                 servico=None):
+    def __init__(self, app, tipo, tarefa, publicar=None, *, preservar=None, apos_confirmar=None,
+                 duracao_reserva=None, relogio=None, servico=None):
         self.app, self.tipo, self.tarefa, self.publicar = app, tipo, tarefa, publicar
+        self.preservar, self.apos_confirmar = preservar, apos_confirmar
         self.duracao = duracao_reserva
         self.relogio = relogio or (lambda: datetime.now(timezone.utc))
         self.servico = servico or JobService()
@@ -59,14 +65,23 @@ class Executor:
                         self.publicar(job, resultados)
                     if not servico.concluir(job_id, token, self.relogio()):
                         raise PossePerdida(job_id)
+                    if self.preservar:
+                        self.preservar(job_id)
                     db.session.commit()
-                    return job_id, "PRONTO"
                 except Exception as erro:
                     db.session.rollback()
                     servico.falhar(job_id, token, erro, self.relogio())
                     logger.error('{"evento":"job_falha","tipo":"%s","job":"%s","erro":"%s"}',
                                  self.tipo, job_id, type(erro).__name__)
                     return job_id, "ERRO"
+                if self.apos_confirmar:
+                    try:
+                        self.apos_confirmar(job_id)
+                    except Exception as erro:  # publicação já confirmada; só registra
+                        db.session.rollback()
+                        logger.error('{"evento":"job_pos_commit_falha","tipo":"%s","job":"%s","erro":"%s"}',
+                                     self.tipo, job_id, type(erro).__name__)
+                return job_id, "PRONTO"
             finally:
                 db.session.remove()
 
