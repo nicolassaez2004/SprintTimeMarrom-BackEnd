@@ -1,5 +1,20 @@
 # SprintTimeMarrom-BackEnd
 
+## Base mensal para associações — US21-T01
+
+[Preparação rastreável](docs/US21-T01.md) combina desempenho, chuva, proxy de
+tráfego e infraestrutura em uma observação por trecho/rede/mês. Mantém versões,
+coberturas, fontes, exclusões e hash, sem junções que multipliquem a amostra.
+Reproduzir o controle com `python -m scripts.validar_us21_t01` (SQLite em memória).
+Não calcula associações; política e análise dependem de aprovação.
+
+### Plano de análise e incerteza — US21-T02
+
+[Proposta para analista e PO](docs/US21-T02.md) define desfecho, controles e
+tratamento da dependência temporal/espacial. Situação: aprovação pendente,
+sem coeficientes ou intervalos calculados. Conferir prontidão com
+`python -m scripts.verificar_plano_us21`.
+
 ## Conferência de propagação de atrasos — US19-T04
 
 [Vinte casos controlados e resultados](docs/US19-T04.md), com diferenças de

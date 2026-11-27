@@ -1,0 +1,38 @@
+{
+  "hash_conteudo_plano": "d3fe09b88227443335d757944dca00285dc3e2b3b4ed6a0191a409624297d177",
+  "hashes_bases": [
+    "7f0929980ab065314e70d62211858b0860c25505720cf5f8001857e3f3ad73e7"
+  ],
+  "observacoes": 4,
+  "meses": 1,
+  "grupos_espaciais": 0,
+  "grupos_temporais": 0,
+  "motivos": [
+    "ACEITE_INCOMPLETO_ANALISTA_INSTITUICAO",
+    "ACEITE_INCOMPLETO_PO",
+    "BASES_DIVERGENTES_DO_PLANO",
+    "BASE_SINTETICA_APENAS_ENSAIO",
+    "GRUPOS_INSUFICIENTES_PARA_DUAS_VIAS",
+    "MAPA_ESPACIAL_PENDENTE",
+    "MENOS_DE_DOIS_MESES",
+    "PARAMETRO_PENDENTE_BLOCO_TEMPORAL_MESES",
+    "PARAMETRO_PENDENTE_MIN_GRUPOS_ESPACIAIS",
+    "PARAMETRO_PENDENTE_MIN_GRUPOS_TEMPORAIS",
+    "PARAMETRO_PENDENTE_MIN_OBSERVACOES",
+    "PLANO_NAO_APROVADO",
+    "POLITICA_BASE_PENDENTE",
+    "POLITICA_DIVERGENTE_DO_PLANO",
+    "SEM_VARIACAO_CHUVA",
+    "TRECHO_SEM_BLOCO_ESPACIAL"
+  ],
+  "pode_iniciar_estimacao": false,
+  "pode_publicar_resultados": false,
+  "calculos_de_associacao_executados": 0,
+  "verificacoes_posteriores_obrigatorias": [
+    "posto da matriz do modelo",
+    "dependência residual além dos blocos",
+    "validade da covariância e intervalos",
+    "influência e sensibilidades",
+    "revisão institucional dos resultados"
+  ]
+}
