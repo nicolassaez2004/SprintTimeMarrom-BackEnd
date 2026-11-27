@@ -17,10 +17,12 @@ from sqlalchemy import event
 
 from app import create_app, db
 from app.core.tempo import FUSO
+from app.indicadores.pontualidade import VERSAO_ALGORITMO_PONTUALIDADE
 from app.indicadores.propagacao import (
-    INDICADOR_CORRELACAO, INDICADOR_MENSAL, INDICADOR_VARIACAO, ViagemVeiculo,
+    AMOSTRA_MINIMA, INDICADOR_CORRELACAO, INDICADOR_MENSAL, INDICADOR_VARIACAO, METODO_CORRELACAO,
+    VERSAO_CALCULO, VERSAO_CORRELACAO, VERSAO_MENSAL, ViagemVeiculo,
     agregar_mes, calcular_propagacao, correlacionar_chegada_partida,
-    montar_correlacao, publicar_correlacao, publicar_propagacao, viagem_do_veiculo,
+    montar_correlacao, publicar_correlacao, publicar_propagacao, recortar_correlacao, viagem_do_veiculo,
 )
 from app.models import (
     ArquivoArmazenado, ExecucaoColeta, ImportacaoProgramacao, IndicadorOperacional,
@@ -185,14 +187,17 @@ def conferir_escala(caso, caderno):
     preparar_rede()
     inicio, fim = map(datetime.fromisoformat, (caso['inicio'], caso['fim']))
     viagens = []
+    # Todas as viagens do caderno entram no pareamento; o recorte da escala é do
+    # sistema (recortar_correlacao), não deste roteiro.
     for par in caderno['pares_das_escalas']:
         chegada = datetime.fromisoformat(par['chegada'])
-        if not inicio <= chegada < fim: continue
         a = vv(par['id']+'-a', 0, 20, ac=par['x'], prefixos=(par['id'],))
         b = vv(par['id']+'-b', 25, 35, ap=par['y'], prefixos=(par['id'],))
         viagens.extend([replace(a, saida=chegada-timedelta(minutes=20), chegada=chegada, termino=chegada),
                         replace(b, saida=chegada+timedelta(minutes=5), chegada=chegada+timedelta(minutes=15), termino=chegada+timedelta(minutes=15))])
-    r = correlacionar_chegada_partida(list(reversed(viagens)), timedelta(minutes=30))
+    todos = correlacionar_chegada_partida(list(reversed(viagens)), timedelta(minutes=30))
+    assert todos.amostra == len(caderno['pares_das_escalas'])
+    r = recortar_correlacao(todos, linha=LINHA, inicio=inicio, fim=fim, versao_gtfs_id=REDE)
     pares = [[p.anterior.viagem_id,p.seguinte.viagem_id] for p in r.pares]
     esperado = caso['esperado']
     assert pares == esperado['pares'] and r.amostra == esperado['n']
@@ -272,8 +277,24 @@ def executar_caso(caso, caderno):
         elif caso['grupo'] == 'encadeamento': obtido = conferir_encadeamento(caso)
         elif caso['grupo'] == 'escala': obtido = conferir_escala(caso, caderno)
         else: obtido = conferir_ranking(caso, app)
-    return {'id':caso['id'], 'descricao':caso['descricao'], 'referencia_manual':caso['calculo_manual'],
-            'resultado':'CONFERE_NO_ENSAIO', 'esperado':caso['esperado'], 'obtido':obtido}
+    return {'id':caso['id'], 'descricao':caso['descricao'], 'tipo_dado':'SINTETICO_CONTROLADO',
+            'referencia_manual':caso['calculo_manual'],
+            'origem_referencia':'valor literal do caderno, calculado à mão; não é saída da função testada',
+            **METODOS[caso['grupo']], 'resultado':'CONFERE_NO_ENSAIO', 'esperado':caso['esperado'], 'obtido':obtido}
+
+
+ENTRADAS = {'reconstrucao':'recon-controle', 'correspondencia':'match-controle', 'estimativa':'estimativa-controle'}
+METODOS = {
+    'variacao': {'metodo':'atraso = passagem estimada - previsto GTFS; variação = atraso destino - atraso origem',
+                 'versoes':{'calculo':VERSAO_CALCULO, **ENTRADAS}},
+    'encadeamento': {'metodo':'vizinho imediato do mesmo prefixo; intervalo máximo 1800 s (parâmetro do ensaio)',
+                     'versoes':{'atraso_chegada':VERSAO_CALCULO, 'atraso_partida':VERSAO_ALGORITMO_PONTUALIDADE, **ENTRADAS}},
+    'escala': {'metodo':f'{METODO_CORRELACAO}, amostra mínima {AMOSTRA_MINIMA}; recorte pela chegada em [início, fim) (recortar_correlacao)',
+               'versoes':{'correlacao':VERSAO_CORRELACAO, 'atraso_chegada':VERSAO_CALCULO,
+                          'atraso_partida':VERSAO_ALGORITMO_PONTUALIDADE}},
+    'ranking': {'metodo':'MEDIA e MEDIANA das variações do trecho no mês operacional; ordem valor desc, trecho_id asc; até 20',
+                'versoes':{'agregado':VERSAO_MENSAL, 'variacao':VERSAO_CALCULO, **ENTRADAS}},
+}
 
 
 def executar():

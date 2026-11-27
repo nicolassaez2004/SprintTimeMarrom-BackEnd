@@ -1,5 +1,11 @@
 # SprintTimeMarrom-BackEnd
 
+## Revisão US19/US20/US21/US30 (27/11/2026)
+
+Parecer por tarefa: [docs/reviews/us19-us20-us21-us30.md](docs/reviews/us19-us20-us21-us30.md).
+Recálculo: [o que recalcular (US20-T01)](docs/US20-T01.md). Saúde e disponibilidade:
+[US30](docs/US30.md) — `GET /saude`, monitor `python -m scripts.sondagem`, migração `us30_0026`.
+
 ## Base mensal para associações — US21-T01
 
 [Preparação rastreável](docs/US21-T01.md) combina desempenho, chuva, proxy de

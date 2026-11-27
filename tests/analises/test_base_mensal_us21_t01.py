@@ -129,9 +129,20 @@ def test_fim_nativo_climatico_incluido_inicio_anterior_excluido(entrada):
     assert r['chuva_mm_observada']==5 and r['clima']['recebidas']==720
 
 
-def test_observacao_climatica_duplicada_e_erro_explicito(entrada):
+def test_observacao_climatica_duplicada_torna_so_a_estacao_ambigua(entrada):
+    """Revisão: duas medições no mesmo instante não são somadas nem derrubam a base inteira."""
     s,p,f=entrada; f['clima'].append(deepcopy(f['clima'][0]))
-    with pytest.raises(ValueError,match='duplicada'): construir(entrada)
+    base=construir(entrada)
+    assert base['resumo']['candidatas']==5 and base['resumo']['incluidas']==0
+    assert all('CLIMA_AMBIGUO' in r['exclusoes'] and r['chuva_mm_observada'] is None for r in base['linhas'])
+    assert next(iter(base['clima_por_estacao'].values()))['instantes_repetidos']==1
+
+
+def test_periodo_disponivel_identifica_base_inferior_ao_mes(entrada):
+    periodo=construir(entrada)['resumo']['periodo_disponivel']
+    assert periodo['dias_do_mes']==30
+    assert periodo['clima']['dias_com_dados']==30 and periodo['clima']['inferior_ao_mes'] is False
+    assert periodo['trafego']['inferior_ao_mes'] is True and periodo['inferior_ao_mes'] is True
 
 
 def test_snapshot_futuro_nao_explica_mes_passado(entrada):

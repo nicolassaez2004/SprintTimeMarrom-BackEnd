@@ -43,6 +43,8 @@ def verificar_prontidao(plano, bases):
         if h!=digest({k:v for k,v in b.items() if k!='hash_base'}): motivos.append('HASH_BASE_INVALIDO')
         if b.get('versao_base')!=VERSAO_BASE: motivos.append('VERSAO_BASE_INCOMPATIVEL')
         if b.get('origem','').startswith('SINTETICA'): motivos.append('BASE_SINTETICA_APENAS_ENSAIO')
+        if (b.get('resumo') or {}).get('periodo_disponivel',{}).get('inferior_ao_mes',True):
+            motivos.append('BASE_COM_PERIODO_INFERIOR_AO_MES')  # ausente = não verificável
         if digest(b['politica'])!=qualidade.get('hash_politica_base_aprovada'): motivos.append('POLITICA_DIVERGENTE_DO_PLANO')
         s=b['selecao']; redes.add(s['versao_gtfs_id'])
         cadeias.add(digest({k:s[k] for k in ('metrica_desempenho','trafego_versao_fonte','trafego_versoes','clima_versao_fonte','clima_regra_vinculo')}))

@@ -18,8 +18,8 @@ Fluxo de uma execução:
 Sem ``publicar`` (contrato da T02B), ``tarefa`` grava na sessão sem commit e
 só ``concluir`` valida a posse, ainda na mesma transação dos resultados.
 """
-from datetime import datetime, timezone
 import logging
+from datetime import datetime, timezone
 from threading import Event
 
 from app import db
@@ -71,11 +71,25 @@ class Executor:
                 db.session.remove()
 
     def executar(self, parar=None, intervalo=5.0, uma_vez=False):
-        """Loop até ``parar`` ser sinalizado; ``uma_vez`` esvazia a fila e retorna."""
+        """Loop até ``parar`` ser sinalizado; ``uma_vez`` esvazia a fila e retorna.
+
+        Falha de infraestrutura fora do job (banco indisponível ao reservar ou ao
+        registrar ERRO) não encerra o worker contínuo: registra, espera
+        ``intervalo`` e tenta de novo. Um job que ficou PROCESSANDO é recuperado
+        quando a reserva vencer (US20-T02C). Em ``uma_vez`` a falha é propagada.
+        """
         parar = parar or Event()
         feitos = []
         while not parar.is_set():
-            resultado = self.executar_um()
+            try:
+                resultado = self.executar_um()
+            except Exception as erro:
+                if uma_vez:
+                    raise
+                logger.error('{"evento":"worker_falha_infra","tipo":"%s","erro":"%s"}',
+                             self.tipo, type(erro).__name__)
+                parar.wait(intervalo)
+                continue
             if resultado is not None:
                 feitos.append(resultado)
             elif uma_vez:

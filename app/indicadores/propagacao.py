@@ -391,6 +391,30 @@ def correlacionar_chegada_partida(viagens, intervalo_maximo=None):
                                coeficiente, motivo, intervalo_maximo, versoes)
 
 
+def recortar_correlacao(resultado, *, linha, inicio, fim, versao_gtfs_id):
+    """Pares da linha/rede com chegada (ou saída, sem chegada) em ``[inicio, fim)``; r recalculado.
+
+    Pareie todas as viagens do período maior (para manter o vizinho imediato
+    correto nas bordas) e recorte cada escala — 15 min, faixa, dia ou mês — aqui,
+    em vez de filtrar viagens antes do pareamento. ``descartados_fora_do_escopo``
+    preserva quantos descartes ficaram fora do recorte.
+    """
+    if inicio.utcoffset() is None or fim.utcoffset() is None or fim <= inicio:
+        raise ValueError("inicio e fim com fuso, fim posterior a inicio")
+    inicio, fim = _utc(inicio), _utc(fim)
+
+    def no_escopo(par):
+        a = par.anterior
+        return ((a.linha_codigo, a.versao_gtfs_id) == (linha, versao_gtfs_id)
+                and inicio <= (a.chegada or a.saida) < fim)
+
+    pares = tuple(p for p in resultado.pares if no_escopo(p))
+    coeficiente, motivo = pearson([p.anterior.atraso_chegada_seg for p in pares],
+                                  [p.seguinte.atraso_partida_seg for p in pares])
+    return ResultadoCorrelacao(pares, resultado.descartados, resultado.excluidas, coeficiente, motivo,
+                               resultado.intervalo_maximo, resultado.versoes)
+
+
 def montar_correlacao(resultado, *, linha, inicio, fim, versao_gtfs_id):
     """Colunas de ``IndicadorOperacional`` para os pares cuja chegada é da linha e janela.
 
