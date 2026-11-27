@@ -131,7 +131,7 @@ def test_worker_publica_somente_linha_periodo_e_snapshot_com_metadados_da_us09(a
     assert meta[b"request_id"] == pedido_id.encode() and meta[b"line"] == LINHA.encode()
     assert hash_arquivo(caminho)[0] == digest
     corpo = _estado(app, pedido_id)
-    assert corpo["estado"] == "PRONTO" and corpo["arquivo"]["sha256"] == digest
+    assert corpo["estado"] == "pronto" and corpo["arquivo"]["sha256"] == digest
     assert corpo["progresso"]["registros"] == 7
     assert historico[-1]["estado"] == "PRONTO" and historico[-1]["registros"] == 7
     with app.app_context():
@@ -175,7 +175,7 @@ def test_le_em_lotes_registra_progresso_e_nada_aparece_antes_de_publicar(app, mo
     # Lotes de 2 (7 registros) e a confirmação final após a validação.
     assert [v[0] for v in vistos] == [2, 4, 6, 7, 7]
     for registros, estado, arquivo, progresso, finais, temporarios in vistos:
-        assert (estado, arquivo, finais, temporarios) == ("PROCESSANDO", None, [], 1)
+        assert (estado, arquivo, finais, temporarios) == ("processando", None, [], 1)
         assert progresso == registros
     assert _temporarios(app) == [] and len(_finais(app)) == 1
 
@@ -192,7 +192,7 @@ def test_falha_na_gravacao_vira_erro_recuperavel_sem_temporario(app, monkeypatch
     assert _worker(app).executar_um()[1] == "ERRO"
 
     corpo = _estado(app, pedido_id)
-    assert (corpo["estado"], corpo["tentativas"], corpo["arquivo"]) == ("AGUARDANDO", 1, None)
+    assert (corpo["estado"], corpo["tentativas"], corpo["arquivo"]) == ("aguardando", 1, None)
     with app.app_context():
         job = db.session.get(PedidoExtracao, pedido_id).execucao
         assert (job.estado, job.erro, job.historico[-1]["erro"]) == ("ERRO", "OSError", "OSError")
@@ -200,7 +200,7 @@ def test_falha_na_gravacao_vira_erro_recuperavel_sem_temporario(app, monkeypatch
     assert _temporarios(app) == [] and _finais(app) == []
     monkeypatch.undo()
     assert _worker(app).executar_um()[1] == "PRONTO"
-    assert _estado(app, pedido_id)["estado"] == "PRONTO"
+    assert _estado(app, pedido_id)["estado"] == "pronto"
 
 
 def test_arquivo_invalido_nao_e_publicado(app, monkeypatch):
@@ -258,7 +258,7 @@ def test_worker_antigo_nao_publica_depois_de_perder_a_reserva(app):
         assert job.historico[0]["erro"] == "ReservaExpirada"
         assert ArquivoArmazenado.query.count() == 1
     assert len(_finais(app)) == 1 and _temporarios(app) == []
-    assert _estado(app, pedido_id)["estado"] == "PRONTO"
+    assert _estado(app, pedido_id)["estado"] == "pronto"
 
 
 def test_worker_antigo_para_de_gravar_ao_perder_a_reserva(app):
@@ -302,7 +302,7 @@ def _ambiente(app, tmp_path):
 def test_fluxo_completo_com_worker_em_processo_separado(app, tmp_path):
     """POST → pedido + job → `python -m app.jobs` (outro processo) → GET."""
     pedido_id = _pedir(app)
-    assert _estado(app, pedido_id)["estado"] == "AGUARDANDO"
+    assert _estado(app, pedido_id)["estado"] == "aguardando"
 
     processo = subprocess.run(
         [sys.executable, "-m", "app.jobs", "--tipo", "EXTRACAO_BRUTOS", "--uma-vez"],
@@ -310,7 +310,7 @@ def test_fluxo_completo_com_worker_em_processo_separado(app, tmp_path):
 
     assert processo.returncode == 0, processo.stderr
     corpo = _estado(app, pedido_id)
-    assert corpo["estado"] == "PRONTO" and corpo["progresso"]["registros"] == 7
+    assert corpo["estado"] == "pronto" and corpo["progresso"]["registros"] == 7
     caminho, _, _ = _arquivo(app, pedido_id)
     assert pq.read_table(caminho).column("id").to_pylist() == _esperados(app)
 
@@ -343,7 +343,7 @@ def test_interrupcao_e_retomada_sem_publicacao_parcial_ou_duplicada(app, tmp_pat
     parcial = _temporarios(app)
     assert len(parcial) == 1 and (_loja(app) / parcial[0]).stat().st_size > 0
     corpo = _estado(app, pedido_id)
-    assert (corpo["estado"], corpo["arquivo"], corpo["progresso"]["registros"]) == ("PROCESSANDO", None, 4)
+    assert (corpo["estado"], corpo["arquivo"], corpo["progresso"]["registros"]) == ("processando", None, 4)
     assert _finais(app) == []
 
     # 2. Retomada depois de a reserva vencer.

@@ -72,3 +72,10 @@ class FileStore:
 
     def caminho_extracao(self, chave, digest):
         return self._caminho(chave, digest, "arquivo de extração")
+
+    def extracao_publicada(self, chave, digest, tamanho):
+        """Checagem leve, sem reler os bytes: o objeto final (nome = hash, nunca
+        o ``.tmp``) existe com o tamanho gravado. O hash completo fica para o download."""
+        caminho = self.diretorio / Path(chave).name
+        return (chave.startswith("extracoes/") and caminho.stem == digest
+                and caminho.is_file() and caminho.stat().st_size == tamanho)

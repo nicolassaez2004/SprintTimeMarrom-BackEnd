@@ -1,7 +1,10 @@
-"""US28: POST /extracoes registra o pedido e responde 202; GET /extracoes/<id> acompanha."""
+"""US28: POST /extracoes registra o pedido e responde 202; GET /extracoes/<id> acompanha.
+
+As consultas só leem o MySQL e o FileStore: nunca iniciam jobs nem geram arquivos.
+"""
 import re
 
-from flask import Blueprint, current_app, request
+from flask import Blueprint, current_app, request, send_file
 from sqlalchemy.exc import SQLAlchemyError
 
 from app import db
@@ -35,14 +38,48 @@ def solicitar_extracao():
     return corpo, 202, {**_SEM_CACHE, "Location": corpo["consulta"]}
 
 
+def _pedido(servico, pedido_id):
+    """Id opaco: formato fora do UUID é tratado como inexistente (404), sem consultar."""
+    return servico.obter(pedido_id) if _UUID.fullmatch(pedido_id) else None
+
+
+def _nao_encontrado():
+    return erro_json("PEDIDO_NAO_ENCONTRADO", "Pedido de extração não encontrado.", 404)
+
+
 @extracoes_bp.get("/extracoes/<pedido_id>")
 @extracoes_bp.get("/api/extracoes/<pedido_id>")
 def consultar_extracao(pedido_id):
     servico = ExportService()
     try:
-        pedido = servico.obter(pedido_id) if _UUID.fullmatch(pedido_id) else None
+        pedido = _pedido(servico, pedido_id)
         if pedido is None:
-            return erro_json("PEDIDO_NAO_ENCONTRADO", "Pedido de extração não encontrado.", 404)
+            return _nao_encontrado()
         return servico.descrever(pedido), 200, _SEM_CACHE
     except SQLAlchemyError as falha:
         return _indisponivel(falha)
+
+
+@extracoes_bp.get("/extracoes/<pedido_id>/arquivo")
+@extracoes_bp.get("/api/extracoes/<pedido_id>/arquivo")
+def baixar_extracao(pedido_id):
+    servico = ExportService()
+    try:
+        pedido = _pedido(servico, pedido_id)
+        if pedido is None:
+            return _nao_encontrado()
+        estado, _ = servico.estado(pedido)
+        if estado != "pronto":
+            resposta, status = erro_json("EXTRACAO_NAO_PRONTA",
+                                         "O arquivo só pode ser baixado quando a extração estiver pronta.",
+                                         409, estado=estado)
+            return resposta, status, _SEM_CACHE
+        arquivo = pedido.arquivo
+        caminho = servico.caminho_publicado(pedido)
+    except SQLAlchemyError as falha:
+        return _indisponivel(falha)
+    except FileNotFoundError:
+        current_app.logger.error("Extração %s: arquivo final divergente do hash", pedido_id)
+        return erro_json("ARQUIVO_INDISPONIVEL", "O arquivo final não está disponível.", 404)
+    return send_file(caminho, mimetype=arquivo.mime_type, as_attachment=True,
+                     download_name=arquivo.nome_original, etag=arquivo.sha256, max_age=0)

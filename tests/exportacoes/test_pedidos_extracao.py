@@ -16,7 +16,8 @@ CORPO = {"linha": "33887", "inicio": "2026-11-01T00:00:00-03:00",
 
 
 def _app(uri):
-    app = create_app({"TESTING": True, "SQLALCHEMY_DATABASE_URI": uri})
+    pasta = Path(uri.removeprefix("sqlite:///")).parent / "exportacoes"
+    app = create_app({"TESTING": True, "SQLALCHEMY_DATABASE_URI": uri, "EXPORTACOES_DIR": str(pasta)})
     with app.app_context():
         db.create_all()
     return app
@@ -47,7 +48,7 @@ def test_pedido_valido_responde_202_com_id_opaco_sem_processar(app, client):
     assert resposta.status_code == 202
     corpo = resposta.get_json()
     assert len(corpo["id"]) == 36 and corpo["id"].count("-") == 4
-    assert corpo["estado"] == "AGUARDANDO" and corpo["erro"] is None
+    assert corpo["estado"] == "aguardando" and corpo["erro"] is None
     assert corpo["formato"] == "PARQUET" and corpo["linha"] == "33887"
     assert corpo["periodo"] == {"inicio": "2026-11-01T03:00:00Z", "fim": "2026-11-08T03:00:00Z"}
     assert resposta.headers["Location"] == corpo["consulta"] == f"/api/extracoes/{corpo['id']}"
@@ -148,18 +149,18 @@ def test_erro_esgotado_abre_nova_geracao(app, client):
 
     novo = client.post("/api/extracoes", json=CORPO).get_json()
 
-    assert novo["id"] != primeiro and novo["estado"] == "AGUARDANDO"
+    assert novo["id"] != primeiro and novo["estado"] == "aguardando"
     assert _contagens(app) == (2, 2)
-    assert client.get(f"/api/extracoes/{primeiro}").get_json()["estado"] == "ERRO"
+    assert client.get(f"/api/extracoes/{primeiro}").get_json()["estado"] == "erro"
 
 
 @pytest.mark.parametrize("estado, tentativas, arquivo, publico", [
-    ("AGUARDANDO", 0, False, "AGUARDANDO"),
-    ("PROCESSANDO", 1, False, "PROCESSANDO"),
-    ("ERRO", 1, False, "AGUARDANDO"),  # será retomado pelo worker
-    ("ERRO", JobService.LIMITE_TENTATIVAS, False, "ERRO"),
-    ("PRONTO", 1, False, "ERRO"),  # pronto sem arquivo nunca é anunciado
-    ("PRONTO", 1, True, "PRONTO"),
+    ("AGUARDANDO", 0, False, "aguardando"),
+    ("PROCESSANDO", 1, False, "processando"),
+    ("ERRO", 1, False, "aguardando"),  # será retomado pelo worker
+    ("ERRO", JobService.LIMITE_TENTATIVAS, False, "erro"),
+    ("PRONTO", 1, False, "erro"),  # pronto sem arquivo nunca é anunciado
+    ("PRONTO", 1, True, "erro"),  # registro no banco sem objeto publicado no FileStore
 ])
 def test_estado_publico_deriva_do_job(app, client, estado, tentativas, arquivo, publico):
     pedido_id = client.post("/api/extracoes", json=CORPO).get_json()["id"]
@@ -197,7 +198,7 @@ def test_reinicio_preserva_pedido_e_trabalho_pendente_sem_worker(tmp_path):
 
     reiniciado = _app(uri)
     corpo = reiniciado.test_client().get(f"/api/extracoes/{pedido_id}").get_json()
-    assert corpo["estado"] == "AGUARDANDO"
+    assert corpo["estado"] == "aguardando"
     with reiniciado.app_context():
         pendentes = JobService().pendentes(TIPO)
         assert [p.id for p in pendentes] == [db.session.get(PedidoExtracao, pedido_id).execucao_processamento_id]
