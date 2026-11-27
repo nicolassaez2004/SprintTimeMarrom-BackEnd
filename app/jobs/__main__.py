@@ -8,11 +8,13 @@ import signal
 from threading import Event
 
 from app import create_app
+from app.exportacoes.extracoes import TIPO as EXTRACAO, executor_extracao
 from app.reprocessamento.execucao import executor_recalculo
 from app.reprocessamento.pedidos import TIPO as RECALCULO
 
-# tipo -> fábrica do executor (US20-T03: cálculo, publicação, versão e caches)
-TAREFAS = {RECALCULO: executor_recalculo}
+# tipo -> fábrica do executor (US20-T03: cálculo, publicação, versão e caches;
+# US28-T02: extração de brutos)
+TAREFAS = {RECALCULO: executor_recalculo, EXTRACAO: executor_extracao}
 
 
 def main(argv=None):

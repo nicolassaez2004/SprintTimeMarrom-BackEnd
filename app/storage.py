@@ -65,3 +65,10 @@ class FileStore:
 
     def caminho_pdf(self, chave, digest):
         return self._caminho(chave, digest, "PDF original")
+
+    def publicar_extracao(self, temporario, digest, tamanho, extensao):
+        return self._publicar(temporario, digest, tamanho, extensao, "extracoes",
+                              "arquivo de extração")
+
+    def caminho_extracao(self, chave, digest):
+        return self._caminho(chave, digest, "arquivo de extração")
