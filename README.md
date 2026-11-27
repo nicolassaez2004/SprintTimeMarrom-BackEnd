@@ -1,5 +1,13 @@
 # SprintTimeMarrom-BackEnd
 
+## Conferência de propagação de atrasos — US19-T04
+
+[Vinte casos controlados e resultados](docs/US19-T04.md), com diferenças de
+atraso, encadeamento do veículo, correlação em quatro escalas e ranking mensal.
+Reproduzir com `python -m scripts.validar_us19_t04`; somente SQLite em memória.
+Aceite institucional e revisão pendentes. Os agregados intradiários da
+variação por trecho ainda não são implementados pela US19 atual.
+
 ## Conferência de passagem e frequência — US15-T04
 
 [Caderno de 20 exemplos controlados](docs/US15-T04.md), com cálculo manual nas

@@ -1,0 +1,42 @@
+{
+  "origem": "SINTETICA_CONTROLADA",
+  "data": "2026-11-27",
+  "aceite_institucional": "PENDENTE",
+  "fuso": "America/Sao_Paulo",
+  "parametros_apenas_do_ensaio": {"intervalo_maximo_seg":1800,"metrica_mensal":"MEDIA"},
+  "convencao": "Atraso = observado - previsto; variação = atraso no destino - atraso na origem. Associação estatística não demonstra causalidade.",
+  "casos": [
+    {"id":"C01","grupo":"variacao","descricao":"Aumento de atraso, sem confundir com tempo de percurso","observadas":{"A":"09:02:00","B":"09:09:00"},"esperado":{"origem":120,"destino":300,"variacao":180,"motivo":null},"calculo_manual":"(09:09-09:04)-(09:02-09:00) = 300-120 = 180 s; percurso observado 420 s"},
+    {"id":"C02","grupo":"variacao","descricao":"Recuperação de atraso tem sinal negativo","observadas":{"A":"09:05:00","B":"09:06:00"},"esperado":{"origem":300,"destino":120,"variacao":-180,"motivo":null},"calculo_manual":"120-300 = -180 s"},
+    {"id":"C03","grupo":"variacao","descricao":"Atraso constante é zero calculado","observadas":{"A":"09:02:00","B":"09:06:00"},"esperado":{"origem":120,"destino":120,"variacao":0,"motivo":null},"calculo_manual":"120-120 = 0 s"},
+    {"id":"C04","grupo":"variacao","descricao":"Redução do adiantamento aumenta a variação","observadas":{"A":"08:58:00","B":"09:03:00"},"esperado":{"origem":-120,"destino":-60,"variacao":60,"motivo":null},"calculo_manual":"-60-(-120) = 60 s"},
+    {"id":"C05","grupo":"variacao","descricao":"Aumento do adiantamento diminui a variação","observadas":{"A":"08:59:00","B":"09:02:00"},"esperado":{"origem":-60,"destino":-120,"variacao":-60,"motivo":null},"calculo_manual":"-120-(-60) = -60 s"},
+    {"id":"C06","grupo":"variacao","descricao":"Passagem de destino ausente não vira zero","observadas":{"A":"09:02:00"},"esperado":{"origem":120,"destino":null,"variacao":null,"motivo":"passagem_ausente"},"calculo_manual":"Sem passagem em B, diferença indefinida"},
+    {"id":"C07","grupo":"variacao","descricao":"Horário previsto intermediário ausente","observadas":{"A":"09:02:00","B":"09:09:00"},"sem_previsto":"B","esperado":{"origem":120,"destino":null,"variacao":null,"motivo":"horario_previsto_ausente"},"calculo_manual":"Sem referência prevista em B, não atribuir atraso"},
+    {"id":"C08","grupo":"variacao","descricao":"Oferta por frequência não recebe atraso fixo","observadas":{"A":"09:02:00","B":"09:09:00"},"oferta":"FREQUENCIA","esperado":{"origem":null,"destino":null,"variacao":null,"motivo":"oferta_por_frequencia"},"calculo_manual":"Não há horário fixo para comparar"},
+    {"id":"C09","grupo":"variacao","descricao":"Rastreabilidade incompleta da passagem","observadas":{"A":"09:02:00","B":"09:09:00"},"sem_rastreabilidade":"B","esperado":{"origem":120,"destino":null,"variacao":null,"motivo":"passagem_sem_rastreabilidade"},"calculo_manual":"Sem posição GPS posterior, descartar B"},
+    {"id":"C10","grupo":"variacao","descricao":"GTFS acima de 24 h pertence ao dia operacional anterior","data_operacao":"2026-11-30","previstos":{"A":"24:02:00","B":"24:06:00"},"observadas":{"A":"24:04:00","B":"24:11:00"},"esperado":{"origem":120,"destino":300,"variacao":180,"motivo":null,"mes":"2026-11"},"calculo_manual":"00:04/00:11 de 01/12, data operacional 30/11: 300-120=180 s em novembro"},
+    {"id":"C11","grupo":"encadeamento","descricao":"Mesmo veículo identificado pelas posições GPS persistidas","cenario":"integracao_veiculo","esperado":{"pares":[["anterior","seguinte"]],"intervalo_seg":900,"atraso_chegada":120,"atraso_partida":180},"calculo_manual":"Chegada 09:40 (prevista 09:38); próxima saída 09:55 (prevista 09:52); intervalo 15 min"},
+    {"id":"C12","grupo":"encadeamento","descricao":"Prefixos distintos não são pareados","cenario":"prefixos_distintos","esperado":{"pares":[],"descartados":[]},"calculo_manual":"Um veículo por viagem, sem vizinho no mesmo prefixo"},
+    {"id":"C13","grupo":"encadeamento","descricao":"Troca de veículo não pode ser pulada","cenario":"troca_veiculo","esperado":{"pares":[],"descartados":[["a","b","troca_de_veiculo"],["b","c","troca_de_veiculo"]]},"calculo_manual":"b tem prefixos 5810 e 7777; não formar a-c"},
+    {"id":"C14","grupo":"encadeamento","descricao":"Viagens sobrepostas são descartadas","cenario":"sobrepostas","esperado":{"pares":[],"descartados":[["a","b","viagens_sobrepostas"]]},"calculo_manual":"b sai 09:30 antes da chegada de a às 09:40"},
+    {"id":"C15","grupo":"encadeamento","descricao":"Só o vizinho imediato pode ser relacionado","cenario":"vizinho_imediato","esperado":{"pares":[["b","c"]],"descartados":[["a","b","partida_sem_atraso"]]},"calculo_manual":"Sem atraso da partida b, a-b é descartado; não substituir por a-c"},
+    {"id":"C16","grupo":"escala","escala":"mes","descricao":"Correlação mensal, associação sem interpretação causal","inicio":"2026-11-01T00:00:00-03:00","fim":"2026-12-01T00:00:00-03:00","esperado":{"pares":[["p1-a","p1-b"],["p2-a","p2-b"],["p3-a","p3-b"],["p4-a","p4-b"]],"n":4,"r":0.6,"motivo":null},"calculo_manual":"x=[60,120,180,240]; y=[120,60,240,180]; soma(dx*dy)=10800, soma(dx²)=soma(dy²)=18000; r=0.6"},
+    {"id":"C17","grupo":"escala","escala":"15min","descricao":"Janela 09:00–09:15 com fim exclusivo","inicio":"2026-11-24T09:00:00-03:00","fim":"2026-11-24T09:15:00-03:00","esperado":{"pares":[["p1-a","p1-b"],["p2-a","p2-b"]],"n":2,"r":null,"motivo":"amostra_insuficiente"},"calculo_manual":"Chegadas 09:00 e 09:14:59 incluídas; 09:15 excluída; dois pares não bastam para a regra atual"},
+    {"id":"C18","grupo":"escala","escala":"faixa","descricao":"Faixa 09:00–10:00 com fim exclusivo","inicio":"2026-11-24T09:00:00-03:00","fim":"2026-11-24T10:00:00-03:00","esperado":{"pares":[["p1-a","p1-b"],["p2-a","p2-b"],["p3-a","p3-b"]],"n":3,"r":0.6546536707079771,"motivo":null},"calculo_manual":"x=[60,120,180]; y=[120,60,240]; 7200/sqrt(7200*16800) = 0.6546536707079771; chegada 10:00 excluída"},
+    {"id":"C19","grupo":"escala","escala":"dia","descricao":"Dia inteiro inclui os quatro pares","inicio":"2026-11-24T00:00:00-03:00","fim":"2026-11-25T00:00:00-03:00","esperado":{"pares":[["p1-a","p1-b"],["p2-a","p2-b"],["p3-a","p3-b"],["p4-a","p4-b"]],"n":4,"r":0.6,"motivo":null},"calculo_manual":"Os quatro pares de 24/11 entram, inclusive o das 10:00; r=10800/18000"},
+    {"id":"C20","grupo":"ranking","escala":"mes","descricao":"Passagens → diferenças → publicação → média/mediana → ranking mensal","esperado":{"media":[["T-BC",240],["T-AB",80],["T-DE",0],["T-CD",-30]],"mediana":[["T-BC",120],["T-AB",60],["T-DE",0],["T-CD",-30]],"cobertura_cd":0.6666666666666666,"sem_valor":1},"calculo_manual":"AB=[180,0,60] média 80 mediana 60; BC=[0,600,120] média 240 mediana 120; CD=[-60,0,null] -30, 2/3; DE=[0,0,null] zero; EF=[null,null,null] fora do ranking"}
+  ],
+  "pares_das_escalas": [
+    {"id":"p1","chegada":"2026-11-24T09:00:00-03:00","x":60,"y":120},
+    {"id":"p2","chegada":"2026-11-24T09:14:59-03:00","x":120,"y":60},
+    {"id":"p3","chegada":"2026-11-24T09:15:00-03:00","x":180,"y":240},
+    {"id":"p4","chegada":"2026-11-24T10:00:00-03:00","x":240,"y":180}
+  ],
+  "pendencias": [
+    "Aceite e referências da Instituição Parceira não recebidos.",
+    "Janela/faixa/dia conferidas na correlação US19-T02; agregados intradiários da variação por trecho US19-T01 não existem no contrato atual e não são declarados validados.",
+    "Fonte operacional dos horários previstos intermediários ainda depende da decisão descrita na US19-T01.",
+    "Métrica mensal, amostra mínima e intervalo máximo continuam pendentes de decisão do PO; os valores deste caderno são parâmetros exclusivos do ensaio."
+  ]
+}
