@@ -31,7 +31,7 @@ import pyarrow as pa
 import pyarrow.csv as pacsv
 import pyarrow.parquet as pq
 from flask import current_app
-from sqlalchemy import func, or_
+from sqlalchemy import func, or_, select
 
 from app import db
 from app.exportacoes.parquet import (_SCHEMA, MIME_PARQUET, diretorio_exportacoes,
@@ -196,11 +196,24 @@ class ExportService:
         """Caminho do arquivo final, conferido pelo hash (``FileNotFoundError`` se não)."""
         return self._loja().caminho_extracao(pedido.arquivo.chave, pedido.arquivo.sha256)
 
+    @staticmethod
+    def nome_arquivo(pedido):
+        """Nome do download, sempre do pedido: o ``ArquivoArmazenado`` é endereçado pelo
+        conteúdo e pode ser compartilhado (ex.: CSVs vazios de linhas diferentes)."""
+        inicio = pedido.inicio_periodo.astimezone(timezone.utc).strftime("%Y%m%dT%H%MZ")
+        fim = pedido.fim_periodo.astimezone(timezone.utc).strftime("%Y%m%dT%H%MZ")
+        return f"brutos_linha_{pedido.linha_codigo}_{inicio}_{fim}.{ARQUIVO[pedido.formato][0]}"
+
     def descrever(self, pedido):
         """Representação pública: sem chave lógica, token, caminho ou id interno do job."""
         estado, erro = self.estado(pedido)
         job, arquivo = pedido.execucao, pedido.arquivo
         ultima = (job.historico or [{}])[-1]
+        # Progresso só com registros gravados pela tentativa atual (ou a que publicou):
+        # nunca 0 inventado, nem a contagem de uma tentativa que falhou.
+        progresso = ({"registros": ultima["registros"],
+                      "atualizado_em": ultima.get("progresso_em") or ultima.get("fim")}
+                     if estado in ("processando", "pronto") and "registros" in ultima else None)
         return {
             "id": pedido.id,
             "estado": estado,
@@ -213,10 +226,9 @@ class ExportService:
             "mensagem": _MENSAGENS.get(erro, _MENSAGENS[None]) if erro else None,
             "tentativas": job.tentativas,
             # Só o que o worker já registrou; sem percentual (total não é conhecido antes).
-            "progresso": {"registros": ultima.get("registros", 0),
-                          "atualizado_em": ultima.get("progresso_em") or ultima.get("fim")},
+            "progresso": progresso,
             # Só com o arquivo final publicado e conferido no FileStore.
-            "arquivo": {"formato": pedido.formato, "nome": arquivo.nome_original,
+            "arquivo": {"formato": pedido.formato, "nome": self.nome_arquivo(pedido),
                         "tamanho_bytes": arquivo.tamanho_bytes, "sha256": arquivo.sha256,
                         "download": f"/api/extracoes/{pedido.id}/arquivo"} if estado == "pronto" else None,
             "consulta": f"/api/extracoes/{pedido.id}",
@@ -242,12 +254,19 @@ class ExportService:
         db.session.commit()
 
     def _limpar_temporarios(self, loja):
-        """Apaga temporários de tentativas que já não têm a posse do seu job."""
-        posse = dict(db.session.query(ExecucaoProcessamento.id, ExecucaoProcessamento.reserva_token)
-                     .filter(ExecucaoProcessamento.tipo == TIPO,
-                             ExecucaoProcessamento.estado == "PROCESSANDO"))
-        for caminho in loja.diretorio.glob(".extracao-*.tmp"):
-            encontrado = _TEMPORARIO.fullmatch(caminho.name)
+        """Apaga temporários de tentativas que já não têm a posse do seu job.
+
+        Lista os arquivos antes de ler a posse, numa conexão nova: todo arquivo
+        listado foi criado depois da reserva do seu dono, então o snapshot novo
+        já a enxerga. Ler pela sessão do worker (REPEATABLE READ aberto antes)
+        apagaria o temporário de um job reservado por outro worker nesse meio-tempo.
+        """
+        temporarios = [(c, _TEMPORARIO.fullmatch(c.name)) for c in loja.diretorio.glob(".extracao-*.tmp")]
+        E = ExecucaoProcessamento
+        with db.engine.connect() as conexao:
+            posse = dict(conexao.execute(select(E.id, E.reserva_token).where(
+                E.tipo == TIPO, E.estado == "PROCESSANDO")).all())
+        for caminho, encontrado in temporarios:
             if encontrado and posse.get(encontrado[1]) != encontrado[2]:
                 caminho.unlink(missing_ok=True)
 
@@ -311,10 +330,8 @@ class ExportService:
         loja.caminho_extracao(chave, gerado["sha256"])  # legível e íntegro antes do PRONTO
         arquivo = ArquivoArmazenado.query.filter_by(chave=chave).one_or_none()
         if arquivo is None:
-            inicio = pedido.inicio_periodo.strftime("%Y%m%dT%H%MZ")
-            fim = pedido.fim_periodo.strftime("%Y%m%dT%H%MZ")
             arquivo = ArquivoArmazenado(
-                chave=chave, nome_original=f"brutos_linha_{pedido.linha_codigo}_{inicio}_{fim}.{extensao}",
+                chave=chave, nome_original=self.nome_arquivo(pedido),
                 mime_type=mime, tamanho_bytes=gerado["tamanho"], sha256=gerado["sha256"])
             db.session.add(arquivo)
         pedido.arquivo = arquivo

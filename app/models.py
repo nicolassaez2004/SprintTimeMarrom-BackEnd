@@ -187,6 +187,8 @@ class RegistroBrutoGPS(db.Model):
         Index("ix_registros_gps_onibus_instante", "prefixo_origem", "coletado_em"),
         # Exportação diária (US09): faixa por dia e paginação keyset.
         Index("ix_registros_gps_coletado_em_id", "coletado_em", "id"),
+        # Extração por linha (US28): mesma paginação keyset, só nas linhas pedidas.
+        Index("ix_registros_gps_linha_coletado_em_id", "linha_origem", "coletado_em", "id"),
         UniqueConstraint(
             "prefixo_origem", "horario_gps", name="uq_registros_gps_prefixo_horario"
         ),

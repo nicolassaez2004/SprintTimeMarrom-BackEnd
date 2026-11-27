@@ -54,7 +54,7 @@ def test_pedido_valido_responde_202_com_id_opaco_sem_processar(app, client):
     assert resposta.headers["Location"] == corpo["consulta"] == f"/api/extracoes/{corpo['id']}"
     # Nada de chave lógica, token, job interno ou caminho de arquivo na API.
     assert not {"chave_logica", "reserva_token", "execucao_processamento_id", "chave"} & set(corpo)
-    assert corpo["arquivo"] is None and corpo["progresso"]["registros"] == 0
+    assert corpo["arquivo"] is None and corpo["progresso"] is None
     with app.app_context():
         job = db.session.get(PedidoExtracao, corpo["id"]).execucao
         # Não aguardou a geração: job intacto e nenhum arquivo criado.
@@ -219,5 +219,6 @@ def test_migracao_us28_e_a_cabeca_da_cadeia():
     from alembic.script import ScriptDirectory
 
     scripts = ScriptDirectory(str(Path(__file__).resolve().parents[2] / "migrations"))
-    assert scripts.get_heads() == ["us28_0028"]
+    assert scripts.get_heads() == ["us28_0029"]
+    assert scripts.get_revision("us28_0029").down_revision == "us28_0028"
     assert scripts.get_revision("us28_0028").down_revision == "us21_0027"
