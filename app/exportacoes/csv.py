@@ -12,7 +12,7 @@ from pathlib import Path
 from sqlalchemy import and_, not_, or_
 
 from app import db
-from app.indicadores.agenda import TIPOS_PUBLICACAO, ordem_publicacao
+from app.indicadores.agenda import RECALCULO, TIPOS_PUBLICACAO, ordem_publicacao
 from app.indicadores.series import _janelas_horarias, _ou_balanceado
 from app.indicadores.service import filtrar_periodo, consulta_base, serializar
 from app.models import ExecucaoProcessamento, IndicadorOperacional, Linha
@@ -151,11 +151,22 @@ def arquivo_indicadores_completo(dia):
         if (recibo["data"] != dia.isoformat() or execucao is None
                 or recibo["execucao_id"] != execucao.id
                 or recibo["sha256"] != hashlib.sha256(conteudo).hexdigest()
-                or recibo["tamanho_bytes"] != len(conteudo)):
+                or recibo["tamanho_bytes"] != len(conteudo)
+                or _recalculado_depois(dia, datetime.fromisoformat(recibo["gerado_em"]))):
             return None
         return {"caminho": destino, "recibo": recibo, "conteudo": conteudo}
     except (OSError, KeyError, ValueError, TypeError):
         return None
+
+
+def _recalculado_depois(dia, gerado_em):
+    """US20-T03: um recálculo publicado depois do arquivo alterou o dia; o arquivo é
+    um cache vencido e não é servido até ser regerado (``invalidar_caches``)."""
+    inicio, fim = periodo_utc(dia)
+    E = ExecucaoProcessamento
+    return db.session.query(E.id).filter(
+        E.tipo == RECALCULO, E.estado == "PRONTO", E.finalizada_em > gerado_em,
+        E.periodo_inicio < fim, E.periodo_fim > inicio).first() is not None
 
 
 def disponibilidade_csv():
@@ -240,8 +251,9 @@ def caminho_conjunto(execucao_id):
 
 
 def preservar_conjunto(execucao):
-    """Chamado por ``agenda._publicar`` após o flush e ANTES do commit: uma falha aqui
-    desfaz a publicação, logo toda execução PRONTO nova tem o seu arquivo."""
+    """Chamado por ``agenda._publicar`` e pelo recálculo (US20-T03) após o flush e ANTES
+    do commit: uma falha aqui desfaz a publicação, logo toda execução PRONTO nova tem o
+    seu arquivo."""
     registros = (consulta_base(_SEM_FILTROS)
                  .filter(_I.periodo_inicio >= execucao.periodo_inicio,
                          _I.periodo_fim <= execucao.periodo_fim)
@@ -256,6 +268,9 @@ def preservar_conjunto(execucao):
         "publicada_em": execucao.finalizada_em.isoformat(),
         "sha256": hashlib.sha256(conteudo).hexdigest(), "tamanho_bytes": len(conteudo),
         "registros": len(registros), "fonte": FONTE, "licenca": LICENCA,
+        # US20-T03: versões de base, regra e código da publicação ficam com o conjunto.
+        "bruto_id_maximo": execucao.bruto_id_maximo, "versao_base": execucao.versao_base,
+        "versao_regra": execucao.versao_regra, "versao_codigo": execucao.versao_codigo,
     })
 
 

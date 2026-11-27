@@ -54,7 +54,10 @@ INTERVALO = timedelta(minutes=15)
 INICIO_CONSOLIDACAO = time(4, 0)
 PRAZO_CONSOLIDACAO = time(6, 0)
 ATUALIZACAO, CONSOLIDACAO = "ATUALIZACAO_INDICADORES", "CONSOLIDACAO_DIA"
-TIPOS_PUBLICACAO = (ATUALIZACAO, CONSOLIDACAO)
+# US20-T03: o recálculo concluído pelo worker de jobs (``app.reprocessamento.execucao``)
+# também é uma publicação versionada: entra na versão vigente e na exportação por versão.
+RECALCULO = "RECALCULO_INDICADOR"
+TIPOS_PUBLICACAO = (ATUALIZACAO, CONSOLIDACAO, RECALCULO)
 VERSAO_AGENDA = "us23-t03-v2"
 # Calculados por janela (US14/US16) e pela data operacional inteira (US15/US17/US18).
 CALCULOS = (calcular_indicador_cumprimento, calcular_indicador_pontualidade)
@@ -275,8 +278,10 @@ def ordem_publicacao(execucao):
 
 
 def versao_vigente():
-    """US25-T01: versão do conjunto exibido = última publicação PRONTO da agenda,
-    lida na mesma transação dos dados. ``id`` é o ``versao_dados`` da exportação."""
+    """US25-T01: versão do conjunto exibido = última publicação PRONTO (agenda ou
+    recálculo US20-T03), lida na mesma transação dos dados. ``id`` é o
+    ``versao_dados`` da exportação. Como a publicação grava resultados e PRONTO num
+    único commit, a referência só troca quando o conjunto novo está inteiro."""
     E = ExecucaoProcessamento
     try:
         ultima = (E.query.filter(E.estado == "PRONTO", E.tipo.in_(TIPOS_PUBLICACAO))

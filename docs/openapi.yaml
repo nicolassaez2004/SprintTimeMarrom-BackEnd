@@ -659,12 +659,12 @@ components:
       nullable: true
       description: >-
         US25-T01. Versão do conjunto exibido: a última publicação PRONTO da agenda
-        US23-T03, lida na mesma transação dos dados. Enviar `id` como `versao_dados`
+        US23-T03 ou de um recálculo US20-T03, lida na mesma transação dos dados. Enviar `id` como `versao_dados`
         em /downloads/indicadores. Null se ainda não houve publicação da agenda.
       required: [id, tipo, publicada_em, periodo_inicio, periodo_fim]
       properties:
         id: { type: string, format: uuid }
-        tipo: { type: string, enum: [ATUALIZACAO_INDICADORES, CONSOLIDACAO_DIA] }
+        tipo: { type: string, enum: [ATUALIZACAO_INDICADORES, CONSOLIDACAO_DIA, RECALCULO_INDICADOR] }
         publicada_em: { type: string, format: date-time }
         periodo_inicio: { type: string, format: date-time }
         periodo_fim: { type: string, format: date-time }
