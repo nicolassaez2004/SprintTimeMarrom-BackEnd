@@ -397,7 +397,9 @@ esses objetos enquanto houver capturas em andamento; eventual limpeza de
 
 Os pedidos de recálculo (US20-T02A) são executados por um processo separado do
 Flask, que reserva cada pedido atomicamente no MySQL. Detalhes em
-[docs/US20-T02B.md](docs/US20-T02B.md).
+[docs/US20-T02B.md](docs/US20-T02B.md). Pedidos interrompidos (reserva vencida)
+ou com erro são retomados até 3 tentativas, sem publicar resultados em
+duplicidade; exige a migração `us20_0025`. Ver [docs/US20-T02C.md](docs/US20-T02C.md).
 
 ```bash
 python -m app.jobs              # contínuo; Ctrl+C/SIGTERM param após o job atual

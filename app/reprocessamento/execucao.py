@@ -6,6 +6,9 @@ janela gravados no pedido, e grava por ``gravar_indicador`` **sem commit**: o
 executor confirma resultados e PRONTO juntos, só se ainda tiver a reserva.
 
 Não altera brutos nem o pedido (chave, versões, escopo e parâmetros).
+
+US20-T02C: ``calcular_pedido`` (só leituras) e ``publicar_pedido`` (upsert pela
+``chave_resultado``) são as duas fases do worker, que valida a posse entre elas.
 """
 from datetime import datetime, timedelta, timezone
 
@@ -38,8 +41,8 @@ def _no_escopo(campos, pedido):
             and campos.get("trecho_id") == escopo.get("trecho"))
 
 
-def recalcular_pedido(pedido, agora=None):
-    """Recalcula e grava (sem commit) o indicador do pedido; retorna quantos registros."""
+def calcular_pedido(pedido, agora=None):
+    """Calcula, sem gravar, os resultados do indicador, escopo e janela do pedido."""
     agora = agora or datetime.now(timezone.utc)
     indicador, escopo = pedido.parametros["indicador"], pedido.parametros["escopo"]
     if REGRA_VIGENTE.get(indicador) != pedido.versao_regra:
@@ -60,10 +63,18 @@ def recalcular_pedido(pedido, agora=None):
                       for campos in Calculo(linha=linha, sentido=sentido, data_operacao=data,
                                             versao_gtfs_id=gtfs, versao_correspondencia=corresp,
                                             versao_reconstrucao=recon, agora=agora).calcular()]
+    return [campos for campos in resultados if _no_escopo(campos, pedido)]
+
+
+def publicar_pedido(pedido, resultados, agora=None):
+    """Grava (sem commit) os resultados; repetir não duplica (upsert por ``chave_resultado``)."""
+    agora = agora or datetime.now(timezone.utc)
     falhas = FalhasColeta(agora=agora)
-    gravados = 0
     for campos in resultados:
-        if _no_escopo(campos, pedido):
-            gravar_indicador(campos, commit=False, falhas=falhas).publicado_em = agora
-            gravados += 1
-    return gravados
+        gravar_indicador(campos, commit=False, falhas=falhas).publicado_em = agora
+    return len(resultados)
+
+
+def recalcular_pedido(pedido, agora=None):
+    """Calcula e grava (sem commit) numa só fase; retorna quantos registros."""
+    return publicar_pedido(pedido, calcular_pedido(pedido, agora), agora)
