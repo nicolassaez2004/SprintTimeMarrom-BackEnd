@@ -74,3 +74,67 @@ def test_pedidos_extracao_no_mysql():
         finally:
             db.session.remove()
             db.engine.dispose()
+
+
+def test_geracao_de_extracao_no_mysql(tmp_path):
+    """US28-T02: worker com leitura REPEATABLE READ, progresso, FOR UPDATE e perda de posse."""
+    from datetime import datetime, timedelta, timezone
+
+    import pyarrow.parquet as pq
+
+    from app.exportacoes.extracoes import ExportService, TIPO, armazenamento, executor_extracao
+    from app.jobs.executor import Executor
+    from app.models import ArquivoArmazenado, ExecucaoColeta, RegistroBrutoGPS
+
+    valor = os.getenv("US28_T02_MYSQL_TEST_URL")
+    if not valor:
+        pytest.skip("Configure US28_T02_MYSQL_TEST_URL para integração MySQL isolada")
+    url = make_url(valor)
+    assert url.get_backend_name() == "mysql"
+    assert url.database.startswith("us28_verificacao_"), "Recusa base de uso do time"
+    app = create_app({"TESTING": True, "SQLALCHEMY_DATABASE_URI": url, "MYSQL_SSL_CA": None,
+                      "EXPORTACOES_DIR": str(tmp_path)})
+    migrations = str(Path(__file__).resolve().parents[1] / "migrations")
+    inicio = datetime(2026, 11, 1, 3, tzinfo=timezone.utc)
+    with app.app_context():
+        try:
+            assert not inspect(db.engine).get_table_names(), "Exige base vazia"
+            upgrade(directory=migrations)
+            ciclo = ExecucaoColeta(iniciada_em=inicio)
+            db.session.add(ciclo)
+            db.session.flush()
+            for minutos in range(9):
+                for linha in ("33887", "1111"):
+                    db.session.add(RegistroBrutoGPS(execucao_id=ciclo.id, linha_origem=linha,
+                                                    coletado_em=inicio + timedelta(minutes=minutos)))
+            db.session.commit()
+            cliente = app.test_client()
+            ids = [cliente.post("/api/extracoes", json={**CORPO, "formato": f}).get_json()["id"]
+                   for f in ("PARQUET", "CSV")]
+
+            assert executor_extracao(app, ExportService(tamanho_lote=2)).executar_um()[1] == "PRONTO"
+            # Segundo pedido: o worker antigo perde a posse antes de publicar.
+            servico, depois = ExportService(tamanho_lote=2), lambda: datetime.now(timezone.utc) + timedelta(hours=1)
+            novo = []
+
+            def gerar_e_perder(job):
+                gerado = servico.gerar(job)
+                novo.append(executor_extracao(app, ExportService(tamanho_lote=3), relogio=depois).executar_um())
+                return gerado
+            assert Executor(app, TIPO, gerar_e_perder, servico.publicar).executar_um()[1] == "ERRO"
+            assert novo[0][1] == "PRONTO"
+
+            # As requisições reutilizam este app context: encerra o snapshot
+            # REPEATABLE READ aberto pelo POST, como o teardown faria por requisição.
+            db.session.remove()
+            for pedido_id in ids:
+                corpo = cliente.get(f"/api/extracoes/{pedido_id}").get_json()
+                assert corpo["estado"] == "PRONTO" and corpo["progresso"]["registros"] == 9
+            arquivo = ArquivoArmazenado.query.filter_by(mime_type="application/vnd.apache.parquet").one()
+            caminho = armazenamento().caminho_extracao(arquivo.chave, arquivo.sha256)
+            assert set(pq.read_table(caminho).column("linha_origem").to_pylist()) == {"33887"}
+            assert ArquivoArmazenado.query.count() == 2
+            assert not list(Path(tmp_path, "extracoes").glob(".extracao-*.tmp"))
+        finally:
+            db.session.remove()
+            db.engine.dispose()

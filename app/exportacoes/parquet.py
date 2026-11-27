@@ -11,6 +11,7 @@ from datetime import date, datetime, time, timedelta, timezone
 from pathlib import Path
 
 import pyarrow as pa
+import pyarrow.csv as pacsv
 import pyarrow.parquet as pq
 from sqlalchemy import and_, or_, select
 
@@ -70,6 +71,90 @@ def _utc(value):
     return value.astimezone(timezone.utc)
 
 
+_COLUNAS = [getattr(RegistroBrutoGPS, campo.name) for campo in _SCHEMA]
+
+
+def _linha(registro):
+    payload = registro["payload"]
+    if payload is not None and not isinstance(payload, str):
+        payload = json.dumps(payload, ensure_ascii=False, separators=(",", ":"))
+    return {
+        **{chave: registro[chave] for chave in (
+            "id", "execucao_id", "veiculo_prefixo", "prefixo_origem",
+            "linha_origem", "sentido_origem", "latitude", "longitude",
+        )},
+        "horario_gps": _utc(registro["horario_gps"]),
+        "coletado_em": _utc(registro["coletado_em"]),
+        "payload": payload,
+    }
+
+
+def escrever_brutos(caminho, inicio, fim, metadados, *, linha=None, bruto_id_maximo=None,
+                    formato="PARQUET", tamanho_lote=5000, ao_lote=None) -> int:
+    """Grava em ``caminho`` os brutos com ``coletado_em`` em [inicio, fim); retorna o total.
+
+    Núcleo da US09 compartilhado com as extrações da US28: mesmo esquema,
+    paginação keyset por (``coletado_em``, ``id``) numa transação consistente,
+    lote a lote, sem carregar o período em memória. ``linha`` filtra
+    ``linha_origem``; ``bruto_id_maximo`` fixa o snapshot do pedido. CSV leva as
+    colunas do Parquet mais ``fonte`` e ``licenca`` em cada linha (como a US10).
+    ``ao_lote(total)`` é chamado após cada lote gravado. Não publica nem apaga
+    ``caminho``: isso cabe a quem chama.
+    """
+    if tamanho_lote < 1:
+        raise ValueError("tamanho_lote deve ser positivo")
+    esquema = _SCHEMA.with_metadata(metadados)
+    filtros = [RegistroBrutoGPS.coletado_em >= inicio, RegistroBrutoGPS.coletado_em < fim]
+    if linha is not None:
+        filtros.append(RegistroBrutoGPS.linha_origem == linha)
+    if bruto_id_maximo is not None:
+        filtros.append(RegistroBrutoGPS.id <= bruto_id_maximo)
+    total, ultimo, writer = 0, None, None
+    conexao = db.engine.connect()
+    if db.engine.dialect.name == "mysql":
+        conexao = conexao.execution_options(isolation_level="REPEATABLE READ")
+    try:
+        with conexao as conn:
+            with conn.begin():
+                if formato == "PARQUET":
+                    writer = pq.ParquetWriter(caminho, esquema, compression="snappy")
+                else:
+                    writer = pacsv.CSVWriter(caminho, esquema.append(pa.field("fonte", pa.string()))
+                                             .append(pa.field("licenca", pa.string())))
+                while True:
+                    consulta = (select(*_COLUNAS).where(*filtros)
+                                .order_by(RegistroBrutoGPS.coletado_em, RegistroBrutoGPS.id)
+                                .limit(tamanho_lote))
+                    if ultimo is not None:
+                        # Keyset em ix_registros_gps_coletado_em_id: não relê o histórico.
+                        consulta = consulta.where(or_(
+                            RegistroBrutoGPS.coletado_em > ultimo[0],
+                            and_(RegistroBrutoGPS.coletado_em == ultimo[0],
+                                 RegistroBrutoGPS.id > ultimo[1]),
+                        ))
+                    lote = conn.execute(consulta).mappings().all()
+                    if not lote:
+                        break
+                    tabela = pa.Table.from_pylist([_linha(r) for r in lote], schema=esquema)
+                    if formato != "PARQUET":
+                        tabela = (tabela.append_column("fonte", pa.array([FONTE] * len(lote)))
+                                  .append_column("licenca", pa.array([LICENCA] * len(lote))))
+                    writer.write_table(tabela)
+                    total += len(lote)
+                    ultimo = (lote[-1]["coletado_em"], lote[-1]["id"])
+                    if ao_lote:
+                        ao_lote(total)
+                writer.close()
+                writer = None
+        # Windows exige descritor de escrita para _commit/fsync.
+        with open(caminho, "r+b") as arquivo:
+            os.fsync(arquivo.fileno())
+        return total
+    finally:
+        if writer is not None:
+            writer.close()
+
+
 def gerar_parquet_diario(dia: date, destino, *, tamanho_lote: int = 5000, relogio=None) -> dict:
     """Exporta `coletado_em` no dia de São Paulo informado; publica só ao concluir.
 
@@ -87,92 +172,34 @@ def gerar_parquet_diario(dia: date, destino, *, tamanho_lote: int = 5000, relogi
     inicio, fim = periodo_utc(dia)
     # Registrado antes do snapshot da transação: tudo gravado até aqui está no arquivo.
     gerado_em = (relogio or (lambda: datetime.now(timezone.utc)))().astimezone(timezone.utc)
-    colunas = [
-        RegistroBrutoGPS.id, RegistroBrutoGPS.execucao_id,
-        RegistroBrutoGPS.veiculo_prefixo, RegistroBrutoGPS.prefixo_origem,
-        RegistroBrutoGPS.linha_origem, RegistroBrutoGPS.sentido_origem,
-        RegistroBrutoGPS.latitude, RegistroBrutoGPS.longitude,
-        RegistroBrutoGPS.horario_gps, RegistroBrutoGPS.coletado_em,
-        RegistroBrutoGPS.payload,
-    ]
     metadados = {
-        b"source": FONTE.encode(),
-        b"source_url": FONTE_URL.encode(),
-        b"license": LICENCA.encode(),
-        b"license_url": LICENCA_URL.encode(),
+        **metadados_fonte(),
         b"date": dia.isoformat().encode(),
         b"date_field": b"coletado_em, dia em America/Sao_Paulo; instantes em UTC",
         b"period_start_utc": inicio.isoformat().encode(),
         b"period_end_utc": fim.isoformat().encode(),
         b"generated_at_utc": gerado_em.isoformat().encode(),
     }
-    esquema = _SCHEMA.with_metadata(metadados)
     temp_path = None
-    total = 0
-    ultimo = None
-    writer = None
     try:
         with tempfile.NamedTemporaryFile(
             prefix=f".{destino.name}.", suffix=".tmp", dir=destino.parent, delete=False
         ) as temp:
             temp_path = Path(temp.name)
-        conexao = db.engine.connect()
-        if db.engine.dialect.name == "mysql":
-            conexao = conexao.execution_options(isolation_level="REPEATABLE READ")
-        with conexao as conn:
-            with conn.begin():
-                writer = pq.ParquetWriter(temp_path, esquema, compression="snappy")
-                while True:
-                    consulta = (
-                        select(*colunas)
-                        .where(RegistroBrutoGPS.coletado_em >= inicio)
-                        .where(RegistroBrutoGPS.coletado_em < fim)
-                        .order_by(RegistroBrutoGPS.coletado_em, RegistroBrutoGPS.id)
-                        .limit(tamanho_lote)
-                    )
-                    if ultimo is not None:
-                        # Keyset em ix_registros_gps_coletado_em_id: não relê o histórico.
-                        consulta = consulta.where(or_(
-                            RegistroBrutoGPS.coletado_em > ultimo[0],
-                            and_(RegistroBrutoGPS.coletado_em == ultimo[0],
-                                 RegistroBrutoGPS.id > ultimo[1]),
-                        ))
-                    lote = conn.execute(consulta).mappings().all()
-                    if not lote:
-                        break
-                    linhas = []
-                    for registro in lote:
-                        payload = registro["payload"]
-                        if payload is not None and not isinstance(payload, str):
-                            payload = json.dumps(payload, ensure_ascii=False, separators=(",", ":"))
-                        linhas.append({
-                            **{chave: registro[chave] for chave in (
-                                "id", "execucao_id", "veiculo_prefixo", "prefixo_origem",
-                                "linha_origem", "sentido_origem", "latitude", "longitude",
-                            )},
-                            "horario_gps": _utc(registro["horario_gps"]),
-                            "coletado_em": _utc(registro["coletado_em"]),
-                            "payload": payload,
-                        })
-                    tabela = pa.Table.from_pylist(linhas, schema=esquema)
-                    writer.write_table(tabela)
-                    total += len(lote)
-                    ultimo = (lote[-1]["coletado_em"], lote[-1]["id"])
-                writer.close()
-                writer = None
-                # Windows exige descritor de escrita para _commit/fsync.
-                with open(temp_path, "r+b") as arquivo:
-                    os.fsync(arquivo.fileno())
+        total = escrever_brutos(temp_path, inicio, fim, metadados, tamanho_lote=tamanho_lote)
         # NamedTemporaryFile cria 0600; o arquivo publicado é de leitura pública.
         os.chmod(temp_path, 0o644)
         os.replace(temp_path, destino)
         temp_path = None
         return {"arquivo": str(destino), "registros": total, "data": dia.isoformat()}
     finally:
-        if writer is not None:
-            writer.close()
         if temp_path is not None:
             temp_path.unlink(missing_ok=True)
+
+
+def metadados_fonte():
+    return {b"source": FONTE.encode(), b"source_url": FONTE_URL.encode(),
+            b"license": LICENCA.encode(), b"license_url": LICENCA_URL.encode()}
 
 
 # --- Publicação e catálogo (US09-T02) ---------------------------------------

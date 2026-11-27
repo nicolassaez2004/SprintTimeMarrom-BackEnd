@@ -52,7 +52,8 @@ def test_pedido_valido_responde_202_com_id_opaco_sem_processar(app, client):
     assert corpo["periodo"] == {"inicio": "2026-11-01T03:00:00Z", "fim": "2026-11-08T03:00:00Z"}
     assert resposta.headers["Location"] == corpo["consulta"] == f"/api/extracoes/{corpo['id']}"
     # Nada de chave lógica, token, job interno ou caminho de arquivo na API.
-    assert not {"chave_logica", "reserva_token", "execucao_processamento_id", "arquivo"} & set(corpo)
+    assert not {"chave_logica", "reserva_token", "execucao_processamento_id", "chave"} & set(corpo)
+    assert corpo["arquivo"] is None and corpo["progresso"]["registros"] == 0
     with app.app_context():
         job = db.session.get(PedidoExtracao, corpo["id"]).execucao
         # Não aguardou a geração: job intacto e nenhum arquivo criado.

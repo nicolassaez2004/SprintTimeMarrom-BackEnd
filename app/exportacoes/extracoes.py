@@ -1,22 +1,45 @@
-"""US28-T01: ExportService — registra pedidos de extração de brutos sem gerar o arquivo.
+"""US28: ExportService — pedidos de extração de brutos e geração do arquivo pelo worker.
 
 Fluxo 3 do diagrama de componentes: ``POST /extracoes`` grava ``PedidoExtracao``
 e o seu ``ExecucaoProcessamento`` (tipo ``EXTRACAO_BRUTOS``) numa só transação,
 pelo ``JobService`` da US20 — a fila é a própria tabela de jobs no MySQL, então
-o pedido confirmado já é o trabalho pendente, com ou sem worker no ar. O
-arquivo é gerado depois, pelo worker (tarefa seguinte da US28).
+o pedido confirmado já é o trabalho pendente, com ou sem worker no ar.
+
+US28-T02: o worker (``python -m app.jobs --tipo EXTRACAO_BRUTOS``, processo
+separado do Flask) executa as duas fases do ``Executor`` da US20:
+
+1. ``gerar`` (posse confirmada pela reserva): grava, com o núcleo da US09
+   (``escrever_brutos``), só a linha, o período e o snapshot de brutos do pedido
+   num temporário oculto ``.extracao-<job>-<token>.tmp`` do FileStore, lote a
+   lote; a cada lote registra o progresso e renova a reserva, desistindo se a
+   posse foi perdida. Depois valida o arquivo (linhas e esquema) e calcula o hash.
+2. ``publicar`` (job travado ``FOR UPDATE`` com o token): liga o temporário ao
+   nome final por conteúdo no FileStore, confere a leitura pelo hash e grava o
+   ``ArquivoArmazenado`` no pedido; o executor marca PRONTO no mesmo commit.
+
+O conteúdo é determinístico (snapshot e horário do pedido, sem "agora"): uma
+retomada gera os mesmos bytes, o FileStore reconhece o objeto já publicado e o
+``ArquivoArmazenado`` é reutilizado pela chave — sem arquivo final duplicado.
 """
 import json
 import re
 from datetime import datetime, timedelta, timezone
 from hashlib import sha256
+from pathlib import Path
 
+import pyarrow as pa
+import pyarrow.csv as pacsv
+import pyarrow.parquet as pq
 from flask import current_app
 from sqlalchemy import func, or_
 
 from app import db
+from app.exportacoes.parquet import (_SCHEMA, MIME_PARQUET, diretorio_exportacoes,
+                                     escrever_brutos, metadados_fonte)
 from app.jobs import JobService
-from app.models import ExecucaoProcessamento, PedidoExtracao, RegistroBrutoGPS
+from app.models import ArquivoArmazenado, ExecucaoProcessamento, PedidoExtracao, RegistroBrutoGPS
+from app.repositories import jobs as repositorio
+from app.storage import FileStore, hash_arquivo
 
 TIPO = "EXTRACAO_BRUTOS"
 FORMATOS = ("CSV", "PARQUET")
@@ -28,6 +51,17 @@ PERIODO_MAXIMO = timedelta(days=31)
 MARGEM_FECHAMENTO = timedelta(minutes=10)
 _CAMPOS = {"linha", "inicio", "fim", "formato"}
 _LINHA = re.compile(r"[0-9]{1,16}")  # código Olho Vivo (cl) = RegistroBrutoGPS.linha_origem
+ARQUIVO = {"PARQUET": ("parquet", MIME_PARQUET), "CSV": ("csv", "text/csv")}
+_TEMPORARIO = re.compile(r"\.extracao-([0-9a-f-]{36})-([0-9a-f-]{36})\.tmp")
+
+
+class ArquivoInvalido(RuntimeError):
+    """O arquivo gerado não confere com o que foi escrito; não é publicado."""
+
+
+def armazenamento():
+    """FileStore das extrações, no mesmo volume para publicar por ``os.link``."""
+    return FileStore(Path(diretorio_exportacoes()) / "extracoes")
 
 
 class PedidoInvalido(ValueError):
@@ -52,9 +86,10 @@ def _instante(dados, campo):
 
 
 class ExportService:
-    def __init__(self, jobs=None, relogio=None):
+    def __init__(self, jobs=None, relogio=None, *, loja=None, tamanho_lote=5000):
         self.jobs = jobs or JobService()
         self.relogio = relogio or (lambda: datetime.now(timezone.utc))
+        self.loja, self.tamanho_lote = loja, tamanho_lote
 
     def validar(self, dados):
         """Normaliza o corpo do pedido; ``PedidoInvalido`` antes de qualquer gravação."""
@@ -137,6 +172,8 @@ class ExportService:
     def descrever(self, pedido):
         """Representação pública: sem chave lógica, token, caminho ou id interno do job."""
         estado = pedido.estado_publico(self.jobs.limite)
+        job, arquivo = pedido.execucao, pedido.arquivo
+        ultima = (job.historico or [{}])[-1]
         return {
             "id": pedido.id,
             "estado": estado,
@@ -145,6 +182,118 @@ class ExportService:
             "formato": pedido.formato,
             "solicitado_em": _iso(pedido.criado_em),
             "versao_base": pedido.versao_base,
-            "erro": (pedido.execucao.erro or "ARQUIVO_INDISPONIVEL") if estado == "ERRO" else None,
+            "erro": (job.erro or "ARQUIVO_INDISPONIVEL") if estado == "ERRO" else None,
+            "tentativas": job.tentativas,
+            "progresso": {"registros": ultima.get("registros", 0),
+                          "atualizado_em": ultima.get("progresso_em") or ultima.get("fim")},
+            # Só com o arquivo completo publicado; o download fica para a T03.
+            "arquivo": {"formato": pedido.formato, "tamanho_bytes": arquivo.tamanho_bytes,
+                        "sha256": arquivo.sha256} if estado == "PRONTO" else None,
             "consulta": f"/api/extracoes/{pedido.id}",
         }
+
+    # --- Geração pelo worker (US28-T02) ---------------------------------------
+
+    def _loja(self):
+        return self.loja or armazenamento()
+
+    def _progresso(self, job_id, token, registros):
+        """Registra o progresso na tentativa atual e renova a reserva, numa
+        transação curta; sem posse, interrompe a geração (``PossePerdida``)."""
+        agora = self.relogio()
+        from app.jobs.executor import PossePerdida  # só no worker (rotas não importam o executor)
+
+        job = repositorio.travar_se_dono(job_id, token)
+        if job is None:
+            db.session.rollback()
+            raise PossePerdida(job_id)
+        job.reserva_ate = agora + self.jobs.RESERVA
+        repositorio.registrar_tentativa(job_id, registros=registros, progresso_em=_iso(agora))
+        db.session.commit()
+
+    def _limpar_temporarios(self, loja):
+        """Apaga temporários de tentativas que já não têm a posse do seu job."""
+        posse = dict(db.session.query(ExecucaoProcessamento.id, ExecucaoProcessamento.reserva_token)
+                     .filter(ExecucaoProcessamento.tipo == TIPO,
+                             ExecucaoProcessamento.estado == "PROCESSANDO"))
+        for caminho in loja.diretorio.glob(".extracao-*.tmp"):
+            encontrado = _TEMPORARIO.fullmatch(caminho.name)
+            if encontrado and posse.get(encontrado[1]) != encontrado[2]:
+                caminho.unlink(missing_ok=True)
+
+    @staticmethod
+    def _validar(caminho, formato, total):
+        if formato == "PARQUET":
+            metadados = pq.read_metadata(caminho)
+            linhas, valido = metadados.num_rows, metadados.schema.to_arrow_schema().equals(_SCHEMA)
+        else:
+            nomes = [c.name for c in _SCHEMA] + ["fonte", "licenca"]
+            leitor = pacsv.open_csv(caminho, parse_options=pacsv.ParseOptions(newlines_in_values=True),
+                                    convert_options=pacsv.ConvertOptions(
+                                        column_types={n: pa.string() for n in nomes}))
+            valido = leitor.schema.names == nomes
+            linhas = sum(lote.num_rows for lote in leitor)
+        if not valido or linhas != total:
+            raise ArquivoInvalido(f"{linhas} linhas lidas, {total} escritas")
+
+    def gerar(self, job):
+        """Fase 1 do worker: gera e valida o temporário; nada fica publicado."""
+        pedido = PedidoExtracao.query.filter_by(execucao_processamento_id=job.id).one()
+        loja = self._loja()
+        self._limpar_temporarios(loja)
+        token = job.reserva_token
+        temporario = loja.diretorio / f".extracao-{job.id}-{token}.tmp"
+        metadados = {
+            **metadados_fonte(),
+            b"request_id": pedido.id.encode(),
+            b"line": pedido.linha_codigo.encode(),
+            b"date_field": b"coletado_em; instantes em UTC",
+            b"period_start_utc": pedido.inicio_periodo.isoformat().encode(),
+            b"period_end_utc": pedido.fim_periodo.isoformat().encode(),
+            b"snapshot_max_id": str(job.bruto_id_maximo).encode(),
+            b"requested_at_utc": pedido.criado_em.isoformat().encode(),
+        }
+        try:
+            total = escrever_brutos(
+                temporario, pedido.inicio_periodo, pedido.fim_periodo, metadados,
+                linha=pedido.linha_codigo, bruto_id_maximo=job.bruto_id_maximo,
+                formato=pedido.formato, tamanho_lote=self.tamanho_lote,
+                ao_lote=lambda n: self._progresso(job.id, token, n))
+            self._validar(temporario, pedido.formato, total)
+            self._progresso(job.id, token, total)
+            digest, tamanho = hash_arquivo(temporario)
+        except Exception:
+            temporario.unlink(missing_ok=True)
+            raise
+        return {"pedido_id": pedido.id, "temporario": temporario, "registros": total,
+                "sha256": digest, "tamanho": tamanho}
+
+    def publicar(self, job, gerado):
+        """Fase 2, sob ``FOR UPDATE`` com o token: publica e liga o arquivo, sem commit."""
+        pedido = db.session.get(PedidoExtracao, gerado["pedido_id"])
+        extensao, mime = ARQUIVO[pedido.formato]
+        loja = self._loja()
+        try:
+            chave = loja.publicar_extracao(gerado["temporario"], gerado["sha256"],
+                                           gerado["tamanho"], extensao)
+        finally:
+            gerado["temporario"].unlink(missing_ok=True)
+        loja.caminho_extracao(chave, gerado["sha256"])  # legível e íntegro antes do PRONTO
+        arquivo = ArquivoArmazenado.query.filter_by(chave=chave).one_or_none()
+        if arquivo is None:
+            inicio = pedido.inicio_periodo.strftime("%Y%m%dT%H%MZ")
+            fim = pedido.fim_periodo.strftime("%Y%m%dT%H%MZ")
+            arquivo = ArquivoArmazenado(
+                chave=chave, nome_original=f"brutos_linha_{pedido.linha_codigo}_{inicio}_{fim}.{extensao}",
+                mime_type=mime, tamanho_bytes=gerado["tamanho"], sha256=gerado["sha256"])
+            db.session.add(arquivo)
+        pedido.arquivo = arquivo
+        repositorio.registrar_tentativa(job.id, registros=gerado["registros"], sha256=gerado["sha256"])
+
+
+def executor_extracao(app, servico=None, **opcoes):
+    """Worker de ``EXTRACAO_BRUTOS``: reserva, gera e publica pelo ``Executor`` da US20."""
+    from app.jobs.executor import Executor
+
+    servico = servico or ExportService()
+    return Executor(app, TIPO, servico.gerar, servico.publicar, **opcoes)
