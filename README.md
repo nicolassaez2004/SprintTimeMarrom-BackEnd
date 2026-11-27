@@ -393,6 +393,17 @@ metadados: considerar esses arquivos no uso de disco e no backup. Não remover
 esses objetos enquanto houver capturas em andamento; eventual limpeza de
 órfãos precisa de coordenação e não faz parte desta tarefa.
 
+## Worker de recálculo US20-T02B
+
+Os pedidos de recálculo (US20-T02A) são executados por um processo separado do
+Flask, que reserva cada pedido atomicamente no MySQL. Detalhes em
+[docs/US20-T02B.md](docs/US20-T02B.md).
+
+```bash
+python -m app.jobs              # contínuo; Ctrl+C/SIGTERM param após o job atual
+python -m app.jobs --uma-vez    # executa os pedidos disponíveis e encerra
+```
+
 ## Verificação diária do GTFS US02-T04
 
 O agendamento roda em um processo separado da API e do coletor GPS. Após o

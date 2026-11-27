@@ -4,10 +4,12 @@ Diagrama de classes (p. 3/5): pedido durável com versões, chave lógica única
 tentativas e reserva com expiração, para cálculo, importação, exportação e
 backup (US20, US28). O estado fica no MySQL e sobrevive ao reinício.
 
-Este serviço só **registra** e **lista para retomada**. A reserva atômica e a
-execução pertencem ao worker; hoje existem em ``app.persistencia.reprocessamento``.
+Registra e lista pedidos (US20-T02A) e controla a posse de cada execução
+(US20-T02B): ``reservar`` confirma a posse numa transação curta e ``concluir`` /
+``falhar`` só alteram o job enquanto o ``reserva_token`` ainda for o do executor.
 """
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
+from uuid import uuid4
 
 from sqlalchemy.exc import IntegrityError, OperationalError
 
@@ -25,6 +27,7 @@ def _conflito(erro):
 
 class JobService:
     TENTATIVAS = 3
+    RESERVA = timedelta(minutes=15)
 
     def solicitar(self, pedidos):
         """Cria ou reutiliza um job por ``chave_logica``, todos numa transação.
@@ -58,3 +61,34 @@ class JobService:
     def pendentes(self, tipo, agora=None):
         """Jobs a retomar após reinício: aguardando, com erro ou reserva vencida."""
         return repositorio.pendentes(tipo, agora or datetime.now(timezone.utc))
+
+    def reservar(self, tipo, agora=None, duracao=None):
+        """Reserva atomicamente o job mais antigo reservável e confirma; ou ``None``.
+
+        Reserváveis: ``AGUARDANDO`` e ``PROCESSANDO`` com reserva vencida.
+        ``ERRO`` não é retomado aqui: limite de tentativas e espera entre elas
+        são política de retomada (tarefa posterior).
+        """
+        agora = agora or datetime.now(timezone.utc)
+        for job_id in repositorio.candidatos(tipo, agora):
+            token = str(uuid4())
+            if repositorio.reservar(job_id, token, agora, agora + (duracao or self.RESERVA)):
+                db.session.commit()
+                return db.session.get(ExecucaoProcessamento, job_id)
+            db.session.rollback()  # outro executor venceu; encerra a leitura e tenta o próximo
+        db.session.rollback()
+        return None
+
+    def concluir(self, job_id, token, agora=None):
+        """Marca PRONTO **sem commit**, na mesma transação dos resultados.
+
+        ``False`` = posse perdida; o chamador deve desfazer os resultados.
+        """
+        return repositorio.encerrar(job_id, token, "PRONTO", agora or datetime.now(timezone.utc))
+
+    def falhar(self, job_id, token, erro, agora=None):
+        """Marca ERRO (só o tipo da exceção: mensagens de SQL podem conter senhas) e confirma."""
+        ok = repositorio.encerrar(job_id, token, "ERRO", agora or datetime.now(timezone.utc),
+                                  erro=type(erro).__name__[:128])
+        db.session.commit()
+        return ok
