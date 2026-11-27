@@ -82,4 +82,4 @@ def baixar_extracao(pedido_id):
         current_app.logger.error("Extração %s: arquivo final divergente do hash", pedido_id)
         return erro_json("ARQUIVO_INDISPONIVEL", "O arquivo final não está disponível.", 404)
     return send_file(caminho, mimetype=arquivo.mime_type, as_attachment=True,
-                     download_name=arquivo.nome_original, etag=arquivo.sha256, max_age=0)
+                     download_name=servico.nome_arquivo(pedido), etag=arquivo.sha256, max_age=0)

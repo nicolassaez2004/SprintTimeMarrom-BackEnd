@@ -1,0 +1,28 @@
+{
+  "historia": "US28 - extrações assíncronas de brutos",
+  "data": "2026-11-27",
+  "ambiente": "MySQL 8.4.7 Community local e descartável (datadir em tmpfs, innodb_buffer_pool 128 MB), bases us28_verificacao_* / us28_desempenho_*; nenhuma escrita na Aiven",
+  "post_202": {"curl_flask_mysql_ms": 117, "bench_ms": [134.0, 90.2, 93.8]},
+  "volume_ensaio": {
+    "registros_no_mes": 2232000,
+    "registros_da_linha_33887": 446400,
+    "descricao": "outubro/2026 a cada 30 s: 5 veículos na linha pedida + 20 veículos de outras linhas"
+  },
+  "geracao_um_mes_uma_linha": [
+    {"indice_linha": false, "formato": "PARQUET", "worker_s": 16.9, "registros": 446400, "bytes": 9727726, "rss_pico_mb": 250},
+    {"indice_linha": true, "formato": "PARQUET", "worker_s": 15.7, "registros": 446400, "bytes": 9727726, "rss_pico_mb": 251},
+    {"indice_linha": true, "formato": "CSV", "worker_s": 17.1, "registros": 446400, "bytes": 130069445, "rss_pico_mb": 325}
+  ],
+  "memoria_por_volume_csv": [
+    {"registros": 14400, "rss_pico_mb": 260},
+    {"registros": 100800, "rss_pico_mb": 287},
+    {"registros": 446400, "rss_pico_mb": 325}
+  ],
+  "varredura_sql_do_mes": {
+    "plano_atual_ix_coletado_em_id_s": [5.11, 5.44],
+    "plano_novo_ix_linha_coletado_em_id_s": [1.79, 1.71],
+    "linhas_varridas_plano_atual": 2232000,
+    "projecao_sem_indice": "mês real ≈ 11.283 veículos × 2.880 ciclos × 31 dias ≈ 1,0 bilhão de registros; a ~420 mil registros/s só a varredura levaria ~40 min (acima da meta de 15 min). Projeção, não medição."
+  },
+  "conclusao": "Meta de 15 min atendida no ensaio local com um mês completo de uma linha (≈16-17 s). Com o índice, o custo depende só dos registros da linha pedida. Não medido na Aiven nem com o histórico real completo."
+}

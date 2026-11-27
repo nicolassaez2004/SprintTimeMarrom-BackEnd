@@ -9,7 +9,7 @@ from app import create_app, db
 from app.exportacoes import extracoes
 from app.exportacoes.extracoes import ExportService, armazenamento, executor_extracao
 from app.jobs import JobService
-from app.models import ExecucaoColeta, ExecucaoProcessamento, PedidoExtracao, RegistroBrutoGPS
+from app.models import ArquivoArmazenado, ExecucaoColeta, ExecucaoProcessamento, PedidoExtracao, RegistroBrutoGPS
 
 UTC = timezone.utc
 INICIO = datetime(2026, 11, 1, 3, tzinfo=UTC)
@@ -88,7 +88,7 @@ def test_aguardando_preserva_pedido_e_nao_tem_link(client):
     assert (corpo["id"], corpo["estado"], corpo["linha"], corpo["periodo"], corpo["formato"]) == (
         pedido_id, "aguardando", "33887", PERIODO, "CSV")
     assert corpo["arquivo"] is None and corpo["erro"] is None and corpo["mensagem"] is None
-    assert corpo["progresso"] == {"registros": 0, "atualizado_em": None}
+    assert corpo["progresso"] is None  # nada registrado ainda: sem progresso inventado
     assert client.get(f"/api/extracoes/{pedido_id}/arquivo").status_code == 409
 
 
@@ -246,3 +246,32 @@ def test_consulta_nao_inicia_job_nem_gera_arquivo(app, client, monkeypatch):
         job = ExecucaoProcessamento.query.one()
         assert (job.estado, job.tentativas, job.reserva_token, job.iniciada_em) == ("AGUARDANDO", 0, None, None)
     assert not list(armazenamento_dir(app).iterdir())
+
+
+def test_tentativa_que_falhou_nao_vira_progresso_nem_no_erro_final(app, client):
+    """Review US28: ERRO com tentativas restantes é 'aguardando' sem a contagem antiga."""
+    pedido_id = _pedir(client)
+    historico = [{"tentativa": 1, "estado": "ERRO", "erro": "OSError", "registros": 4,
+                  "progresso_em": "2026-11-20T10:00:00Z", "fim": "2026-11-20T10:00:01Z"}]
+    _job(app, pedido_id, estado="ERRO", tentativas=1, erro="OSError", historico=historico)
+    assert (_consultar(client, pedido_id)["estado"], _consultar(client, pedido_id)["progresso"]) == (
+        "aguardando", None)
+
+    _job(app, pedido_id, tentativas=JobService.LIMITE_TENTATIVAS)
+    assert (_consultar(client, pedido_id)["estado"], _consultar(client, pedido_id)["progresso"]) == (
+        "erro", None)
+
+
+def test_arquivo_compartilhado_e_baixado_com_o_nome_do_proprio_pedido(app, client):
+    """Review US28: CSVs idênticos (ex.: linhas sem registros) reutilizam o mesmo
+    ArquivoArmazenado; o nome exibido e baixado continua sendo o do pedido."""
+    ids = [client.post("/api/extracoes", json={**CORPO, "linha": linha}).get_json()["id"]
+           for linha in ("901", "902")]
+    assert _worker(app)[1] == _worker(app)[1] == "PRONTO"
+    with app.app_context():
+        assert ArquivoArmazenado.query.count() == 1  # mesmo conteúdo, um objeto
+    for pedido_id, linha in zip(ids, ("901", "902")):
+        arquivo = _consultar(client, pedido_id)["arquivo"]
+        assert arquivo["nome"] == f"brutos_linha_{linha}_20261101T0300Z_20261108T0300Z.csv"
+        baixado = client.get(arquivo["download"])
+        assert arquivo["nome"] in baixado.headers["Content-Disposition"]
