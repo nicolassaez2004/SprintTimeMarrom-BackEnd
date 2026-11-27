@@ -1,0 +1,240 @@
+{
+ "tarefa": "US28-T04",
+ "executado_em": "2026-11-27T22:48:03.564191+00:00",
+ "dados": "SINTÉTICOS (marcados em payload.sintetico), base MySQL local isolada; nunca a Aiven",
+ "cenario": {
+  "linha": "99516",
+  "periodo": [
+   "2026-10-01T00:00:00-03:00",
+   "2026-11-01T00:00:00-03:00"
+  ],
+  "veiculos_da_linha_por_ciclo": 30,
+  "outras_posicoes_por_ciclo": 30,
+  "intervalo_coleta_s": 30,
+  "formato": "PARQUET",
+  "usuarios_simulados": 10,
+  "base_dimensionamento": "coleta real de 26/11/2026: até 11.348 veículos/ciclo; linha mais movimentada (516) com 30 veículos/ciclo"
+ },
+ "meta": "extração de um mês de uma linha disponível em até 15 min; contagens conferem; API continua atendendo; reinício recupera o pedido",
+ "schema_alembic": "us28_0029",
+ "carga": {
+  "reaproveitado": false,
+  "ciclos": 89280,
+  "registros": 5356800,
+  "segundos_carga": 592.1
+ },
+ "ambiente": {
+  "mysql": {
+   "versao": "8.0.46",
+   "innodb_buffer_pool_mb": 128,
+   "max_connections": 151,
+   "host": "local (127.0.0.1), base isolada"
+  },
+  "servidor_wsgi": "waitress (processo separado)",
+  "worker": "python -m app.jobs --tipo EXTRACAO_BRUTOS",
+  "python": "3.14.7",
+  "pacotes": {
+   "Flask": "3.1.3",
+   "SQLAlchemy": "2.1.9",
+   "PyMySQL": "1.2.4",
+   "pyarrow": "24.0.0",
+   "waitress": "3.0.2"
+  },
+  "so": "Windows-11-10.0.26300-SP0",
+  "cpu_logicas": 24,
+  "memoria_gb": 31.4,
+  "volume_na_base": {
+   "registros_gps": 5356800,
+   "de": "2026-10-01T03:00:00",
+   "ate": "2026-11-01T02:59:30",
+   "tamanho_mb_dados_indices": 1876.4
+  }
+ },
+ "extracao": {
+  "pedido_id": "111089ac-e941-432c-8f86-ea0154abe936",
+  "formato": "PARQUET",
+  "post_202_ms": 65.7,
+  "estados_observados": [
+   {
+    "estado": "processando",
+    "em_s": 0.62
+   },
+   {
+    "estado": "pronto",
+    "em_s": 147.66
+   }
+  ],
+  "solicitacao_ate_pronto_s": 147.66,
+  "download": {
+   "status": 200,
+   "bytes": 76226008,
+   "segundos": 0.29
+  },
+  "solicitacao_ate_arquivo_baixado_s": 147.95,
+  "contagem": {
+   "esperada_sql": 2678400,
+   "informada_api": 2678400,
+   "lida_no_arquivo": 2678400,
+   "snapshot_bruto_id_maximo": 5356800,
+   "confere": true
+  },
+  "consultas_sem_extracao": {
+   "usuarios_simulados": 10,
+   "consultas": 46,
+   "atendidas_2xx_3xx": 38,
+   "falhas": 8,
+   "status_das_falhas": [
+    "404"
+   ],
+   "p50_ms": 338.9,
+   "p95_ms": 16270.2,
+   "max_ms": 17658.0,
+   "por_rota": {
+    "/api/extracoes/{id}": {
+     "consultas": 8,
+     "p95_ms": 574.3,
+     "status": [
+      "404"
+     ]
+    },
+    "/api/saude": {
+     "consultas": 12,
+     "p95_ms": 17658.0,
+     "status": [
+      "200"
+     ]
+    },
+    "/downloads/indicadores/metadados": {
+     "consultas": 9,
+     "p95_ms": 338.9,
+     "status": [
+      "200"
+     ]
+    },
+    "/health": {
+     "consultas": 10,
+     "p95_ms": 199.2,
+     "status": [
+      "200"
+     ]
+    },
+    "/posicoes/atuais": {
+     "consultas": 7,
+     "p95_ms": 2274.5,
+     "status": [
+      "200"
+     ]
+    }
+   }
+  },
+  "consultas_durante_extracao": {
+   "usuarios_simulados": 10,
+   "consultas": 340,
+   "atendidas_2xx_3xx": 340,
+   "falhas": 0,
+   "status_das_falhas": [],
+   "p50_ms": 466.7,
+   "p95_ms": 14271.7,
+   "max_ms": 17864.0,
+   "por_rota": {
+    "/api/extracoes/{id}": {
+     "consultas": 67,
+     "p95_ms": 1055.9,
+     "status": [
+      "200"
+     ]
+    },
+    "/api/saude": {
+     "consultas": 70,
+     "p95_ms": 16026.4,
+     "status": [
+      "200"
+     ]
+    },
+    "/downloads/indicadores/metadados": {
+     "consultas": 68,
+     "p95_ms": 462.1,
+     "status": [
+      "200"
+     ]
+    },
+    "/health": {
+     "consultas": 69,
+     "p95_ms": 466.7,
+     "status": [
+      "200"
+     ]
+    },
+    "/posicoes/atuais": {
+     "consultas": 66,
+     "p95_ms": 1974.5,
+     "status": [
+      "200"
+     ]
+    }
+   }
+  },
+  "job": {
+   "estado_job": "PRONTO",
+   "tentativas": 1,
+   "historico": [
+    {
+     "tentativa": 1,
+     "estado": "PRONTO",
+     "erro": null,
+     "registros": 2678400
+    }
+   ]
+  }
+ },
+ "reinicio": {
+  "pedido_id": "5dd5a2d2-ae86-435a-9a58-cab11c153edb",
+  "formato": "CSV",
+  "registros_gerados_antes_da_queda": 10000,
+  "estado_na_api_apos_queda": "processando",
+  "estados_apos_reinicio": [
+   {
+    "estado": "processando",
+    "em_s": 3.04
+   },
+   {
+    "estado": "pronto",
+    "em_s": 1151.82
+   }
+  ],
+  "queda_ate_pronto_s": 1179.4,
+  "reserva_do_produto_min": 15,
+  "contagem": {
+   "esperada_sql": 2678400,
+   "lida_no_arquivo": 2678400,
+   "confere": true,
+   "download_status": 200,
+   "bytes": 883831536
+  },
+  "job": {
+   "estado_job": "PRONTO",
+   "tentativas": 2,
+   "historico": [
+    {
+     "tentativa": 1,
+     "estado": "INTERROMPIDA",
+     "erro": "ReservaExpirada",
+     "registros": 10000
+    },
+    {
+     "tentativa": 2,
+     "estado": "PRONTO",
+     "erro": null,
+     "registros": 2678400
+    }
+   ]
+  }
+ },
+ "criterios": {
+  "extracao_ate_15_min": true,
+  "contagens_conferem": true,
+  "api_atendeu_durante": true,
+  "reinicio_recuperado": true
+ },
+ "resultado": "APROVADO"
+}
