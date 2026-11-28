@@ -124,107 +124,120 @@ def gerar_partidas(versao_id, linha, sentido, data_operacao, *, diretorio=None):
         raise ValueError("sentido GTFS deve ser 0 ou 1")
     versao, arquivo = _abrir_versao(versao_id, diretorio)
     with arquivo:
-        ativos = servicos_ativos(arquivo, data_operacao)
-        rotas = _unicos(_ler_csv(arquivo, "routes.txt"), "routes.txt", "route_id")
+        ofertas = gerar_ofertas(arquivo, data_operacao, {(linha, sentido)})
+    return versao, ofertas.get((linha, sentido), ())
+
+
+def gerar_ofertas(arquivo, data_operacao, alvos=None):
+    """Lê o feed uma única vez e gera as saídas de primeira parada da data.
+
+    ``alvos``: conjunto de ``(route_id, direction_id)``; ``None`` = todas as rotas com viagem
+    ativa (geração do dia inteiro, US04). Mesmas regras e validações de ``gerar_partidas``,
+    que é este cálculo para um único alvo. Devolve ``{(route_id, direction_id): saídas}``.
+    """
+    ativos = servicos_ativos(arquivo, data_operacao)
+    rotas = _unicos(_ler_csv(arquivo, "routes.txt"), "routes.txt", "route_id")
+    for linha, _ in alvos or ():
         if linha not in rotas:
             raise LookupError(f"linha GTFS inexistente na versão: {linha}")
-        fuso_operacional = _fuso_da_rota(arquivo, rotas[linha][1])
 
-        viagens = _unicos(_ler_csv(arquivo, "trips.txt"), "trips.txt", "trip_id")
-        selecionadas = {}
-        for trip_id, (numero, trip) in viagens.items():
-            route_id = trip.get("route_id")
-            service_id = trip.get("service_id")
-            direction_id = trip.get("direction_id")
-            if not route_id or not service_id:
-                raise GTFSValidationError(f"trips.txt linha {numero}: route_id/service_id vazio")
-            if route_id not in rotas:
-                raise GTFSValidationError(f"trips.txt linha {numero}: route_id inexistente")
-            if direction_id not in ("0", "1"):
-                raise GTFSValidationError(f"trips.txt linha {numero}: direction_id deve ser 0 ou 1")
-            if route_id == linha and service_id in ativos and direction_id == sentido:
-                selecionadas[trip_id] = None
+    viagens = _unicos(_ler_csv(arquivo, "trips.txt"), "trips.txt", "trip_id")
+    selecionadas = {}
+    for trip_id, (numero, trip) in viagens.items():
+        route_id = trip.get("route_id")
+        service_id = trip.get("service_id")
+        direction_id = trip.get("direction_id")
+        if not route_id or not service_id:
+            raise GTFSValidationError(f"trips.txt linha {numero}: route_id/service_id vazio")
+        if route_id not in rotas:
+            raise GTFSValidationError(f"trips.txt linha {numero}: route_id inexistente")
+        if direction_id not in ("0", "1"):
+            raise GTFSValidationError(f"trips.txt linha {numero}: direction_id deve ser 0 ou 1")
+        if service_id in ativos and (alvos is None or (route_id, direction_id) in alvos):
+            selecionadas[trip_id] = (route_id, direction_id)
 
-        if not selecionadas:
-            return versao, ()
+    if not selecionadas:
+        return {}
 
-        frequencias = {}
-        for numero, frequencia in _ler_csv(
-            arquivo, "frequencies.txt", obrigatorio=False,
-        ) or ():
-            trip_id = frequencia.get("trip_id")
-            if trip_id not in selecionadas:
-                continue
-            try:
-                inicio_faixa = _segundos_gtfs(
-                    frequencia.get("start_time", ""), numero, "frequencies.txt",
-                )
-                fim_faixa = _segundos_gtfs(
-                    frequencia.get("end_time", ""), numero, "frequencies.txt",
-                )
-                intervalo = int(frequencia.get("headway_secs", ""))
-                if fim_faixa <= inicio_faixa or intervalo <= 0:
-                    raise ValueError
-                if frequencia.get("exact_times", "") not in ("", "0", "1"):
-                    raise ValueError
-            except (ValueError, TypeError):
-                raise GTFSValidationError(
-                    f"frequencies.txt linha {numero}: faixa ou headway inválido"
-                ) from None
-            frequencias.setdefault(trip_id, []).append(
-                (inicio_faixa, fim_faixa, intervalo),
+    frequencias = {}
+    for numero, frequencia in _ler_csv(
+        arquivo, "frequencies.txt", obrigatorio=False,
+    ) or ():
+        trip_id = frequencia.get("trip_id")
+        if trip_id not in selecionadas:
+            continue
+        try:
+            inicio_faixa = _segundos_gtfs(
+                frequencia.get("start_time", ""), numero, "frequencies.txt",
             )
+            fim_faixa = _segundos_gtfs(
+                frequencia.get("end_time", ""), numero, "frequencies.txt",
+            )
+            intervalo = int(frequencia.get("headway_secs", ""))
+            if fim_faixa <= inicio_faixa or intervalo <= 0:
+                raise ValueError
+            if frequencia.get("exact_times", "") not in ("", "0", "1"):
+                raise ValueError
+        except (ValueError, TypeError):
+            raise GTFSValidationError(
+                f"frequencies.txt linha {numero}: faixa ou headway inválido"
+            ) from None
+        frequencias.setdefault(trip_id, []).append(
+            (inicio_faixa, fim_faixa, intervalo),
+        )
 
-        sequencias = {}
-        for numero, stop_time in _ler_csv(arquivo, "stop_times.txt"):
-            trip_id = stop_time.get("trip_id")
-            if trip_id not in selecionadas:
-                continue
-            try:
-                ordem = int(stop_time.get("stop_sequence", ""))
-                if ordem < 1:
-                    raise ValueError
-            except ValueError:
-                raise GTFSValidationError(
-                    f"stop_times.txt linha {numero}: stop_sequence inválido"
-                ) from None
-            if ordem in sequencias.setdefault(trip_id, {}):
-                raise GTFSValidationError(
-                    f"stop_times.txt linha {numero}: stop_sequence repetido na viagem"
-                )
-            sequencias[trip_id][ordem] = (numero, stop_time)
+    sequencias = {}
+    for numero, stop_time in _ler_csv(arquivo, "stop_times.txt"):
+        trip_id = stop_time.get("trip_id")
+        if trip_id not in selecionadas:
+            continue
+        try:
+            ordem = int(stop_time.get("stop_sequence", ""))
+            if ordem < 1:
+                raise ValueError
+        except ValueError:
+            raise GTFSValidationError(
+                f"stop_times.txt linha {numero}: stop_sequence inválido"
+            ) from None
+        if ordem in sequencias.setdefault(trip_id, {}):
+            raise GTFSValidationError(
+                f"stop_times.txt linha {numero}: stop_sequence repetido na viagem"
+            )
+        sequencias[trip_id][ordem] = (numero, stop_time)
 
-        inicio = datetime.combine(data_operacao, time(), fuso_operacional)
-        saidas = []
-        for trip_id in sorted(selecionadas):
-            paradas = sequencias.get(trip_id)
-            if not paradas:
-                raise GTFSValidationError(f"viagem {trip_id!r} ativa não tem stop_times")
-            numero, primeira = paradas[min(paradas)]
-            horario = primeira.get("departure_time") or primeira.get("arrival_time")
-            if not horario:
-                raise GTFSValidationError(
-                    f"stop_times.txt linha {numero}: primeira parada sem horário de saída"
-                )
-            try:
-                instante = inicio + timedelta(seconds=_segundos_gtfs(horario, numero))
-            except OverflowError:
-                raise GTFSValidationError(
-                    f"stop_times.txt linha {numero}: horário excede o intervalo suportado"
-                ) from None
-            faixas = frequencias.get(trip_id)
-            if not faixas:
-                saidas.append(instante.astimezone(timezone.utc))
-                continue
-            for inicio_faixa, fim_faixa, intervalo in faixas:
-                horario = inicio + timedelta(seconds=inicio_faixa)
-                while inicio_faixa < fim_faixa:
-                    saidas.append(OfertaGTFS(
-                        horario.astimezone(timezone.utc), "FREQUENCIA", intervalo,
-                    ))
-                    inicio_faixa += intervalo
-                    horario += timedelta(seconds=intervalo)
-    return versao, tuple(sorted(
-        saidas,
-        key=lambda partida: getattr(partida, "saida_prevista", partida),
-    ))
+    inicios, resultado = {}, {}
+    for trip_id in sorted(selecionadas):
+        linha, sentido = selecionadas[trip_id]
+        if linha not in inicios:
+            inicios[linha] = datetime.combine(data_operacao, time(), _fuso_da_rota(arquivo, rotas[linha][1]))
+        inicio = inicios[linha]
+        saidas = resultado.setdefault((linha, sentido), [])
+        paradas = sequencias.get(trip_id)
+        if not paradas:
+            raise GTFSValidationError(f"viagem {trip_id!r} ativa não tem stop_times")
+        numero, primeira = paradas[min(paradas)]
+        horario = primeira.get("departure_time") or primeira.get("arrival_time")
+        if not horario:
+            raise GTFSValidationError(
+                f"stop_times.txt linha {numero}: primeira parada sem horário de saída"
+            )
+        try:
+            instante = inicio + timedelta(seconds=_segundos_gtfs(horario, numero))
+        except OverflowError:
+            raise GTFSValidationError(
+                f"stop_times.txt linha {numero}: horário excede o intervalo suportado"
+            ) from None
+        faixas = frequencias.get(trip_id)
+        if not faixas:
+            saidas.append(instante.astimezone(timezone.utc))
+            continue
+        for inicio_faixa, fim_faixa, intervalo in faixas:
+            horario = inicio + timedelta(seconds=inicio_faixa)
+            while inicio_faixa < fim_faixa:
+                saidas.append(OfertaGTFS(
+                    horario.astimezone(timezone.utc), "FREQUENCIA", intervalo,
+                ))
+                inicio_faixa += intervalo
+                horario += timedelta(seconds=intervalo)
+    return {chave: tuple(sorted(saidas, key=lambda partida: getattr(partida, "saida_prevista", partida)))
+            for chave, saidas in resultado.items()}
