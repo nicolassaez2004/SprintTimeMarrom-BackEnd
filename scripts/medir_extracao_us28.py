@@ -185,6 +185,8 @@ def ambiente_processo(url, exportacoes):
 def iniciar_api(env, porta, log):
     processo = subprocess.Popen(
         [sys.executable, "-m", "waitress", "--listen", f"127.0.0.1:{porta}", "--threads", "16",
+         # Sem estas opções o waitress descarta o X-Forwarded-For e todos chegam como 127.0.0.1.
+         "--trusted-proxy=127.0.0.1", "--trusted-proxy-headers=x-forwarded-for",
          "--call", "app:create_app"], cwd=RAIZ, env=env, stdout=log, stderr=subprocess.STDOUT)
     for _ in range(120):
         try:
