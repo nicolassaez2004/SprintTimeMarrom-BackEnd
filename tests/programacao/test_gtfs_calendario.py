@@ -10,6 +10,7 @@ from app import db
 from app.gtfs.service import GTFSValidationError, capturar_gtfs
 from app.models import ImportacaoProgramacao, Linha, PartidaProgramada
 from app.programacao.gtfs import servicos_ativos
+from app.programacao import service
 from app.programacao.service import gerar_programacao_gtfs
 
 DATA = date(2026, 11, 19)  # quinta-feira
@@ -173,3 +174,40 @@ def test_consulta_http_recupera_partidas_persistidas_pelo_gerador_gtfs(feed, tmp
     assert resposta.get_json()["partidas"] == gerada["partidas"]
     assert resposta.get_json()["procedencia"] == gerada["procedencia"]
     assert resposta.get_json()["tipo_dia"] == "FERIADO"
+
+
+# --- US04 (automação): todas as linhas do dia lendo o feed uma vez ----------------------
+
+def test_programacao_do_dia_igual_a_geracao_linha_a_linha(feed, tmp_path, app):
+    from app.models import ImportacaoProgramacao, PartidaProgramada
+    from app.programacao.gtfs import gerar_partidas
+
+    resumo = service.gerar_programacao_do_dia(DATA, versao_gtfs_id=feed.id, diretorio=tmp_path / "feed-gtfs",
+                                              agora=AGORA)
+    assert (resumo["gravadas"], resumo["tipo_dia"]) == (2, "UTIL")  # 19/11/2026 é quinta-feira; ida e volta
+    for sentido in ("0", "1"):
+        _, esperadas = gerar_partidas(feed.id, "3762-10", sentido, DATA, diretorio=tmp_path / "feed-gtfs")
+        importacao = ImportacaoProgramacao.query.filter_by(linha_codigo="3762-10", sentido=sentido,
+                                                           data_operacao=DATA, fonte="GTFS").one()
+        gravadas = [p.saida_prevista for p in PartidaProgramada.query.filter_by(importacao_id=importacao.id)
+                    .order_by(PartidaProgramada.ordem)]
+        assert gravadas == [getattr(e, "saida_prevista", e) for e in esperadas]
+    repetido = service.gerar_programacao_do_dia(DATA, versao_gtfs_id=feed.id, diretorio=tmp_path / "feed-gtfs",
+                                                agora=AGORA)
+    assert (repetido["gravadas"], repetido["repetidas"]) == (0, 2)   # idempotente
+
+
+def test_programacao_do_dia_respeita_a_fonte_oficial(feed, tmp_path, app, monkeypatch):
+    from app.repositories import programacao as repositorio
+
+    original = repositorio.consultar
+
+    def oficial_so_na_ida(*args, **kwargs):  # simula programação oficial já importada para a ida
+        if kwargs.get("fonte") == "OFICIAL" and len(args) == 5 and args[2] == "0":
+            return object()
+        return original(*args, **kwargs)
+
+    monkeypatch.setattr(repositorio, "consultar", oficial_so_na_ida)
+    resumo = service.gerar_programacao_do_dia(DATA, versao_gtfs_id=feed.id, diretorio=tmp_path / "feed-gtfs",
+                                              agora=AGORA)
+    assert (resumo["oficial_prioritaria"], resumo["gravadas"]) == (1, 1)

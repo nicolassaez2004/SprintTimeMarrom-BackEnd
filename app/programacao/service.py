@@ -13,10 +13,13 @@ from app.integrations.programacao import (
     FonteOficialIndisponivel, ProgramacaoOficialInvalida, SPTransProgrammingClient,
     validar_url_oficial,
 )
-from app.programacao.gtfs import gerar_partidas
+from app.gtfs.service import _abrir_versao
+from app.programacao.gtfs import gerar_ofertas, gerar_partidas
 from app.programacao.normalizacao import (
     ProgramacaoNormalizada, SENTIDOS, normalizar, validar_contexto,
 )
+from app import db
+from app.models import Linha
 from app.repositories import programacao as repositorio
 from app.storage import FileStore
 
@@ -249,3 +252,41 @@ def consultar_partidas(filtros):
                 "data_operacao": filtros.data.isoformat(), "tipo_dia": filtros.tipo_dia,
                 "quantidade": 0, "procedencia": None, "partidas": []}
     return _serializar(item, "DISPONIVEL" if item.partidas else "SEM_PARTIDAS")
+
+
+TIPO_POR_DIA_DA_SEMANA = {5: "SABADO", 6: "DOMINGO"}
+
+
+def gerar_programacao_do_dia(data_operacao, *, versao_gtfs_id=None, diretorio=None, agora=None):
+    """US04 (automação): partidas de TODAS as linhas e sentidos da data, lendo o GTFS uma vez.
+
+    Mesma regra de ``gerar_programacao_gtfs`` (calendário do feed; fonte OFICIAL tem
+    prioridade e não é sobrescrita), em lote: chamar a função linha a linha releria o ZIP
+    inteiro milhares de vezes por dia. Só linhas importadas na versão (US02) são gravadas.
+    ``tipo_dia`` é o rótulo operacional pelo dia da semana (UTIL/SABADO/DOMINGO); feriados
+    vêm do próprio calendário do feed (calendar_dates). Idempotente: repetir devolve REPETIDA.
+    """
+    if isinstance(data_operacao, datetime) or not isinstance(data_operacao, date):
+        raise TypeError("data_operacao deve ser date, sem inferir a data de um instante")
+    versao = _selecionar_versao(data_operacao, versao_gtfs_id)
+    tipo = TIPO_POR_DIA_DA_SEMANA.get(data_operacao.weekday(), "UTIL")
+    importadas = {codigo for (codigo,) in db.session.query(Linha.codigo).filter_by(versao_gtfs_id=versao.id)}
+    versao_aberta, arquivo = _abrir_versao(versao.id, diretorio)
+    with arquivo:
+        ofertas = gerar_ofertas(arquivo, data_operacao)
+    agora = agora or datetime.now(timezone.utc)
+    resumo = {"data": data_operacao.isoformat(), "versao_gtfs_id": versao.id, "tipo_dia": tipo,
+              "gravadas": 0, "repetidas": 0, "oficial_prioritaria": 0, "linha_nao_importada": 0}
+    for (linha, sentido), saidas in sorted(ofertas.items()):
+        if linha not in importadas:
+            resumo["linha_nao_importada"] += 1
+            continue
+        if repositorio.consultar(versao.id, linha, sentido, data_operacao, tipo, fonte="OFICIAL") is not None:
+            resumo["oficial_prioritaria"] += 1
+            continue
+        _, nova = repositorio.guardar(
+            ProgramacaoNormalizada(linha, sentido, data_operacao, tipo, saidas), versao.id, versao.hash,
+            versao_aberta.arquivo.chave, f"urn:sha256:{versao.hash}", versao_aberta.arquivo.tamanho_bytes, agora,
+            fonte="GTFS", arquivo_existente=versao_aberta.arquivo, capturada_em=versao.capturada_em)
+        resumo["gravadas" if nova else "repetidas"] += 1
+    return resumo

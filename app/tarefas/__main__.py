@@ -10,6 +10,7 @@ from app.coleta.bus_collector import LockColetor
 from app.contexto.clima.coleta import coletar_clima
 from app.exportacoes.parquet import publicar_brutos
 from app.indicadores.agenda import atualizar_indicadores
+from app.viagens.cadeia import processar_cadeia
 from app.contexto.infraestrutura.tarefa import atualizar_infraestrutura
 from app.gtfs.scheduler import (
     executar_tarefas, nome_lock_gtfs, proxima_verificacao,
@@ -35,7 +36,7 @@ def main(argv=None):
     logger = logging.getLogger("app.gtfs.scheduler")
     loggers = [logger, logging.getLogger("app.exportacoes.parquet"),
                logging.getLogger("app.indicadores.agenda"),
-               logging.getLogger("app.contexto.clima.coleta")]
+               logging.getLogger("app.contexto.clima.coleta"), logging.getLogger("app.viagens.cadeia")]
     for registrador in loggers:
         registrador.setLevel(logging.INFO)
         registrador.addHandler(handler)
@@ -53,8 +54,10 @@ def main(argv=None):
                 prevista = min(agora, proxima_verificacao(agora))
                 resultado = verificar_gtfs(prevista)
                 return 0 if resultado["estado"] == "OK" else 1
+            # A cadeia (correspondência → partidas → viagens → passagens) roda antes da
+            # agenda de indicadores, que passa a encontrar viagens reconstruídas.
             executar_tarefas(manter_ativo=lock.ativo, periodicas=(
-                publicar_brutos, atualizar_indicadores, atualizar_infraestrutura, coletar_clima
+                publicar_brutos, processar_cadeia, atualizar_indicadores, atualizar_infraestrutura, coletar_clima
             ))
 
             return 1  # O loop contínuo só retorna se perder o lock.

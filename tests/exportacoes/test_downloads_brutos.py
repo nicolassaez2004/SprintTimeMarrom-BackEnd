@@ -284,7 +284,8 @@ def test_processo_de_tarefas_registra_a_publicacao(app, monkeypatch, tmp_path):
     from app.contexto.clima.coleta import coletar_clima  # US06-T02
     from app.indicadores.agenda import atualizar_indicadores  # US23-T03
     from app.contexto.infraestrutura.tarefa import atualizar_infraestrutura  # US07
-    assert capturado["periodicas"] == (publicar_brutos, atualizar_indicadores,
+    from app.viagens.cadeia import processar_cadeia  # US03 → US04 → US14-T01C, antes dos indicadores
+    assert capturado["periodicas"] == (publicar_brutos, processar_cadeia, atualizar_indicadores,
                                        atualizar_infraestrutura, coletar_clima)
 
 
