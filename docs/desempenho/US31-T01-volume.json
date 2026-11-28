@@ -1,0 +1,513 @@
+{
+ "tarefa": "US31-T01",
+ "executado_em": "2026-11-27T22:59:18.541979+00:00",
+ "fontes": {
+  "base_coleta": {
+   "host": "Aiven (MySQL gerenciado da equipe)",
+   "base": "sptrans_dev",
+   "acesso": "SESSION READ ONLY",
+   "tabelas_lidas": [
+    "execucoes_coleta",
+    "lacunas_coleta",
+    "information_schema.tables"
+   ]
+  },
+  "amostra_continua": {
+   "arquivo": "local-coleta.sqlite",
+   "origem": "coleta real SPTrans gravada localmente (modo local temporário)"
+  },
+  "mes_real": {
+   "pasta": "202605",
+   "origem": "pasta Dados_GPS_Onibus compartilhada pelo Insper (202605.tar.gz)"
+  }
+ },
+ "medicao_base": {
+  "dias": [
+   {
+    "dia": "2026-11-19",
+    "ciclos": 25,
+    "ciclos_ok": 24,
+    "ciclos_com_falha": 1,
+    "recebidos": 236580,
+    "novos_persistidos": 177691,
+    "primeiro_ciclo_utc": "2026-11-19T11:40:10.460240",
+    "ultimo_ciclo_utc": "2026-11-19T16:14:54.752229",
+    "cobertura_do_dia_pct": 0.87
+   },
+   {
+    "dia": "2026-11-23",
+    "ciclos": 66,
+    "ciclos_ok": 66,
+    "ciclos_com_falha": 0,
+    "recebidos": 681418,
+    "novos_persistidos": 496316,
+    "primeiro_ciclo_utc": "2026-11-23T13:20:07.945807",
+    "ultimo_ciclo_utc": "2026-11-23T14:01:48.356422",
+    "cobertura_do_dia_pct": 2.29
+   },
+   {
+    "dia": "2026-11-24",
+    "ciclos": 72,
+    "ciclos_ok": 70,
+    "ciclos_com_falha": 2,
+    "recebidos": 710191,
+    "novos_persistidos": 555081,
+    "primeiro_ciclo_utc": "2026-11-24T11:29:11.291735",
+    "ultimo_ciclo_utc": "2026-11-24T18:19:11.394678",
+    "cobertura_do_dia_pct": 2.5
+   }
+  ],
+  "por_hora": [
+   {
+    "hora_sp": 8,
+    "ciclos": 25,
+    "recebidos_medio": 11349,
+    "novos_medio": 9009
+   },
+   {
+    "hora_sp": 10,
+    "ciclos": 65,
+    "recebidos_medio": 10326,
+    "novos_medio": 7479
+   },
+   {
+    "hora_sp": 11,
+    "ciclos": 1,
+    "recebidos_medio": 10236,
+    "novos_medio": 10192
+   },
+   {
+    "hora_sp": 12,
+    "ciclos": 2,
+    "recebidos_medio": 9894,
+    "novos_medio": 8388
+   },
+   {
+    "hora_sp": 13,
+    "ciclos": 21,
+    "recebidos_medio": 9777,
+    "novos_medio": 7116
+   },
+   {
+    "hora_sp": 14,
+    "ciclos": 28,
+    "recebidos_medio": 9493,
+    "novos_medio": 7507
+   },
+   {
+    "hora_sp": 15,
+    "ciclos": 18,
+    "recebidos_medio": 9563,
+    "novos_medio": 7285
+   }
+  ],
+  "lacunas_por_causa": {
+   "PROCESSO_INTERROMPIDO": 4,
+   "OperationalError;PROCESSO_INTERROMPIDO": 2,
+   "PROCESSO_INTERROMPIDO;OperationalError": 2,
+   "SPTransRespostaInvalidaError": 1,
+   "OperationalError": 1
+  },
+  "tabelas": {
+   "execucoes_coleta": {
+    "linhas_estimadas": 162,
+    "dados_mb": 0.0,
+    "indices_mb": 0.0
+   },
+   "observacoes_tratadas": {
+    "linhas_estimadas": 12083,
+    "dados_mb": 10.5,
+    "indices_mb": 8.8
+   },
+   "registros_gps": {
+    "linhas_estimadas": 1179169,
+    "dados_mb": 239.8,
+    "indices_mb": 180.2
+   }
+  }
+ },
+ "medicao_amostra": {
+  "periodo_utc": [
+   "2026-11-26 12:17:34.729960",
+   "2026-11-26 16:43:29.996221"
+  ],
+  "ciclos": 270,
+  "ciclos_por_estado": {
+   "OK": 270
+  },
+  "duracao_do_periodo_h": 4.43,
+  "horas_equivalentes_a_ciclos_de_30s": 2.25,
+  "registros": 2020481,
+  "recebidos_por_ciclo_medio": 10727,
+  "novos_por_ciclo": {
+   "medio": 7483,
+   "minimo": 1043,
+   "maximo": 11348
+  },
+  "payload_bytes_medio": 119.2,
+  "linhas_no_maior_ciclo": 2121,
+  "veiculos_por_linha_no_maior_ciclo": {
+   "mediana": 5,
+   "p95": 12,
+   "maximo": 30
+  }
+ },
+ "projecao": {
+  "semana_real_continua_existe": false,
+  "dias_com_cobertura_continua": 0,
+  "bytes_por_registro_mysql_medidos": 373.5,
+  "origem_bytes_por_registro": "information_schema de registros_gps (dados + índices) ÷ linhas estimadas",
+  "novos_por_ciclo_usado": 7483,
+  "origem_novos_por_ciclo": "amostra contínua (média de novos_persistidos)",
+  "ciclos_por_dia": 2880,
+  "dias_5_anos": 1826,
+  "cenarios": {
+   "limite_superior_dia_inteiro_no_ritmo_diurno": {
+    "fator_sobre_ritmo_diurno": 1.0,
+    "registros_gps_por_dia": 21551040,
+    "registros_gps_5_anos": 39352199040,
+    "armazenamento_registros_gps_5_anos_tb": 13.37,
+    "ciclos_coleta_5_anos": 5258880
+   },
+   "noite_com_metade_da_frota": {
+    "fator_sobre_ritmo_diurno": 0.75,
+    "registros_gps_por_dia": 16163280,
+    "registros_gps_5_anos": 29514149280,
+    "armazenamento_registros_gps_5_anos_tb": 10.03,
+    "ciclos_coleta_5_anos": 5258880
+   }
+  },
+  "situacao": "PROVISORIA: sem semana real contínua; ritmo noturno não medido. Recalibrar quando houver 7 dias com cobertura ≥ 99%."
+ },
+ "recalibrado_em": "2026-11-28T00:45:13.363955+00:00",
+ "medicao_mes_real": {
+  "pasta": "202605",
+  "dias": [
+   {
+    "dia": "2026-05-01",
+    "dia_semana": "Fri",
+    "posicoes_no_arquivo": 11057316,
+    "posicoes_unicas": 11056287,
+    "posicoes_com_gps_de_outro_dia": 1244390,
+    "linhas": 2405,
+    "veiculos": 9839
+   },
+   {
+    "dia": "2026-05-02",
+    "dia_semana": "Sat",
+    "posicoes_no_arquivo": 11211525,
+    "posicoes_unicas": 11210650,
+    "posicoes_com_gps_de_outro_dia": 1232614,
+    "linhas": 2274,
+    "veiculos": 9075
+   },
+   {
+    "dia": "2026-05-03",
+    "dia_semana": "Sun",
+    "posicoes_no_arquivo": 8502911,
+    "posicoes_unicas": 8501466,
+    "posicoes_com_gps_de_outro_dia": 987617,
+    "linhas": 2286,
+    "veiculos": 7577
+   },
+   {
+    "dia": "2026-05-04",
+    "dia_semana": "Mon",
+    "posicoes_no_arquivo": 16850212,
+    "posicoes_unicas": 16797583,
+    "posicoes_com_gps_de_outro_dia": 1861169,
+    "linhas": 2667,
+    "veiculos": 12430
+   },
+   {
+    "dia": "2026-05-05",
+    "dia_semana": "Tue",
+    "posicoes_no_arquivo": 16864846,
+    "posicoes_unicas": 16807245,
+    "posicoes_com_gps_de_outro_dia": 1829610,
+    "linhas": 2610,
+    "veiculos": 12508
+   },
+   {
+    "dia": "2026-05-06",
+    "dia_semana": "Wed",
+    "posicoes_no_arquivo": 17064046,
+    "posicoes_unicas": 17060314,
+    "posicoes_com_gps_de_outro_dia": 1880542,
+    "linhas": 2602,
+    "veiculos": 12526
+   },
+   {
+    "dia": "2026-05-07",
+    "dia_semana": "Thu",
+    "posicoes_no_arquivo": 17066958,
+    "posicoes_unicas": 17065601,
+    "posicoes_com_gps_de_outro_dia": 1903184,
+    "linhas": 2608,
+    "veiculos": 12505
+   },
+   {
+    "dia": "2026-05-08",
+    "dia_semana": "Fri",
+    "posicoes_no_arquivo": 17228467,
+    "posicoes_unicas": 17227205,
+    "posicoes_com_gps_de_outro_dia": 1897061,
+    "linhas": 2609,
+    "veiculos": 12526
+   },
+   {
+    "dia": "2026-05-09",
+    "dia_semana": "Sat",
+    "posicoes_no_arquivo": 11221870,
+    "posicoes_unicas": 11221094,
+    "posicoes_com_gps_de_outro_dia": 1242639,
+    "linhas": 2410,
+    "veiculos": 9808
+   },
+   {
+    "dia": "2026-05-10",
+    "dia_semana": "Sun",
+    "posicoes_no_arquivo": 5436580,
+    "posicoes_unicas": 5436249,
+    "posicoes_com_gps_de_outro_dia": 965630,
+    "linhas": 2294,
+    "veiculos": 7481
+   },
+   {
+    "dia": "2026-05-11",
+    "dia_semana": "Mon",
+    "posicoes_no_arquivo": 16933159,
+    "posicoes_unicas": 16828286,
+    "posicoes_com_gps_de_outro_dia": 1877121,
+    "linhas": 2664,
+    "veiculos": 12388
+   },
+   {
+    "dia": "2026-05-12",
+    "dia_semana": "Tue",
+    "posicoes_no_arquivo": 17203642,
+    "posicoes_unicas": 17192929,
+    "posicoes_com_gps_de_outro_dia": 1865678,
+    "linhas": 2608,
+    "veiculos": 12490
+   },
+   {
+    "dia": "2026-05-13",
+    "dia_semana": "Wed",
+    "posicoes_no_arquivo": 17256763,
+    "posicoes_unicas": 17255428,
+    "posicoes_com_gps_de_outro_dia": 1893021,
+    "linhas": 2608,
+    "veiculos": 12511
+   },
+   {
+    "dia": "2026-05-14",
+    "dia_semana": "Thu",
+    "posicoes_no_arquivo": 17314738,
+    "posicoes_unicas": 17313380,
+    "posicoes_com_gps_de_outro_dia": 1886343,
+    "linhas": 2607,
+    "veiculos": 12504
+   },
+   {
+    "dia": "2026-05-15",
+    "dia_semana": "Fri",
+    "posicoes_no_arquivo": 17346030,
+    "posicoes_unicas": 17344971,
+    "posicoes_com_gps_de_outro_dia": 1900080,
+    "linhas": 2609,
+    "veiculos": 12515
+   },
+   {
+    "dia": "2026-05-16",
+    "dia_semana": "Sat",
+    "posicoes_no_arquivo": 11554458,
+    "posicoes_unicas": 11549653,
+    "posicoes_com_gps_de_outro_dia": 1265480,
+    "linhas": 2414,
+    "veiculos": 9912
+   },
+   {
+    "dia": "2026-05-17",
+    "dia_semana": "Sun",
+    "posicoes_no_arquivo": 2244042,
+    "posicoes_unicas": 2243650,
+    "posicoes_com_gps_de_outro_dia": 995717,
+    "linhas": 2290,
+    "veiculos": 7005
+   },
+   {
+    "dia": "2026-05-18",
+    "dia_semana": "Mon",
+    "posicoes_no_arquivo": 17148010,
+    "posicoes_unicas": 17100437,
+    "posicoes_com_gps_de_outro_dia": 1885172,
+    "linhas": 2667,
+    "veiculos": 12469
+   },
+   {
+    "dia": "2026-05-19",
+    "dia_semana": "Tue",
+    "posicoes_no_arquivo": 17438205,
+    "posicoes_unicas": 17384295,
+    "posicoes_com_gps_de_outro_dia": 1899968,
+    "linhas": 2609,
+    "veiculos": 12539
+   },
+   {
+    "dia": "2026-05-20",
+    "dia_semana": "Wed",
+    "posicoes_no_arquivo": 17520933,
+    "posicoes_unicas": 17463350,
+    "posicoes_com_gps_de_outro_dia": 1928324,
+    "linhas": 2606,
+    "veiculos": 12587
+   },
+   {
+    "dia": "2026-05-21",
+    "dia_semana": "Thu",
+    "posicoes_no_arquivo": 17517314,
+    "posicoes_unicas": 17460507,
+    "posicoes_com_gps_de_outro_dia": 1904625,
+    "linhas": 2611,
+    "veiculos": 12566
+   },
+   {
+    "dia": "2026-05-22",
+    "dia_semana": "Fri",
+    "posicoes_no_arquivo": 17597741,
+    "posicoes_unicas": 17574929,
+    "posicoes_com_gps_de_outro_dia": 1927097,
+    "linhas": 2612,
+    "veiculos": 12597
+   },
+   {
+    "dia": "2026-05-23",
+    "dia_semana": "Sat",
+    "posicoes_no_arquivo": 11392070,
+    "posicoes_unicas": 11374364,
+    "posicoes_com_gps_de_outro_dia": 1270255,
+    "linhas": 2406,
+    "veiculos": 9922
+   },
+   {
+    "dia": "2026-05-24",
+    "dia_semana": "Sun",
+    "posicoes_no_arquivo": 6652048,
+    "posicoes_unicas": 6650813,
+    "posicoes_com_gps_de_outro_dia": 1020483,
+    "linhas": 2295,
+    "veiculos": 7927
+   },
+   {
+    "dia": "2026-05-25",
+    "dia_semana": "Mon",
+    "posicoes_no_arquivo": 17209121,
+    "posicoes_unicas": 17157351,
+    "posicoes_com_gps_de_outro_dia": 1879740,
+    "linhas": 2661,
+    "veiculos": 12530
+   },
+   {
+    "dia": "2026-05-26",
+    "dia_semana": "Tue",
+    "posicoes_no_arquivo": 17381983,
+    "posicoes_unicas": 17326379,
+    "posicoes_com_gps_de_outro_dia": 1891359,
+    "linhas": 2610,
+    "veiculos": 12607
+   },
+   {
+    "dia": "2026-05-27",
+    "dia_semana": "Wed",
+    "posicoes_no_arquivo": 17469157,
+    "posicoes_unicas": 17464091,
+    "posicoes_com_gps_de_outro_dia": 1904027,
+    "linhas": 2611,
+    "veiculos": 12547
+   },
+   {
+    "dia": "2026-05-28",
+    "dia_semana": "Thu",
+    "posicoes_no_arquivo": 17534891,
+    "posicoes_unicas": 17533089,
+    "posicoes_com_gps_de_outro_dia": 1922459,
+    "linhas": 2611,
+    "veiculos": 12574
+   },
+   {
+    "dia": "2026-05-29",
+    "dia_semana": "Fri",
+    "posicoes_no_arquivo": 17532440,
+    "posicoes_unicas": 17514300,
+    "posicoes_com_gps_de_outro_dia": 1907623,
+    "linhas": 2614,
+    "veiculos": 12565
+   },
+   {
+    "dia": "2026-05-30",
+    "dia_semana": "Sat",
+    "posicoes_no_arquivo": 11560444,
+    "posicoes_unicas": 11547001,
+    "posicoes_com_gps_de_outro_dia": 1263395,
+    "linhas": 2413,
+    "veiculos": 9859
+   },
+   {
+    "dia": "2026-05-31",
+    "dia_semana": "Sun",
+    "posicoes_no_arquivo": 7266153,
+    "posicoes_unicas": 7260288,
+    "posicoes_com_gps_de_outro_dia": 734556,
+    "linhas": 2301,
+    "veiculos": 7695
+   }
+  ],
+  "dias_medidos": 31,
+  "posicoes_unicas_por_dia": {
+   "media": 14287845,
+   "minimo": 2243650,
+   "maximo": 17574929
+  },
+  "posicoes_por_hora_sp": {
+   "0": 8302468,
+   "1": 3887846,
+   "2": 2707848,
+   "3": 3314343,
+   "4": 8500774,
+   "5": 16023742,
+   "6": 21678331,
+   "7": 24456832,
+   "8": 25195436,
+   "9": 24604146,
+   "10": 23545216,
+   "11": 22817153,
+   "12": 22660892,
+   "13": 22113376,
+   "14": 21802779,
+   "15": 22145461,
+   "16": 23223661,
+   "17": 24119146,
+   "18": 24408253,
+   "19": 24114937,
+   "20": 22246890,
+   "21": 19930615,
+   "22": 16970157,
+   "23": 14807771
+  },
+  "posicoes_por_linha_em_04_05": {
+   "linhas": 2667,
+   "mediana": 5458,
+   "p95": 15924,
+   "maximo": 42396
+  }
+ },
+ "projecao_recalibrada": {
+  "origem": "média de posições únicas por dia em 31 dias reais (202605)",
+  "registros_gps_por_dia": 14287845,
+  "registros_gps_5_anos": 26089604970,
+  "armazenamento_registros_gps_5_anos_tb": 8.86,
+  "ciclos_coleta_5_anos": 5258880,
+  "situacao": "RASTREAVEL_A_MEDICAO_REAL (semana real disponível: mês completo de maio/2026)"
+ }
+}
