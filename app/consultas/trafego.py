@@ -17,6 +17,8 @@ from app import db
 from app.contexto.trafego import (
     DESCRICAO_FONTE, FONTE_AGREGADO, TIPO_CONTEXTO, UNIDADES_AGREGADO,
 )
+from app.core.tempo import FUSO
+from app.gtfs.service import VersaoGTFSAmbigua, VersaoGTFSInexistente, versao_vigente
 from app.models import MedicaoContexto, Trecho
 
 UTC = timezone.utc
@@ -117,4 +119,61 @@ def consultar_trafego_trecho(trecho_id, inicio, fim, versao_fonte=None):
         })
     if not corpo["series"]:
         corpo["motivo"] = "sem_resultados_persistidos"
+    return corpo
+
+
+def consultar_mapa_trafego(instante, linha, sentido=None):
+    """Trânsito no mapa ao vivo (US08 + US22): trechos da linha, na versão GTFS vigente no dia de
+    ``instante`` (São Paulo), com a velocidade da janela de 15 min que contém ``instante``.
+
+    FeatureCollection GeoJSON com uma LineString por trecho. Só lê o que a US08-T02 gravou; se
+    houver mais de um cálculo para a mesma janela, vale o mais recente. Sem registro, a velocidade
+    é null com motivo, nunca zero.
+    """
+    passo = int(JANELA.total_seconds())
+    inicio = datetime.fromtimestamp(int(instante.astimezone(UTC).timestamp()) // passo * passo, UTC)
+    corpo = {
+        "type": "FeatureCollection", "features": [], "linha": linha, "sentido": sentido,
+        "janela": {"inicio": _iso(inicio), "fim": _iso(inicio + JANELA)},
+        "fonte": {"codigo": FONTE_AGREGADO, "tipo": "PROXY_TRAFEGO_VELOCIDADE_ONIBUS", "descricao": DESCRICAO_FONTE},
+        "unidades": {"velocidade_media_kmh": UNIDADES_AGREGADO["velocidade_media_kmh"]},
+        "versao_gtfs_id": None, "motivo": None,
+    }
+    try:
+        versao = versao_vigente(instante.astimezone(FUSO).date())
+    except VersaoGTFSInexistente:
+        corpo["motivo"] = "sem_versao_gtfs_vigente"
+        return corpo
+    except VersaoGTFSAmbigua:
+        corpo["motivo"] = "versao_gtfs_ambigua"
+        return corpo
+    corpo["versao_gtfs_id"] = versao.id
+    consulta = Trecho.query.filter_by(versao_gtfs_id=versao.id, linha_codigo=linha)
+    if sentido is not None:
+        consulta = consulta.filter_by(sentido=sentido)
+    trechos = consulta.order_by(Trecho.sentido, Trecho.trajeto, Trecho.ordem).all()
+    if not trechos:
+        corpo["motivo"] = "linha_sem_trechos"
+        return corpo
+    M = MedicaoContexto
+    recentes = {}
+    for registro in M.query.filter(M.tipo == TIPO_CONTEXTO, M.fonte == FONTE_AGREGADO,
+                                   M.trecho_id.in_([t.id for t in trechos]), M.inicio == inicio):
+        atual = recentes.get(registro.trecho_id)
+        if atual is None or (registro.coletada_em, registro.id) > (atual.coletada_em, atual.id):
+            recentes[registro.trecho_id] = registro
+    for trecho in trechos:
+        registro = recentes.get(trecho.id)
+        dados = registro.dados if registro else {}
+        corpo["features"].append({
+            "type": "Feature",
+            "geometry": {"type": "LineString", "coordinates": [list(p) for p in trecho.geometria]},
+            "properties": {
+                "trecho_id": trecho.id, "linha": trecho.linha_codigo, "sentido": trecho.sentido,
+                "trajeto": trecho.trajeto, "ordem": trecho.ordem,
+                "velocidade_media_kmh": dados.get("velocidade_media_kmh"),
+                "motivo": dados.get("motivo") if registro else SEM_REGISTRO,
+                "versao_fonte": registro.versao_fonte if registro else None,
+            },
+        })
     return corpo

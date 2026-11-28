@@ -208,3 +208,42 @@ def cobertura_mensal(ano, mes, fonte="INMET", agora=None):
         "coletas_por_estado": dict(sorted(coletas.items())),
         "calculado_em": _iso(agora),
     }
+
+
+def consultar_mapa_clima(instante, fonte="INMET"):
+    """Clima no mapa ao vivo (US06 + US22): cada estação da fonte com a observação da última
+    janela nativa inteira terminada até ``instante`` (INMET 1 h, CGE 15 min).
+
+    FeatureCollection GeoJSON com um ponto por estação. Estação sem observação nessa janela
+    aparece com ``chuva_mm``/``temperatura_c`` null e motivo — nunca chuva zero.
+    """
+    intervalo = INTERVALO_FONTE[fonte]
+    fim = datetime.fromtimestamp(int(instante.astimezone(UTC).timestamp()) // intervalo * intervalo, UTC)
+    estacoes = (EstacaoMeteorologica.query.filter_by(fonte=fonte)
+                .order_by(EstacaoMeteorologica.codigo, EstacaoMeteorologica.id).all())
+    observacoes = {}
+    if estacoes:
+        for o in ObservacaoClima.query.filter(ObservacaoClima.estacao_id.in_([e.id for e in estacoes]),
+                                              ObservacaoClima.instante == fim):
+            observacoes[o.estacao_id] = o
+    features = []
+    for estacao in estacoes:
+        o = observacoes.get(estacao.id)
+        features.append({
+            "type": "Feature",
+            "geometry": {"type": "Point", "coordinates": [float(estacao.longitude), float(estacao.latitude)]},
+            "properties": {
+                "estacao_id": estacao.id, "codigo": estacao.codigo, "nome": estacao.nome, "fonte": fonte,
+                "chuva_mm": _numero(o.chuva) if o else None,
+                "temperatura_c": _numero(o.temperatura) if o else None,
+                "motivo": None if o else "sem_observacao",
+            },
+        })
+    return {
+        "type": "FeatureCollection", "features": features, "fonte": fonte,
+        "janela": {"inicio": _iso(fim - timedelta(seconds=intervalo)), "fim": _iso(fim), "intervalo_seg": intervalo},
+        "unidades": UNIDADES,
+        "convencao": ("chuva_mm é o total acumulado na janela (inicio, fim]; temperatura_c é a leitura "
+                      "no fim da janela. null significa sem medição, nunca ausência de chuva."),
+        "motivo": None if estacoes else "sem_estacoes",
+    }

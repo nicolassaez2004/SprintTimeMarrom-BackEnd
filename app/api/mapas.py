@@ -1,6 +1,12 @@
-"""GET /mapas/indicadores: validação da consulta espacial (US24); dados via QueryService."""
+"""Mapas públicos; as rotas só validam parâmetros e os dados vêm do QueryService.
+
+- GET /mapas/indicadores: indicadores publicados por parada, trecho ou território (US24);
+- GET /mapas/clima e GET /mapas/trafego: clima por estação (US06) e trânsito por trecho (US08)
+  num instante, como opções de visualização do mapa ao vivo (US22).
+"""
 
 import re
+from datetime import datetime
 
 from flask import Blueprint, current_app, request
 from sqlalchemy.exc import SQLAlchemyError
@@ -9,7 +15,9 @@ from werkzeug.datastructures import MultiDict
 from app import db
 from app.api.comum import ParametroInvalido, erro_json, limitar_por_ip
 from app.api.indicadores import ler_filtros
+from app.consultas.clima import INTERVALO_FONTE, consultar_mapa_clima
 from app.consultas.mapas import VersaoTerritorialNaoEncontrada, consultar_mapa
+from app.consultas.trafego import consultar_mapa_trafego
 from app.qualidade.anotacoes import adicionar_qualidade_coleta
 
 mapas_bp = Blueprint("mapas", __name__)
@@ -72,3 +80,67 @@ def consultar_mapa_indicadores():
     resposta = current_app.json.response(corpo)
     resposta.mimetype = "application/geo+json"
     return resposta, 200
+
+
+_INSTANTE = re.compile(r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2}(\.\d{1,6})?)?(Z|[+-]\d{2}:\d{2})")
+
+
+def _parametros(permitidos):
+    for campo in request.args:
+        if campo not in permitidos:
+            raise ParametroInvalido(campo, "Parâmetro não reconhecido.")
+        if len(request.args.getlist(campo)) != 1:
+            raise ParametroInvalido(campo, "Informe cada parâmetro uma única vez.")
+    valor = request.args.get("instante", "").strip()
+    try:
+        if not _INSTANTE.fullmatch(valor):
+            raise ValueError
+        return datetime.fromisoformat(valor.replace("Z", "+00:00"))
+    except ValueError:
+        raise ParametroInvalido("instante", "Informe instante em ISO 8601 com fuso, por exemplo "
+                                            "2026-11-23T12:00:00Z.") from None
+
+
+def _geojson(corpo):
+    resposta = current_app.json.response(corpo)
+    resposta.mimetype = "application/geo+json"
+    return resposta, 200
+
+
+@mapas_bp.get("/mapas/clima")
+def consultar_mapa_de_clima():
+    """Estações da fonte com chuva e temperatura da última janela terminada até o instante."""
+    try:
+        instante = _parametros({"instante", "fonte"})
+    except ParametroInvalido as erro:
+        return erro_json("PARAMETRO_INVALIDO", str(erro), 400, erro.campo)
+    fonte = request.args.get("fonte", "INMET").strip().upper()
+    if fonte not in INTERVALO_FONTE:
+        return erro_json("PARAMETRO_INVALIDO", "fonte deve ser INMET ou CGE.", 400, "fonte")
+    try:
+        return _geojson(consultar_mapa_clima(instante, fonte=fonte))
+    except SQLAlchemyError as erro:
+        db.session.rollback()
+        current_app.logger.error("Falha no mapa de clima (%s)", type(erro).__name__)
+        return erro_json("CONSULTA_INDISPONIVEL", "Não foi possível consultar o clima.", 503)
+
+
+@mapas_bp.get("/mapas/trafego")
+def consultar_mapa_de_trafego():
+    """Trechos de uma linha com a velocidade dos ônibus na janela de 15 min do instante."""
+    try:
+        instante = _parametros({"instante", "linha", "sentido"})
+    except ParametroInvalido as erro:
+        return erro_json("PARAMETRO_INVALIDO", str(erro), 400, erro.campo)
+    linha = request.args.get("linha", "").strip()
+    if not linha or len(linha) > 64 or any(ord(c) < 32 or ord(c) == 127 for c in linha):
+        return erro_json("PARAMETRO_INVALIDO", "Informe a linha, com até 64 caracteres.", 400, "linha")
+    sentido = request.args.get("sentido", "").strip() or None
+    if sentido not in (None, "0", "1"):
+        return erro_json("PARAMETRO_INVALIDO", "sentido deve ser 0 ou 1.", 400, "sentido")
+    try:
+        return _geojson(consultar_mapa_trafego(instante, linha, sentido=sentido))
+    except SQLAlchemyError as erro:
+        db.session.rollback()
+        current_app.logger.error("Falha no mapa de trânsito (%s)", type(erro).__name__)
+        return erro_json("CONSULTA_INDISPONIVEL", "Não foi possível consultar o trânsito.", 503)
