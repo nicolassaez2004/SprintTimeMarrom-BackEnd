@@ -33,6 +33,11 @@ def create_app(config_extra=None):
         connect_args.setdefault("connect_timeout", 5)
         connect_args.setdefault("read_timeout", 15)
         connect_args.setdefault("write_timeout", 15)
+        # US27-T03: o servidor também desiste de um SELECT que o cliente já abandonou
+        # (read_timeout). Sem isso, consultas pesadas abandonadas continuavam rodando no
+        # MySQL por dezenas de minutos e travavam as seguintes (medido no ensaio de carga).
+        connect_args.setdefault(
+            "init_command", f"SET SESSION max_execution_time={int(connect_args['read_timeout'] * 1000)}")
         if app.config.get("MYSQL_SSL_CA"):
             connect_args.update(
                 ssl_ca=app.config["MYSQL_SSL_CA"],

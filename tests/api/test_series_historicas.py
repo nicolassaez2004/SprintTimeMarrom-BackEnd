@@ -161,7 +161,10 @@ def test_rota_so_le_indicadores_e_historico_sem_executar_calculo(cliente):
         event.remove(db.engine, "before_cursor_execute", capturar)
     assert not any("registros_gps" in sql or "viagens_observadas" in sql for sql in comandos)
     assert all(sql.lstrip().startswith("select") for sql in comandos if "limites_consultas_ip" not in sql)
-    assert "over (partition by" in " ".join(comandos)
+    # US27-T03: a observação anterior é calculada no banco só para a página (MAX por série), sem a
+    # função de janela, que no MySQL é quadrática; a equivalência está em test_series_us27_t03.py.
+    assert "over (" not in " ".join(comandos)
+    assert any("max(" in sql for sql in comandos)
     assert db.session.query(I).count() == 1
 
 
