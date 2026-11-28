@@ -77,20 +77,20 @@ def consultar_series(filtros):
         ]) if janelas else False)
 
     total = consulta.count()
-    dimensoes = [Indicador.linha_codigo, Indicador.sentido, Indicador.indicador,
-                 Indicador.unidade, Indicador.parada_codigo, Indicador.trecho_id]
-    ordem = [Indicador.periodo_inicio, Indicador.periodo_fim, Indicador.id]
-    anterior = func.max(Indicador.periodo_fim).over(
-        partition_by=dimensoes, order_by=ordem, rows=(None, -1),
-    ).label("anterior")
-    ultima = func.row_number().over(
-        partition_by=dimensoes, order_by=[c.desc() for c in ordem],
-    ).label("ultima")
-    # Funções de janela são aplicadas ANTES da paginação: a troca de página não cria lacunas.
-    registros = consulta.add_columns(anterior, ultima).order_by(
+    # US27-T03: a página é lida só com colunas do índice de cobertura
+    # (ix_indicadores_serie_cobertura) e as linhas completas (com o JSON de qualidade) depois.
+    # "anterior" (maior fim entre as janelas anteriores da mesma série) e "ultima" (última
+    # janela da série no período) são calculados só para as linhas da página, com o mesmo
+    # resultado das funções de janela usadas antes: MAX(...) OVER (... ROWS BETWEEN UNBOUNDED
+    # PRECEDING AND 1 PRECEDING) é quadrático no MySQL e levava minutos num ano de dados.
+    pagina = consulta.with_entities(*_ESTREITAS).order_by(
         Indicador.periodo_inicio, Indicador.linha_codigo, Indicador.sentido,
         Indicador.indicador, Indicador.id,
     ).offset((filtros["page"] - 1) * filtros["page_size"]).limit(filtros["page_size"]).all()
+    marcas = _anteriores_e_ultimas(consulta, pagina)
+    completos = ({r.id: r for r in Indicador.query.filter(Indicador.id.in_([p.id for p in pagina]))}
+                 if pagina else {})
+    registros = [(completos[p.id], *marcas[p.id]) for p in pagina]
     dados, lacunas = [], []
     lacunas_truncadas = False
 
@@ -139,3 +139,47 @@ def consultar_series(filtros):
                      "criterio_periodo": "JANELAS_INTEIRAMENTE_CONTIDAS"},
         "paginacao": {"page": filtros["page"], "page_size": filtros["page_size"], "total": total},
     }
+
+
+_DIMENSOES = (Indicador.linha_codigo, Indicador.sentido, Indicador.indicador,
+              Indicador.unidade, Indicador.parada_codigo, Indicador.trecho_id)
+_ESTREITAS = (Indicador.id, Indicador.periodo_inicio, Indicador.periodo_fim) + _DIMENSOES
+
+
+def _mesma_serie(chave):
+    """Igualdade que trata NULL como valor (parada/trecho/unidade ausentes)."""
+    return and_(*(coluna.is_not_distinct_from(valor) for coluna, valor in zip(_DIMENSOES, chave)))
+
+
+def _antes(linha):
+    """(periodo_inicio, periodo_fim, id) < os da ``linha``, na forma que usa o índice."""
+    return or_(Indicador.periodo_inicio < linha.periodo_inicio,
+               and_(Indicador.periodo_inicio == linha.periodo_inicio,
+                    or_(Indicador.periodo_fim < linha.periodo_fim,
+                        and_(Indicador.periodo_fim == linha.periodo_fim, Indicador.id < linha.id))))
+
+
+def _anteriores_e_ultimas(consulta, pagina):
+    """{id: (anterior, numero_reverso)} das linhas da página, idêntico às funções de janela
+    ``MAX(periodo_fim) OVER (série ORDER BY periodo_inicio, periodo_fim, id ROWS BETWEEN
+    UNBOUNDED PRECEDING AND 1 PRECEDING)`` e ``ROW_NUMBER() OVER (série ORDER BY ... DESC)``
+    sobre a consulta filtrada (só importa se o número reverso é 1)."""
+    ordem = lambda r: (r.periodo_inicio, r.periodo_fim, r.id)  # noqa: E731
+    por_serie = {}
+    for linha in pagina:
+        por_serie.setdefault(tuple(getattr(linha, c.key) for c in _DIMENSOES), []).append(linha)
+    marcas = {}
+    for chave, linhas in por_serie.items():
+        serie = consulta.filter(_mesma_serie(chave))
+        primeira, ultima_pagina = min(linhas, key=ordem), max(linhas, key=ordem)
+        maior = serie.filter(_antes(primeira)).with_entities(func.max(Indicador.periodo_fim)).scalar()
+        # Linhas da série entre a primeira e a última da página (empates de início podem
+        # deixar alguma fora da página): o máximo corrente segue a ordem da janela.
+        trecho = serie.filter(or_(_antes(ultima_pagina), Indicador.id == ultima_pagina.id))             .filter(~_antes(primeira)).with_entities(Indicador.id, Indicador.periodo_inicio,
+                                                       Indicador.periodo_fim).all()
+        ultima_serie = serie.with_entities(Indicador.id).order_by(
+            Indicador.periodo_inicio.desc(), Indicador.periodo_fim.desc(), Indicador.id.desc()).first()
+        for item in sorted(trecho, key=ordem):
+            marcas[item.id] = (maior, 1 if ultima_serie is not None and item.id == ultima_serie.id else 2)
+            maior = item.periodo_fim if maior is None else max(maior, item.periodo_fim)
+    return marcas

@@ -488,6 +488,18 @@ teste automatizado chama a SPTrans de verdade. Como `app/config.py` carrega o
 Os testes MySQL opt-in (`US12_MYSQL_TEST_URL_*`, `US29_MYSQL_TEST_URL`,
 `US32_MYSQL_ADMIN_URL`) aceitam somente bases locais descartáveis.
 
+**Desempenho a cada versão (US27-T04).** Com 50 usuários simultâneos, HTTP real (waitress) e
+MySQL local isolado com massa sintética de 12 meses:
+
+```bash
+pip install -r requirements-medicao.txt
+US27_CARGA_MYSQL_URL=mysql+pymysql://root:***@127.0.0.1:3306/us27_carga   python -m tests.carga.cenario --rotulo v<versão>
+```
+
+O comando sai com 0 (aprovado: p95 ≤ 2 s, p99 ≤ 5 s, sem erros), 1 (falha do requisito) ou 2
+(falha do próprio teste). O método e os resultados estão em
+[docs/desempenho/US27.md](docs/desempenho/US27.md).
+
 ## Resultado real da US03 — 19/11/2026
 
 **Meta de 98% atendida: 99,55% (11.253 / 11.304 válidas).** Foram processadas 11.479 posições reais, preservando os brutos. A correção conferiu 194 códigos/sentidos de circuitos fechados e recuperou 587 observações, sem alterar o denominador. As 51 válidas sem associação continuam visíveis.

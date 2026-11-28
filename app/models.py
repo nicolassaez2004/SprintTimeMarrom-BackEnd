@@ -1205,6 +1205,9 @@ class IndicadorOperacional(db.Model):
         CheckConstraint("contagem_denominador IS NULL OR contagem_denominador > 0 OR valor IS NULL",
                         name="ck_indicador_denominador_zero_sem_valor"),
         Index("ix_indicadores_linha_sentido_tipo_periodo", "linha_codigo", "sentido", "indicador", "periodo_inicio"),
+        # US27-T03: cobre MIN/MAX, COUNT e as funções de janela de /series e /indicadores.
+        Index("ix_indicadores_serie_cobertura", "linha_codigo", "sentido", "indicador", "parada_codigo",
+              "trecho_id", "periodo_inicio", "periodo_fim", "unidade"),
         Index("ix_indicadores_parada_periodo", "parada_codigo", "periodo_inicio"),
         Index("ix_indicadores_trecho_periodo", "trecho_id", "periodo_inicio"),
         Index("ix_indicadores_versao", "versao_conjunto"),

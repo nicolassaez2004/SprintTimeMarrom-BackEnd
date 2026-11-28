@@ -1,0 +1,4 @@
+# Dependências só dos ensaios de desempenho (US27, US28-T04, US31); a aplicação não depende delas.
+-r requirements.txt
+waitress>=3,<4
+psutil>=6,<8

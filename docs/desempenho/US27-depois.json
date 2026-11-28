@@ -1,0 +1,585 @@
+{
+ "tarefa": "US27",
+ "rotulo": "depois",
+ "executado_em": "2026-11-28T00:33:53.839430+00:00",
+ "dados": "SINTÉTICOS (versao_conjunto=carga-us27-sintetico-v1), MySQL local isolado; nunca a Aiven",
+ "metas": {
+  "p95_ms": 2000,
+  "p99_ms": 5000,
+  "erros": 0
+ },
+ "schema_alembic": "us27_0030",
+ "massa": {
+  "reaproveitada": true
+ },
+ "volume": {
+  "indicadores_operacionais": 7008000,
+  "de": "2025-11-01T03:00:00",
+  "ate": "2026-11-01T03:00:00",
+  "execucoes_coleta": 1051200,
+  "tabelas": {
+   "execucoes_coleta": {
+    "linhas_estimadas": 1045539,
+    "mb_dados_indices": 145.3
+   },
+   "indicadores_operacionais": {
+    "linhas_estimadas": 6623113,
+    "mb_dados_indices": 8921.0
+   }
+  }
+ },
+ "ambiente": {
+  "sistema": {
+   "commit": "19f0156b41fcc8800aa6d97202bb5c735ef8b7da",
+   "branch": "US27",
+   "app_ou_migracoes_alterados_sem_commit": true
+  },
+  "mysql": {
+   "versao": "8.0.46",
+   "innodb_buffer_pool_mb": 128,
+   "max_connections": 151,
+   "isolamento": "REPEATABLE-READ",
+   "host": "local (127.0.0.1), base isolada"
+  },
+  "python": "3.14.7",
+  "pacotes": {
+   "Flask": "3.1.3",
+   "Flask-SQLAlchemy": "3.1.1",
+   "SQLAlchemy": "2.1.9",
+   "PyMySQL": "1.2.4",
+   "waitress": "3.0.2"
+  },
+  "so": "Windows-11-10.0.26300-SP0",
+  "cpu_logicas": 24,
+  "memoria_gb": 31.4
+ },
+ "cenario": {
+  "usuarios": 50,
+  "duracao_s": 180,
+  "aquecimento_s": 20,
+  "pausa_entre_consultas_s": [
+   1.2,
+   2.2
+  ],
+  "periodos_dias": [
+   1,
+   7,
+   30,
+   90,
+   180,
+   365
+  ],
+  "mistura": "80% painel /series (25% por parada; 20% páginas 2–20), 20% API /indicadores",
+  "servidor": "waitress, 16 threads, 1 processo",
+  "semente": 27,
+  "pool_sqlalchemy": "padrão do Flask-SQLAlchemy (pool_size 5 + overflow 10 por processo)",
+  "cache": "aplicação sem cache; buffer pool InnoDB do MySQL"
+ },
+ "resultado": "APROVADO",
+ "motivos": [],
+ "geral": {
+  "consultas": 4979,
+  "sucesso_2xx": 4979,
+  "erros": 0,
+  "status": {
+   "200": 4979
+  },
+  "p50_ms": 87.3,
+  "p95_ms": 198.3,
+  "p99_ms": 565.8,
+  "max_ms": 1933.2,
+  "p95_ms_com_erros_como_infinito": 198.3,
+  "p99_ms_com_erros_como_infinito": 565.8,
+  "decomposicao_p95_ms": {
+   "sql": 167.0,
+   "python_montagem_e_json": 26.299999999999997,
+   "fila_e_rede": 19.4
+  },
+  "sql_por_requisicao_p95": 14,
+  "bytes_p95": 163767
+ },
+ "aquecimento": {
+  "consultas": 546,
+  "sucesso_2xx": 546,
+  "erros": 0,
+  "status": {
+   "200": 546
+  },
+  "p50_ms": 93.0,
+  "p95_ms": 255.1,
+  "p99_ms": 896.9,
+  "max_ms": 1605.5,
+  "p95_ms_com_erros_como_infinito": 255.1,
+  "p99_ms_com_erros_como_infinito": 896.9,
+  "decomposicao_p95_ms": {
+   "sql": 210.2,
+   "python_montagem_e_json": 39.3,
+   "fila_e_rede": 19.100000000000136
+  },
+  "sql_por_requisicao_p95": 14,
+  "bytes_p95": 163819
+ },
+ "por_rota": {
+  "/indicadores": {
+   "consultas": 979,
+   "sucesso_2xx": 979,
+   "erros": 0,
+   "status": {
+    "200": 979
+   },
+   "p50_ms": 76.7,
+   "p95_ms": 551.8,
+   "p99_ms": 992.4,
+   "max_ms": 1933.2,
+   "p95_ms_com_erros_como_infinito": 551.8,
+   "p99_ms_com_erros_como_infinito": 992.4,
+   "decomposicao_p95_ms": {
+    "sql": 534.2,
+    "python_montagem_e_json": 26.700000000000003,
+    "fila_e_rede": 20.0
+   },
+   "sql_por_requisicao_p95": 9,
+   "bytes_p95": 163878
+  },
+  "/series": {
+   "consultas": 4000,
+   "sucesso_2xx": 4000,
+   "erros": 0,
+   "status": {
+    "200": 4000
+   },
+   "p50_ms": 90.1,
+   "p95_ms": 187.4,
+   "p99_ms": 267.7,
+   "max_ms": 686.1,
+   "p95_ms_com_erros_como_infinito": 187.4,
+   "p99_ms_com_erros_como_infinito": 267.7,
+   "decomposicao_p95_ms": {
+    "sql": 156.7,
+    "python_montagem_e_json": 26.19999999999999,
+    "fila_e_rede": 19.200000000000003
+   },
+   "sql_por_requisicao_p95": 14,
+   "bytes_p95": 87641
+  }
+ },
+ "por_periodo_dias": {
+  "1": {
+   "consultas": 674,
+   "sucesso_2xx": 674,
+   "erros": 0,
+   "status": {
+    "200": 674
+   },
+   "p50_ms": 72.9,
+   "p95_ms": 121.5,
+   "p99_ms": 194.4,
+   "max_ms": 260.5,
+   "p95_ms_com_erros_como_infinito": 121.5,
+   "p99_ms_com_erros_como_infinito": 194.4,
+   "decomposicao_p95_ms": {
+    "sql": 83.1,
+    "python_montagem_e_json": 26.89999999999999,
+    "fila_e_rede": 19.0
+   },
+   "sql_por_requisicao_p95": 14,
+   "bytes_p95": 87633
+  },
+  "180": {
+   "consultas": 647,
+   "sucesso_2xx": 647,
+   "erros": 0,
+   "status": {
+    "200": 647
+   },
+   "p50_ms": 104.3,
+   "p95_ms": 160.0,
+   "p99_ms": 200.4,
+   "max_ms": 404.4,
+   "p95_ms_com_erros_como_infinito": 160.0,
+   "p99_ms_com_erros_como_infinito": 200.4,
+   "decomposicao_p95_ms": {
+    "sql": 124.4,
+    "python_montagem_e_json": 26.19999999999999,
+    "fila_e_rede": 19.60000000000001
+   },
+   "sql_por_requisicao_p95": 14,
+   "bytes_p95": 87638
+  },
+  "30": {
+   "consultas": 677,
+   "sucesso_2xx": 677,
+   "erros": 0,
+   "status": {
+    "200": 677
+   },
+   "p50_ms": 79.1,
+   "p95_ms": 120.9,
+   "p99_ms": 173.1,
+   "max_ms": 289.9,
+   "p95_ms_com_erros_como_infinito": 120.9,
+   "p99_ms_com_erros_como_infinito": 173.1,
+   "decomposicao_p95_ms": {
+    "sql": 86.4,
+    "python_montagem_e_json": 26.400000000000006,
+    "fila_e_rede": 19.0
+   },
+   "sql_por_requisicao_p95": 14,
+   "bytes_p95": 87678
+  },
+  "365": {
+   "consultas": 639,
+   "sucesso_2xx": 639,
+   "erros": 0,
+   "status": {
+    "200": 639
+   },
+   "p50_ms": 117.2,
+   "p95_ms": 181.8,
+   "p99_ms": 221.7,
+   "max_ms": 302.7,
+   "p95_ms_com_erros_como_infinito": 181.8,
+   "p99_ms_com_erros_como_infinito": 221.7,
+   "decomposicao_p95_ms": {
+    "sql": 150.5,
+    "python_montagem_e_json": 22.0,
+    "fila_e_rede": 19.799999999999983
+   },
+   "sql_por_requisicao_p95": 14,
+   "bytes_p95": 87677
+  },
+  "7": {
+   "consultas": 672,
+   "sucesso_2xx": 672,
+   "erros": 0,
+   "status": {
+    "200": 672
+   },
+   "p50_ms": 76.4,
+   "p95_ms": 269.2,
+   "p99_ms": 444.4,
+   "max_ms": 686.1,
+   "p95_ms_com_erros_como_infinito": 269.2,
+   "p99_ms_com_erros_como_infinito": 444.4,
+   "decomposicao_p95_ms": {
+    "sql": 243.1,
+    "python_montagem_e_json": 27.099999999999994,
+    "fila_e_rede": 18.700000000000003
+   },
+   "sql_por_requisicao_p95": 14,
+   "bytes_p95": 87632
+  },
+  "90": {
+   "consultas": 691,
+   "sucesso_2xx": 691,
+   "erros": 0,
+   "status": {
+    "200": 691
+   },
+   "p50_ms": 91.8,
+   "p95_ms": 142.4,
+   "p99_ms": 187.3,
+   "max_ms": 288.5,
+   "p95_ms_com_erros_como_infinito": 142.4,
+   "p99_ms_com_erros_como_infinito": 187.3,
+   "decomposicao_p95_ms": {
+    "sql": 106.9,
+    "python_montagem_e_json": 30.0,
+    "fila_e_rede": 19.700000000000003
+   },
+   "sql_por_requisicao_p95": 14,
+   "bytes_p95": 87676
+  }
+ },
+ "por_parada": {
+  "False": {
+   "consultas": 2980,
+   "sucesso_2xx": 2980,
+   "erros": 0,
+   "status": {
+    "200": 2980
+   },
+   "p50_ms": 85.4,
+   "p95_ms": 150.1,
+   "p99_ms": 187.3,
+   "max_ms": 404.4,
+   "p95_ms_com_erros_como_infinito": 150.1,
+   "p99_ms_com_erros_como_infinito": 187.3,
+   "decomposicao_p95_ms": {
+    "sql": 121.3,
+    "python_montagem_e_json": 26.19999999999999,
+    "fila_e_rede": 19.1
+   },
+   "sql_por_requisicao_p95": 14,
+   "bytes_p95": 86807
+  },
+  "True": {
+   "consultas": 1020,
+   "sucesso_2xx": 1020,
+   "erros": 0,
+   "status": {
+    "200": 1020
+   },
+   "p50_ms": 108.2,
+   "p95_ms": 252.5,
+   "p99_ms": 354.4,
+   "max_ms": 686.1,
+   "p95_ms_com_erros_como_infinito": 252.5,
+   "p99_ms_com_erros_como_infinito": 354.4,
+   "decomposicao_p95_ms": {
+    "sql": 227.4,
+    "python_montagem_e_json": 27.200000000000003,
+    "fila_e_rede": 19.400000000000006
+   },
+   "sql_por_requisicao_p95": 14,
+   "bytes_p95": 87683
+  }
+ },
+ "mais_lentas": [
+  {
+   "url": "/indicadores?linha=9010-27&tipo=PONTUALIDADE_VIAGENS&sentido=0&page_size=100&inicio=2025-11-27T00%3A00%3A00-03%3A00&fim=2025-12-04T00%3A00%3A00-03%3A00",
+   "status": 200,
+   "ms": 1933.2,
+   "bytes": 163700,
+   "servidor": {
+    "app": 1931.3,
+    "db": 1917.8,
+    "sql": 9
+   }
+  },
+  {
+   "url": "/indicadores?linha=9010-27&tipo=CUMPRIMENTO_VIAGENS&sentido=1&page_size=100&inicio=2025-11-30T00%3A00%3A00-03%3A00&fim=2025-12-01T00%3A00%3A00-03%3A00",
+   "status": 200,
+   "ms": 1306.4,
+   "bytes": 156890,
+   "servidor": {
+    "app": 1289.7,
+    "db": 1276.7,
+    "sql": 9
+   }
+  },
+  {
+   "url": "/indicadores?linha=9009-27&tipo=PONTUALIDADE_VIAGENS&sentido=1&page_size=100&inicio=2025-11-08T00%3A00%3A00-03%3A00&fim=2025-12-09T00%3A00%3A00-03%3A00",
+   "status": 200,
+   "ms": 1294.4,
+   "bytes": 163782,
+   "servidor": {
+    "app": 1275.5,
+    "db": 1261.0,
+    "sql": 9
+   }
+  },
+  {
+   "url": "/indicadores?linha=9003-27&tipo=CUMPRIMENTO_VIAGENS&sentido=0&page_size=100&inicio=2025-12-10T00%3A00%3A00-03%3A00&fim=2025-12-11T00%3A00%3A00-03%3A00",
+   "status": 200,
+   "ms": 1270.2,
+   "bytes": 156992,
+   "servidor": {
+    "app": 1268.6,
+    "db": 1256.5,
+    "sql": 9
+   }
+  },
+  {
+   "url": "/indicadores?linha=9016-27&tipo=CUMPRIMENTO_VIAGENS&sentido=0&page_size=100&inicio=2025-12-07T00%3A00%3A00-03%3A00&fim=2025-12-08T00%3A00%3A00-03%3A00",
+   "status": 200,
+   "ms": 1240.6,
+   "bytes": 156916,
+   "servidor": {
+    "app": 1237.8,
+    "db": 1224.3,
+    "sql": 9
+   }
+  },
+  {
+   "url": "/indicadores?linha=9018-27&tipo=PONTUALIDADE_VIAGENS&sentido=1&page_size=100&inicio=2025-12-04T00%3A00%3A00-03%3A00&fim=2025-12-05T00%3A00%3A00-03%3A00",
+   "status": 200,
+   "ms": 1234.0,
+   "bytes": 157257,
+   "servidor": {
+    "app": 1216.6,
+    "db": 1201.7,
+    "sql": 9
+   }
+  },
+  {
+   "url": "/indicadores?linha=9008-27&tipo=PONTUALIDADE_VIAGENS&sentido=0&page_size=100&inicio=2025-12-08T00%3A00%3A00-03%3A00&fim=2025-12-09T00%3A00%3A00-03%3A00",
+   "status": 200,
+   "ms": 1206.6,
+   "bytes": 157329,
+   "servidor": {
+    "app": 1189.1,
+    "db": 1178.7,
+    "sql": 9
+   }
+  },
+  {
+   "url": "/indicadores?linha=9016-27&tipo=CUMPRIMENTO_VIAGENS&sentido=1&page_size=100&inicio=2025-12-08T00%3A00%3A00-03%3A00&fim=2025-12-09T00%3A00%3A00-03%3A00",
+   "status": 200,
+   "ms": 1047.5,
+   "bytes": 157040,
+   "servidor": {
+    "app": 1030.9,
+    "db": 1022.4,
+    "sql": 9
+   }
+  },
+  {
+   "url": "/indicadores?linha=9019-27&tipo=CUMPRIMENTO_VIAGENS&sentido=1&page_size=100&inicio=2025-11-16T00%3A00%3A00-03%3A00&fim=2025-11-17T00%3A00%3A00-03%3A00",
+   "status": 200,
+   "ms": 1004.3,
+   "bytes": 156919,
+   "servidor": {
+    "app": 987.0,
+    "db": 973.1,
+    "sql": 9
+   }
+  },
+  {
+   "url": "/indicadores?linha=9007-27&tipo=PONTUALIDADE_VIAGENS&sentido=1&page_size=100&inicio=2025-12-07T00%3A00%3A00-03%3A00&fim=2025-12-08T00%3A00%3A00-03%3A00",
+   "status": 200,
+   "ms": 992.4,
+   "bytes": 157185,
+   "servidor": {
+    "app": 990.4,
+    "db": 982.0,
+    "sql": 9
+   }
+  }
+ ],
+ "recursos": {
+  "api_cpu_pct": {
+   "media": 32.8,
+   "maximo": 58.6
+  },
+  "api_rss_mb": {
+   "media": 151.3,
+   "maximo": 152.4
+  },
+  "mysql_cpu_pct": {
+   "media": 106.4,
+   "maximo": 164.6
+  },
+  "mysql_rss_mb": {
+   "media": 365.5,
+   "maximo": 369.4
+  },
+  "cliente_cpu_pct": {
+   "media": 3.4,
+   "maximo": 23.2
+  },
+  "Threads_connected": {
+   "media": 7.6,
+   "maximo": 17
+  },
+  "Threads_running": {
+   "media": 4.3,
+   "maximo": 13
+  }
+ },
+ "mysql": {
+  "conexoes_max_usadas": 67,
+  "buffer_pool_acerto_pct": 92.329,
+  "leituras_de_disco": 1714589,
+  "consultas_lentas": 0,
+  "tmp_em_disco": 0
+ },
+ "sql_mais_caro": [
+  {
+   "sql": "SELECT COUNT ( * ) AS `count_1` FROM ( SELECT `indicadores_operacionais` . `id` AS `indicadores_operacionais_id` , `indicadores_operacionais` . `chave_resultado` AS `indicadores_operacionais_chave_resultado` , `indicadores_operacionais` . `versao_gtfs_id` AS `indicadores_operacionais_versao_gtfs_id` , `indicadores_operacionais` . `linha_codigo` AS `indicadores_operacionais_linha_codigo` , `indicadores_operacionais` . `sentido` AS `indicadores_operacionais_sentido` , `indicadores_operacionais` . `parada_codigo` AS `indicadores_operacionais_parada_codigo` , `indicadores_operacionais` . `trecho_id` AS `indicadores_operacionais_trecho_id` , `indicadores_operacionais` . `indicador` AS `indicadores_operacionais_indicador` , `indicadores_operacionais` . `valor` AS `indicadores_operacionais_valor` , `indicadores_operacionais` . `unidade` AS `indicadores_operacionais_unidade` , `indicadores_operacionais` . `periodo_inicio` AS `indicadores_operacionais_periodo_inicio` , `indicadores_operacionais` .",
+   "execucoes": 5525,
+   "total_ms": 127254.3,
+   "media_ms": 23.03,
+   "max_ms": 1128.6,
+   "linhas_examinadas": 35252736,
+   "linhas_enviadas": 5525,
+   "linhas_ordenadas": 0,
+   "tmp_em_disco": 0,
+   "sem_indice": 0
+  },
+  {
+   "sql": "SELECT MIN ( `indicadores_operacionais` . `periodo_inicio` ) AS `min_1` , MAX ( `indicadores_operacionais` . `periodo_fim` ) AS `max_1` FROM `indicadores_operacionais` WHERE `indicadores_operacionais` . `linha_codigo` = ? AND `indicadores_operacionais` . `sentido` = ? AND `indicadores_operacionais` . `indicador` = ? AND `indicadores_operacionais` . `parada_codigo` IS NULL AND `indicadores_operacionais` . `trecho_id` IS NULL",
+   "execucoes": 3304,
+   "total_ms": 90418.3,
+   "media_ms": 27.37,
+   "max_ms": 260.1,
+   "linhas_examinadas": 115737120,
+   "linhas_enviadas": 3303,
+   "linhas_ordenadas": 0,
+   "tmp_em_disco": 0,
+   "sem_indice": 0
+  },
+  {
+   "sql": "SELECT `indicadores_operacionais` . `id` AS `indicadores_operacionais_id` , `indicadores_operacionais` . `chave_resultado` AS `indicadores_operacionais_chave_resultado` , `indicadores_operacionais` . `versao_gtfs_id` AS `indicadores_operacionais_versao_gtfs_id` , `indicadores_operacionais` . `linha_codigo` AS `indicadores_operacionais_linha_codigo` , `indicadores_operacionais` . `sentido` AS `indicadores_operacionais_sentido` , `indicadores_operacionais` . `parada_codigo` AS `indicadores_operacionais_parada_codigo` , `indicadores_operacionais` . `trecho_id` AS `indicadores_operacionais_trecho_id` , `indicadores_operacionais` . `indicador` AS `indicadores_operacionais_indicador` , `indicadores_operacionais` . `valor` AS `indicadores_operacionais_valor` , `indicadores_operacionais` . `unidade` AS `indicadores_operacionais_unidade` , `indicadores_operacionais` . `periodo_inicio` AS `indicadores_operacionais_periodo_inicio` , `indicadores_operacionais` . `periodo_fim` AS",
+   "execucoes": 5324,
+   "total_ms": 54837.2,
+   "media_ms": 10.3,
+   "max_ms": 166.4,
+   "linhas_examinadas": 319490,
+   "linhas_enviadas": 319490,
+   "linhas_ordenadas": 0,
+   "tmp_em_disco": 0,
+   "sem_indice": 0
+  },
+  {
+   "sql": "SELECT MIN ( `indicadores_operacionais` . `periodo_inicio` ) AS `min_1` , MAX ( `indicadores_operacionais` . `periodo_fim` ) AS `max_1` FROM `indicadores_operacionais` WHERE `indicadores_operacionais` . `linha_codigo` = ? AND `indicadores_operacionais` . `sentido` = ? AND `indicadores_operacionais` . `indicador` = ? AND `indicadores_operacionais` . `parada_codigo` = ?",
+   "execucoes": 1119,
+   "total_ms": 36156.8,
+   "media_ms": 32.31,
+   "max_ms": 205.0,
+   "linhas_examinadas": 39209760,
+   "linhas_enviadas": 1119,
+   "linhas_ordenadas": 0,
+   "tmp_em_disco": 0,
+   "sem_indice": 0
+  },
+  {
+   "sql": "SELECT `indicadores_operacionais` . `id` AS `indicadores_operacionais_id` FROM `indicadores_operacionais` WHERE `indicadores_operacionais` . `linha_codigo` = ? AND `indicadores_operacionais` . `sentido` = ? AND `indicadores_operacionais` . `indicador` = ? AND `indicadores_operacionais` . `periodo_fim` > ? AND `indicadores_operacionais` . `periodo_inicio` < ? ORDER BY `indicadores_operacionais` . `periodo_inicio` ASC , `indicadores_operacionais` . `linha_codigo` ASC , `indicadores_operacionais` . `sentido` ASC , `indicadores_operacionais` . `indicador` ASC , `indicadores_operacionais` . `id` ASC LIMIT ?, ...",
+   "execucoes": 1102,
+   "total_ms": 30920.2,
+   "media_ms": 28.06,
+   "max_ms": 850.0,
+   "linhas_examinadas": 262016,
+   "linhas_enviadas": 108608,
+   "linhas_ordenadas": 100572,
+   "tmp_em_disco": 0,
+   "sem_indice": 0
+  },
+  {
+   "sql": "SELECT `indicadores_operacionais` . `id` AS `indicadores_operacionais_id` , `indicadores_operacionais` . `periodo_inicio` AS `indicadores_operacionais_periodo_inicio` , `indicadores_operacionais` . `periodo_fim` AS `indicadores_operacionais_periodo_fim` FROM `indicadores_operacionais` WHERE `indicadores_operacionais` . `linha_codigo` = ? AND `indicadores_operacionais` . `sentido` = ? AND `indicadores_operacionais` . `indicador` = ? AND `indicadores_operacionais` . `parada_codigo` IS NULL AND `indicadores_operacionais` . `trecho_id` IS NULL AND `indicadores_operacionais` . `periodo_inicio` >= ? AND `indicadores_operacionais` . `periodo_fim` <= ? AND `indicadores_operacionais` . `periodo_inicio` < ? AND `indicadores_operacionais` . `linha_codigo` <=> ? AND `indicadores_operacionais` . `sentido` <=> ? AND `indicadores_operacionais` . `indicador` <=> ? AND `indicadores_operacionais` . `unidade` <=> ? AND `indicadores_operacionais` . `parada_codigo` <=> ? AND `indicadores_operacionais` . `trecho_id` <=> ? AND ( `indicadores_operacionais`",
+   "execucoes": 3154,
+   "total_ms": 23638.1,
+   "media_ms": 7.49,
+   "max_ms": 70.4,
+   "linhas_examinadas": 34350396,
+   "linhas_enviadas": 157548,
+   "linhas_ordenadas": 0,
+   "tmp_em_disco": 0,
+   "sem_indice": 0
+  },
+  {
+   "sql": "SELECT `indicadores_operacionais` . `id` AS `indicadores_operacionais_id` , `indicadores_operacionais` . `periodo_inicio` AS `indicadores_operacionais_periodo_inicio` , `indicadores_operacionais` . `periodo_fim` AS `indicadores_operacionais_periodo_fim` , `indicadores_operacionais` . `linha_codigo` AS `indicadores_operacionais_linha_codigo` , `indicadores_operacionais` . `sentido` AS `indicadores_operacionais_sentido` , `indicadores_operacionais` . `indicador` AS `indicadores_operacionais_indicador` , `indicadores_operacionais` . `unidade` AS `indicadores_operacionais_unidade` , `indicadores_operacionais` . `parada_codigo` AS `indicadores_operacionais_parada_codigo` , `indicadores_operacionais` . `trecho_id` AS `indicadores_operacionais_trecho_id` FROM `indicadores_operacionais` WHERE `indicadores_operacionais` . `linha_codigo` = ? AND `indicadores_operacionais` . `sentido` = ? AND `indicadores_operacionais` . `indicador` = ? AND `indicadores_operacionais` . `parada_codigo` IS NULL AND",
+   "execucoes": 3304,
+   "total_ms": 23170.5,
+   "media_ms": 7.01,
+   "max_ms": 110.3,
+   "linhas_examinadas": 13756080,
+   "linhas_enviadas": 157548,
+   "linhas_ordenadas": 417544,
+   "tmp_em_disco": 0,
+   "sem_indice": 0
+  },
+  {
+   "sql": "COMMIT",
+   "execucoes": 5525,
+   "total_ms": 18392.5,
+   "media_ms": 3.33,
+   "max_ms": 41.2,
+   "linhas_examinadas": 0,
+   "linhas_enviadas": 0,
+   "linhas_ordenadas": 0,
+   "tmp_em_disco": 0,
+   "sem_indice": 0
+  }
+ ]
+}

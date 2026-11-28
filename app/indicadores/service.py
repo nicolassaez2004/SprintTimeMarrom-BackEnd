@@ -38,8 +38,10 @@ def filtrar_periodo(consulta, filtros):
 def consultar_indicadores(filtros, *, serie=False):
     consulta = filtrar_periodo(consulta_base(filtros), filtros)
     total = consulta.count()
-    registros = (
-        consulta.order_by(
+    # US27-T03: ordena e pagina só pelos ids (colunas de índice) e lê as linhas completas,
+    # com o JSON de qualidade, apenas para a página; mesmo resultado e mesma ordem.
+    ids = [i for (i,) in (
+        consulta.with_entities(IndicadorOperacional.id).order_by(
             IndicadorOperacional.periodo_inicio.asc(),
             IndicadorOperacional.linha_codigo.asc(),
             IndicadorOperacional.sentido.asc(),
@@ -49,7 +51,9 @@ def consultar_indicadores(filtros, *, serie=False):
         .offset((filtros["page"] - 1) * filtros["page_size"])
         .limit(filtros["page_size"])
         .all()
-    )
+    )]
+    completos = {r.id: r for r in IndicadorOperacional.query.filter(IndicadorOperacional.id.in_(ids))} if ids else {}
+    registros = [completos[i] for i in ids]
     return {
         "dados": [serializar(registro, serie=serie) for registro in registros],
         "paginacao": {
