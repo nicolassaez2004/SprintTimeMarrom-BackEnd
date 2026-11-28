@@ -84,6 +84,9 @@ def create_app(config_extra=None):
             r"/indicadores": {"origins": origens_frontend},
             r"/series": {"origins": origens_frontend},
             r"/mapas/indicadores": {"origins": origens_frontend},
+            # US06/US08 no mapa ao vivo: clima por estação e trânsito por trecho.
+            r"/mapas/clima": {"origins": origens_frontend},
+            r"/mapas/trafego": {"origins": origens_frontend},
             r"/contexto/clima": {"origins": origens_frontend},
             r"/relatorios/associacoes": {"origins": origens_frontend},
             r"/extracoes(/.*)?": {"origins": origens_frontend},
