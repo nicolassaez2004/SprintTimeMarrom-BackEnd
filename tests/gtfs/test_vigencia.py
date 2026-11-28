@@ -106,3 +106,75 @@ def test_nova_versao_nao_altera_observacoes_antigas(app):
     assert ObservacaoTratada.query.one().versao_gtfs_id == v1.id
     assert versao_vigente(date(2026, 1, 20)).id == v1.id
     assert db.session.get(VersaoGTFS, v1.id).vigencia_fim == date(2026, 1, 31)
+
+
+# --- Revisão: feed sem feed_info.txt (caso real da SPTrans) ------------------------------
+
+def _zip_sem_feed_info(conteudo):
+    import io
+    import zipfile
+
+    buffer = io.BytesIO()
+    with zipfile.ZipFile(buffer, "w") as arquivo:
+        for nome in ("agency.txt", "stops.txt", "routes.txt", "trips.txt", "stop_times.txt", "calendar.txt"):
+            arquivo.writestr(nome, f"header\n{conteudo}\n")
+    return buffer.getvalue()
+
+
+class _Cliente:
+    def __init__(self, conteudo):
+        self.conteudo = conteudo
+
+    def baixar_para(self, url, destino):
+        destino.write(self.conteudo)
+
+
+def test_captura_nova_encerra_a_anterior_e_nao_fica_ambigua(app, tmp_path):
+    from app.gtfs.service import capturar_gtfs
+
+    v1 = capturar_gtfs(url="x", diretorio=tmp_path, cliente=_Cliente(_zip_sem_feed_info("v1")),
+                       agora=datetime(2026, 11, 19, 14, tzinfo=timezone.utc))
+    v2 = capturar_gtfs(url="x", diretorio=tmp_path, cliente=_Cliente(_zip_sem_feed_info("v2")),
+                       agora=datetime(2026, 11, 24, 14, tzinfo=timezone.utc))
+    db.session.expire_all()
+    assert (db.session.get(VersaoGTFS, v1.id).vigencia_inicio, db.session.get(VersaoGTFS, v1.id).vigencia_fim) == (
+        date(2026, 11, 19), date(2026, 11, 23))
+    assert db.session.get(VersaoGTFS, v2.id).vigencia_fim is None
+    assert versao_vigente(date(2026, 11, 23)).id == v1.id   # véspera da nova: ainda a antiga
+    assert versao_vigente(date(2026, 11, 24)).id == v2.id   # antes: VersaoGTFSAmbigua
+    assert versao_vigente(date(2027, 3, 1)).id == v2.id
+
+
+def test_inicio_sem_feed_info_usa_o_dia_de_sao_paulo(app, tmp_path):
+    from app.gtfs.service import capturar_gtfs
+
+    # 23:30 de 27/11 em São Paulo = 02:30 UTC de 28/11.
+    v = capturar_gtfs(url="x", diretorio=tmp_path, cliente=_Cliente(_zip_sem_feed_info("v")),
+                      agora=datetime(2026, 11, 28, 2, 30, tzinfo=timezone.utc))
+    assert v.vigencia_inicio == date(2026, 11, 27)
+
+
+def test_vigencia_explicita_nunca_e_alterada(app, tmp_path):
+    from app.gtfs.service import encerrar_vigencias_abertas
+
+    explicita = versao(date(2026, 1, 1), date(2026, 6, 30))
+    aberta = versao(date(2026, 2, 1), capturada_em=datetime(2026, 2, 1, tzinfo=timezone.utc))
+    nova = versao(date(2026, 3, 1), capturada_em=datetime(2026, 3, 1, tzinfo=timezone.utc))
+    assert encerrar_vigencias_abertas(nova) == [aberta]
+    db.session.commit()
+    assert db.session.get(VersaoGTFS, explicita.id).vigencia_fim == date(2026, 6, 30)
+    assert db.session.get(VersaoGTFS, aberta.id).vigencia_fim == date(2026, 2, 28)
+
+
+def test_correcao_de_bases_antigas_encerra_em_ordem_de_captura(app):
+    from app.gtfs.service import corrigir_vigencias_abertas
+
+    a = versao(date(2026, 11, 19), capturada_em=datetime(2026, 11, 19, 14, tzinfo=timezone.utc))
+    b = versao(date(2026, 11, 24), capturada_em=datetime(2026, 11, 24, 14, tzinfo=timezone.utc))
+    c = versao(date(2026, 11, 26), capturada_em=datetime(2026, 11, 26, 14, tzinfo=timezone.utc))
+    with pytest.raises(VersaoGTFSAmbigua):
+        versao_vigente(date(2026, 11, 26))
+    assert corrigir_vigencias_abertas() == 2
+    db.session.commit()
+    assert [versao_vigente(date(2026, 11, d)).id for d in (19, 23, 24, 25, 26, 30)] == [a.id, a.id, b.id, b.id, c.id, c.id]
+    assert corrigir_vigencias_abertas() == 0  # idempotente

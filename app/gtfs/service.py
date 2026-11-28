@@ -7,7 +7,7 @@ import tempfile
 import zipfile
 from collections import defaultdict
 from dataclasses import dataclass
-from datetime import date, datetime, timezone
+from datetime import date, datetime, timedelta, timezone
 from decimal import Decimal, InvalidOperation
 from pathlib import Path
 from uuid import uuid4
@@ -16,6 +16,7 @@ from flask import current_app
 from sqlalchemy.exc import IntegrityError
 
 from app import db
+from app.core.tempo import FUSO
 from app.integrations.gtfs import GTFSClient
 from app.models import ArquivoArmazenado, Linha, Parada, Trecho, VersaoGTFS
 from app.storage import FileStore, hash_arquivo
@@ -179,12 +180,15 @@ def capturar_gtfs_com_resultado(*, url=None, diretorio=None, cliente=None,
         )
         versao = VersaoGTFS(
             id=str(uuid4()), capturada_em=agora, hash=digest,
-            vigencia_inicio=inicio_feed or agora.astimezone(timezone.utc).date(),
+            # Sem feed_info.txt (caso do feed da SPTrans), a vigência começa no dia
+            # da captura em São Paulo (não em UTC: capturas após 21:00 cairiam no dia seguinte).
+            vigencia_inicio=inicio_feed or agora.astimezone(FUSO).date(),
             vigencia_fim=fim_feed, arquivo=arquivo,
         )
         try:
             db.session.add(arquivo)
             db.session.add(versao)
+            encerrar_vigencias_abertas(versao)
             db.session.commit()
         except IntegrityError:
             db.session.rollback()
@@ -200,6 +204,42 @@ def capturar_gtfs_com_resultado(*, url=None, diretorio=None, cliente=None,
         raise
     finally:
         caminho_temp.unlink(missing_ok=True)
+
+
+def encerrar_vigencias_abertas(nova):
+    """Uma captura nova substitui as versões de vigência aberta anteriores a ela.
+
+    Sem ``feed_info.txt`` toda versão nasce com vigência aberta (fim NULL); sem
+    encerrar a anterior, todo dia a partir da segunda captura ficaria ambíguo
+    (``VersaoGTFSAmbigua``) e nenhuma observação seria ligada a uma versão.
+    Regra: cada versão aberta que começou antes da nova termina na véspera do
+    início da nova. Uma versão aberta do mesmo dia é substituída antes de valer
+    (fim = véspera do próprio início). Vigências explícitas (``feed_info.txt``)
+    nunca são alteradas: sobreposição entre elas continua ambígua de propósito.
+    Sem commit; devolve as versões encerradas.
+    """
+    encerradas = []
+    with db.session.no_autoflush:  # a versão nova só é gravada no commit de quem chama
+        antigas = (VersaoGTFS.query
+                   .filter(VersaoGTFS.id != nova.id, VersaoGTFS.vigencia_fim.is_(None),
+                           VersaoGTFS.vigencia_inicio <= nova.vigencia_inicio)
+                   .order_by(VersaoGTFS.vigencia_inicio, VersaoGTFS.capturada_em).all())
+    for antiga in antigas:
+        if antiga.capturada_em is not None and nova.capturada_em is not None                 and antiga.capturada_em > nova.capturada_em:
+            continue  # uma captura mais antiga não encerra uma mais nova
+        antiga.vigencia_fim = nova.vigencia_inicio - timedelta(days=1)
+        encerradas.append(antiga)
+    return encerradas
+
+
+def corrigir_vigencias_abertas():
+    """Aplica ``encerrar_vigencias_abertas`` às versões já gravadas, em ordem de captura
+    (bases capturadas antes desta correção). Sem commit; devolve quantas foram encerradas."""
+    total = 0
+    for versao in VersaoGTFS.query.order_by(VersaoGTFS.capturada_em, VersaoGTFS.id).all():
+        total += len(encerrar_vigencias_abertas(versao))
+        db.session.flush()
+    return total
 
 
 def _abrir_versao(versao_id, diretorio):
